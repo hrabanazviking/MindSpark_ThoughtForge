@@ -46,7 +46,6 @@ ThoughtForge is designed to excel in resource-starved environments.
 
 ## 🗂️ File Structure
 
-```text
 thoughtforge/
 ├── 📜 README.md
 ├── 📂 src/
