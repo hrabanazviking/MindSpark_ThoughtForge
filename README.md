@@ -1,2 +1,79 @@
 # MindSpark: ThoughtForge
-MindSpark: ThoughtForge — A rune-forged conversation engine by RuneForgeAI, built for tiny GPT-Nothing-class minds. Through guided memory, lean cognition, and relentless refinement, it gives small local models depth, presence, and will—bringing powerful AI to edge devices, low-power hardware, and the Third Path beyond bloated machine empires.
+
+**MindSpark: ThoughtForge** — A rune-forged conversation engine by **RuneForgeAI**, built for tiny GPT-Nothing-class minds. Through guided memory, lean cognition, and relentless refinement, it gives small local models depth, presence, and will—bringing powerful AI to edge devices, low-power hardware, and the **Third Path** beyond bloated machine empires.
+
+---
+
+## 🛠️ The Manifesto: Why ThoughtForge?
+
+In an era of gargantuan, centralized models that require the energy of a small city to run, **ThoughtForge** chooses a different path—the path of the **Autonomous Skald**. 
+
+We believe that true intelligence isn't found in the brute force of 100B+ parameters, but in the **orchestration of intent**. ThoughtForge acts as a "Cognitive Exoskeleton" for small models (~1B), allowing them to converse far above their weight class by offloading the heavy lifting of memory, steering, and quality control to a lean, deterministic framework.
+
+### The Pillars of the Third Path
+1. **Self-Reliance:** Run your own mind on your own iron. No API keys, no surveillance, no "empires."
+2. **Rune-Forged Precision:** Use structured "Cognition Scaffolds" to guide small models like a compass guides a longship.
+3. **Fragment Salvage:** Never discard a weak output if there is gold within. We extract the best phrases and forge them into a final response.
+4. **Iron-Clad Efficiency:** Optimized for 8-bit (and lower) quantization via **TurboQuant**, targeting hardware that others have abandoned.
+
+---
+
+## 🏗️ Architecture: The Cognitive Exoskeleton
+
+ThoughtForge treats the LLM as a **composer**, not a god. The system wraps the model in a series of high-efficiency layers:
+
+| Layer | Function |
+| :--- | :--- |
+| **Input Compression** | Distills user rants into a high-density "Intent Sketch." |
+| **Memory Cues** | Retrieves the top 3–5 most relevant "Saga Fragments" (User preferences & history). |
+| **Cognition Scaffold** | Provides a structured mission (Goal, Tone, Focus, Avoid). |
+| **Candidate Forging** | Generates 2–4 micro-responses instead of one long gamble. |
+| **Salvage & Refine** | Extracts the "gold" sentences and stitches them into a coherent reply. |
+| **Compact Writeback** | Stores only the essential lessons learned from the exchange. |
+
+---
+
+## ⚡ Technical Specs (TurboQuant Optimized)
+
+ThoughtForge is designed to excel in resource-starved environments.
+
+* **Target Models:** 1B - 3B Parameter Instruct/Chat models.
+* **Memory Footprint:** < 4GB VRAM / 8GB System RAM (Quantized).
+* **Token Budget:** ~180-250 internal tokens per turn.
+* **Inference Backend:** Optimized for CPU-only or integrated GPU (DirectML/Vulkan).
+
+---
+
+## 🗂️ File Structure
+
+```text
+thoughtforge/
+├── 📜 README.md
+├── 📂 src/
+│   ├── retrieval.py      # The Memory Well (Similarity Scoring)
+│   ├── cognition.py      # The Compass (Scaffold Generation)
+│   ├── salvage.py        # The Forge (Fragment Extraction)
+│   └── composer.py       # The Skald (Final Assembly)
+├── 📂 memory/
+│   ├── core.yaml         # Personality Runes (System Core)
+│   └── sagas.jsonl       # Episodic Memory Store (Long-term)
+└── 📂 prompts/
+    └── templates.md      # Lean, task-focused prompt blocks
+
+## ⚖️ License
+This work is licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0) License.
+You are free to:
+* **Share** — copy and redistribute the material in any medium or format.
+* **Adapt** — remix, transform, and build upon the material for any purpose, even commercially.
+Under the following terms:
+* **Attribution** — You must give appropriate credit to RuneForgeAI, provide a link to the license, and indicate if changes were made.
+
+## 🛡️ Join the Forge
+MindSpark: ThoughtForge is currently in Draft v1 (Spec Phase). We are looking for contributors who value:
+* Python-driven AI orchestration.
+* Ultra-aggressive quantization techniques.
+* Deterministic personality consistency.
+
+- RuneForgeAI 
+
+
