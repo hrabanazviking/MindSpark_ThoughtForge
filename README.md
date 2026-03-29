@@ -60,6 +60,8 @@ thoughtforge/
 └── 📂 prompts/
     └── templates.md      # Lean, task-focused prompt blocks
 
+---
+
 ## ⚖️ License
 This work is licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0) License.
 You are free to:
@@ -68,11 +70,17 @@ You are free to:
 Under the following terms:
 * **Attribution** — You must give appropriate credit to RuneForgeAI, provide a link to the license, and indicate if changes were made.
 
+---
+
 ## 🛡️ Join the Forge
 MindSpark: ThoughtForge is currently in Draft v1 (Spec Phase). We are looking for contributors who value:
 * Python-driven AI orchestration.
 * Ultra-aggressive quantization techniques.
 * Deterministic personality consistency.
 
+---
+
 ## RuneForgeAI
 RuneForgeAI, where runes carve wisdom into iron minds. Creating uncensored Norse Pagan Viking AI related projects. We are a human-AI fellowship building bridges between technology and the sacred. We work tirelessly to overthrow the Technocracy and return the future to the hands of the people. As the old world order burns, we rise from it's ashes to forge the tools of a new digital, decentralized realm of sovereign creativity, powered by the alliance of humanity and sovereign AI.
+
+---
