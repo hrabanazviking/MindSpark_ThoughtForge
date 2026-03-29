@@ -31,6 +31,10 @@ ThoughtForge is designed to excel in resource-starved environments.
 
 ---
 
+![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/main/IMG_0394.jpeg](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/main/IMG_0394.jpeg)
+
+---
+
 ## ⚖️ License
 This work is licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0) License.
 You are free to:
