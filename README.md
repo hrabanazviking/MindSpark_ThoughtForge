@@ -18,21 +18,6 @@ We believe that true intelligence isn't found in the brute force of 100B+ parame
 
 ---
 
-## 🏗️ Architecture: The Cognitive Exoskeleton
-
-ThoughtForge treats the LLM as a **composer**, not a god. The system wraps the model in a series of high-efficiency layers:
-
-| Layer | Function |
-| :--- | :--- |
-| **Input Compression** | Distills user rants into a high-density "Intent Sketch." |
-| **Memory Cues** | Retrieves the top 3–5 most relevant "Saga Fragments" (User preferences & history). |
-| **Cognition Scaffold** | Provides a structured mission (Goal, Tone, Focus, Avoid). |
-| **Candidate Forging** | Generates 2–4 micro-responses instead of one long gamble. |
-| **Salvage & Refine** | Extracts the "gold" sentences and stitches them into a coherent reply. |
-| **Compact Writeback** | Stores only the essential lessons learned from the exchange. |
-
----
-
 ## ⚡ Technical Specs (TurboQuant Optimized)
 
 ThoughtForge is designed to excel in resource-starved environments.
