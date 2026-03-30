@@ -1,7 +1,7 @@
 ﻿# Memory-guided_cognition_in_AI_Resources.md
 
 
-Download all these resources to the folder called /data_resourced/
+Download all these resources to the folder called /data_resources/
 
 
 **Memory-guided cognition in AI** refers to systems where stored experiences, knowledge, and past interactions actively shape reasoning, decision-making, planning, personalization, and adaptation—mirroring human cognitive processes like episodic recall (event-specific memories), semantic abstraction (general knowledge), working memory (short-term maintenance), and long-term consolidation (via hippocampal-neocortical coordination). This draws heavily from cognitive neuroscience (e.g., default mode network/DMN for heteromodal integration, frontoparietal control network/FPCN for balancing attention and memory-guided behavior) and applies it to artificial systems, especially LLMs, autonomous agents, and cognitive architectures.
