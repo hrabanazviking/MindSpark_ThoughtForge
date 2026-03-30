@@ -1,0 +1,3 @@
+- This foler and all subfolders of this file are where the actual files of the program itself, including all it's code, data, and other supporting files needed for it to function go into.
+- This folder or it's subfolder is not for any developer only files.
+- Do no put any development structure data files in here, put them in the main directory, or in other subfolders from the main directory, including any MD, JSON, JSONL, YAML, CSV, and PDF files used for defining the structure of this project's code and technical design.

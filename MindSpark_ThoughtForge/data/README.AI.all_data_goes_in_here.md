@@ -1,0 +1,2 @@
+- Put all program data files, including MD, JSON, JSONL, YAML, CSV, and PDF files in here, and also in subfolders of here. 
+- Do no put any development structure data files in here, put them in the main directory, or in other subfolders from the main directory, including any MD, JSON, JSONL, YAML, CSV, and PDF files used for defining the structure of this project's code and technical design.
