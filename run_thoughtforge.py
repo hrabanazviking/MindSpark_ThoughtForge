@@ -23,6 +23,10 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+
+# Ensure UTF-8 output on Windows terminals
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from pathlib import Path
 
 
@@ -141,7 +145,7 @@ def main() -> None:
     from thoughtforge.utils.logging_setup import setup_logging
 
     if not args.debug:
-        setup_logging(level="WARNING")
+        setup_logging(config={"logging": {"level": "WARNING"}})
 
     model_path = Path(args.model) if args.model else None
 
