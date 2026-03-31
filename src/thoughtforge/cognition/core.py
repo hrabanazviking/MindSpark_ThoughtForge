@@ -7,8 +7,8 @@ Orchestrates the full think() loop:
   3. ScaffoldBuilder → CognitionScaffold
   4. PromptBuilder   → candidate prompts
   5. TurboQuantEngine → draft generation
-  6. Fragment scoring → FragmentRecord list
-  7. Refine pass     → final text
+  6. FragmentSalvage → scored drafts + refine passes → best text
+  7. EnforcementGate → citation integrity check
   8. Quality gate    → repair pass if needed
   9. FinalResponseRecord assembly
 
@@ -42,6 +42,8 @@ from thoughtforge.knowledge.models import (
     RuntimeTurnState,
 )
 from thoughtforge.knowledge.store import MemoryStore
+from thoughtforge.refinement.enforcement import EnforcementGate
+from thoughtforge.refinement.salvage import FragmentSalvage
 from thoughtforge.utils.config import load_config
 from thoughtforge.utils.paths import get_knowledge_db_path, get_memory_dir
 
@@ -88,6 +90,8 @@ class ThoughtForgeCore:
         self._router = InputRouter()
         self._scaffold_builder = ScaffoldBuilder()
         self._prompt_builder = PromptBuilder()
+        self._salvage = FragmentSalvage()
+        self._enforcement = EnforcementGate()
 
         self._engine: Any = None      # TurboQuantEngine — loaded lazily
         self._personality = self._store.load_personality_core()
@@ -309,53 +313,43 @@ class ThoughtForgeCore:
         fragments: list[FragmentRecord],
     ) -> FinalResponseRecord:
         """
-        Compose the final response:
-        - If good fragments exist: build refine prompt → generate refined response.
-        - Otherwise: use the best candidate directly.
+        Compose the final response via FragmentSalvage, then run EnforcementGate.
         """
         rid = f"resp_{uuid.uuid4().hex[:8]}"
         kept = [f for f in fragments if f.keep]
 
-        # Try refine pass if we have fragments and a model
-        if kept and self._engine is not None:
-            memory_cues = self._prompt_builder.extract_memory_cues(bundle)
-            refine_prompt = self._prompt_builder.build_refine_prompt(
-                fragments=fragments,
-                sketch=sketch,
-                scaffold=scaffold,
-            )
-            try:
-                from thoughtforge.inference.turboquant import GenerationParams
-                result = self._engine.generate(
-                    refine_prompt,
-                    params=GenerationParams(temperature=0.55),
-                )
-                scores = _score_final(result.text, sketch, scaffold)
-                return FinalResponseRecord(
-                    response_id=rid,
-                    text=result.text,
-                    source_candidate_ids=[c.candidate_id for c in candidates],
-                    source_fragment_ids=[f.fragment_id for f in kept],
-                    citations=_extract_citations(result.text, bundle),
-                    scores=scores,
-                    enforcement_passed=_check_citation_gate(result.text, bundle),
-                    token_count=result.tokens_generated,
-                )
-            except Exception as e:
-                logger.warning("Refine pass failed: %s — falling back to best candidate", e)
+        # Delegate to FragmentSalvage for multi-pass scored reassembly
+        salvage_result = self._salvage.forge(
+            candidates=candidates,
+            bundle=bundle,
+            engine=self._engine,
+            prompt_builder=self._prompt_builder,
+            sketch=sketch,
+            scaffold=scaffold,
+        )
 
-        # Fall back to best candidate
-        best = max(candidates, key=lambda c: c.scores.composite)
-        scores = _score_final(best.text, sketch, scaffold)
+        # Run EnforcementGate
+        retrieved_qids = EnforcementGate.extract_qids_from_bundle(bundle.activated_records)
+        enforcement = self._enforcement.check(
+            text=salvage_result.text,
+            citations=salvage_result.citations,
+            retrieved_qids=retrieved_qids,
+        )
+
+        final_text = enforcement.text     # may have forge note appended on fail
+        scores = _score_final(final_text, sketch, scaffold)
+        token_count = len(final_text.split())
+
         return FinalResponseRecord(
             response_id=rid,
-            text=best.text,
-            source_candidate_ids=[best.candidate_id],
+            text=final_text,
+            source_candidate_ids=[c.candidate_id for c in candidates],
             source_fragment_ids=[f.fragment_id for f in kept],
-            citations=_extract_citations(best.text, bundle),
+            citations=salvage_result.citations,
             scores=scores,
-            enforcement_passed=_check_citation_gate(best.text, bundle),
-            token_count=best.token_estimate,
+            enforcement_passed=enforcement.passed,
+            enforcement_notes=enforcement.notes,
+            token_count=token_count,
         )
 
     def _knowledge_only_response(
