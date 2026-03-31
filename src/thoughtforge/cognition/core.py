@@ -161,7 +161,7 @@ class ThoughtForgeCore:
 
         # ── Step 7: Refine or fallback to knowledge-only summary ───────────────
         if candidates:
-            final = self._compose_final(sketch, scaffold, bundle, candidates, fragments)
+            final = self._compose_final(sketch, scaffold, bundle, candidates, fragments, turn_id=turn_id)
         else:
             final = self._knowledge_only_response(turn_id, sketch, bundle)
 
@@ -311,6 +311,7 @@ class ThoughtForgeCore:
         bundle: MemoryActivationBundle,
         candidates: list[CandidateRecord],
         fragments: list[FragmentRecord],
+        turn_id: str = "",
     ) -> FinalResponseRecord:
         """
         Compose the final response via FragmentSalvage, then run EnforcementGate.
@@ -350,6 +351,10 @@ class ThoughtForgeCore:
             enforcement_passed=enforcement.passed,
             enforcement_notes=enforcement.notes,
             token_count=token_count,
+            turn_id=turn_id,
+            salvage_path=salvage_result.salvage_path,
+            retrieval_confidence=bundle.retrieval_confidence,
+            mode="full",
         )
 
     def _knowledge_only_response(
@@ -377,6 +382,10 @@ class ThoughtForgeCore:
                 enforcement_passed=False,
                 enforcement_notes="no knowledge available",
                 token_count=len(text.split()),
+                turn_id=turn_id,
+                salvage_path="knowledge_only",
+                retrieval_confidence=0.0,
+                mode="knowledge_only",
             )
 
         # Assemble knowledge summary from top records
@@ -405,6 +414,10 @@ class ThoughtForgeCore:
             enforcement_passed=True,
             enforcement_notes="knowledge-only mode",
             token_count=len(text.split()),
+            turn_id=turn_id,
+            salvage_path="knowledge_only",
+            retrieval_confidence=bundle.retrieval_confidence,
+            mode="knowledge_only",
         )
 
     def _repair(
@@ -441,6 +454,10 @@ class ThoughtForgeCore:
                 enforcement_passed=_check_citation_gate(result.text, bundle),
                 enforcement_notes="repair pass",
                 token_count=result.tokens_generated,
+                turn_id=turn_id,
+                salvage_path="repair",
+                retrieval_confidence=bundle.retrieval_confidence,
+                mode="repair",
             )
         except Exception as e:
             logger.warning("Repair pass failed: %s — returning previous result", e)

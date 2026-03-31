@@ -420,6 +420,10 @@ class FinalResponseRecord:
     enforcement_notes: str = ""
     token_count: int = 0
     created_at: str = field(default_factory=_now_iso)
+    turn_id: str = ""
+    salvage_path: str = "direct"
+    retrieval_confidence: float = 0.0
+    mode: str = "knowledge_only"
 
 
 # ── 13. WritebackRecord ───────────────────────────────────────────────────────

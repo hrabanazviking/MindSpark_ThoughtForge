@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thoughtforge"
-version = "0.1.0"
+version = "1.0.0"
 description = "MindSpark: ThoughtForge — Universal cognitive enhancement layer for AI models of any size"
 readme = "README.md"
 license = { text = "CC BY 4.0" }
@@ -15,7 +15,7 @@ keywords = [
     "quantization", "edge-AI", "Norse", "offline"
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: Free for non-commercial use",
