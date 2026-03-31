@@ -1,0 +1,18 @@
+"""
+Cognition layer — scaffolds, intent routing, and the orchestration loop.
+
+Deterministic YAML control objects steer any model toward grounded,
+consistent, cite-verified responses.
+"""
+
+from thoughtforge.cognition.core import ThoughtForgeCore
+from thoughtforge.cognition.prompt_builder import PromptBuilder
+from thoughtforge.cognition.router import InputRouter
+from thoughtforge.cognition.scaffold import ScaffoldBuilder
+
+__all__ = [
+    "ThoughtForgeCore",
+    "InputRouter",
+    "ScaffoldBuilder",
+    "PromptBuilder",
+]
