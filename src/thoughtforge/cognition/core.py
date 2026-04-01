@@ -46,6 +46,8 @@ from thoughtforge.refinement.enforcement import EnforcementGate
 from thoughtforge.refinement.salvage import FragmentSalvage
 from thoughtforge.utils.config import load_config
 from thoughtforge.utils.paths import get_knowledge_db_path, get_memory_dir
+from thoughtforge.utils.perf import get_perf_tracker
+from thoughtforge.utils.validators import sanitise_query
 
 logger = logging.getLogger(__name__)
 
@@ -96,11 +98,19 @@ class ThoughtForgeCore:
         self._enforcement = EnforcementGate()
 
         self._engine: Any = None      # TurboQuantEngine — loaded lazily
+        self._perf = get_perf_tracker()
         self._personality = self._store.load_personality_core()
 
         # Try to load personality from config path if not in memory dir
         if self._personality is None:
             self._personality = _load_personality_from_config(self._config)
+
+        # Self-heal any detectable issues on startup
+        try:
+            from thoughtforge.utils.self_heal import SelfHealer
+            SelfHealer().heal_all()
+        except Exception as _heal_exc:
+            logger.debug("SelfHealer startup pass failed (non-critical): %s", _heal_exc)
 
         logger.info(
             "ThoughtForgeCore ready | model=%s | personality=%s | db=%s",
@@ -129,6 +139,7 @@ class ThoughtForgeCore:
         Returns:
             FinalResponseRecord — always returns, never raises on content failure.
         """
+        user_text = sanitise_query(user_text)
         turn_id = _new_turn_id()
         turn = RuntimeTurnState(turn_id=turn_id)
         t_start = time.perf_counter()
@@ -193,14 +204,20 @@ class ThoughtForgeCore:
         turn.total_tokens_used = final.token_count
         turn.completed_at = _now_iso()
 
+        total_ms = (time.perf_counter() - t_start) * 1000
         logger.info(
             "think() done turn=%s | score=%.3f tier=%s | tokens=%d | %dms total",
             turn_id,
             final.scores.composite,
             final.scores.quality_tier,
             final.token_count,
-            int((time.perf_counter() - t_start) * 1000),
+            int(total_ms),
         )
+
+        # Record performance metrics
+        self._perf.record("think.total", total_ms)
+        self._perf.record("think.retrieval", turn.retrieval_ms)
+        self._perf.record("think.generation", turn.generation_ms)
 
         return final
 

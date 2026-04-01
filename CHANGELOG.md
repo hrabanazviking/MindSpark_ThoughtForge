@@ -7,6 +7,26 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [1.2.0] — 2026-04-01
+
+### Added
+
+**Phase 8 — Robustness, Self-Healing, and Production Hardening**
+- `src/thoughtforge/utils/health.py` — `HealthChecker` with per-component checks (config, backend, DB, memory, disk, dependencies); `report()` produces a human-readable diagnostic
+- `src/thoughtforge/utils/self_heal.py` — `SelfHealer` with config repair, JSONL line quarantine with backup, YAML/JSON reset, and DB integrity + schema rebuild; `atomic_write()` helper for all file writes
+- `src/thoughtforge/utils/perf.py` — `PerfTracker` ring-buffer (1000 events) with p50/p95/p99 stats; `get_perf_tracker()` module singleton; `bottleneck_report()` ASCII table
+- `src/thoughtforge/etl/db_integrity.py` — `DBIntegrityChecker` with PRAGMA integrity_check, WAL enforcement, FTS5 shadow-table validation, VACUUM, and 24-hour result cache
+- `forge_doctor.py` — root-level diagnostic CLI: `python forge_doctor.py [--fix] [--json] [--verbose]`
+- `ThoughtForgeCore`: `sanitise_query()` applied on every `think()` entry; `PerfTracker` records total/retrieval/generation latency; `SelfHealer.heal_all()` runs on startup
+- `run_thoughtforge.py`: `ThoughtForgeError` caught at `main()` — prints user-friendly message + suggested fix instead of traceback
+- Fixed `retry.py` sentinel syntax (`_SENTINEL := object()` in default was invalid Python 3.10 — moved to module level)
+- 90 new tests across `test_phase8_health.py`, `test_phase8_errors.py`, `test_phase8_perf.py`
+
+### Tests
+- **620 tests passing** (530 → 620, +90 in Phase 8)
+
+---
+
 ## [1.1.0] — 2026-04-01
 
 ### Added

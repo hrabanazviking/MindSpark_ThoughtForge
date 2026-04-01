@@ -311,6 +311,7 @@ def main() -> None:
 
     # Import here so logging is set up first
     from thoughtforge.cognition.core import ThoughtForgeCore
+    from thoughtforge.utils.errors import ThoughtForgeError
     from thoughtforge.utils.logging_setup import setup_logging
 
     if not args.debug:
@@ -320,19 +321,28 @@ def main() -> None:
         _show_backend_info()
         return
 
-    # Load unified backend from user_config.yaml if present
-    from thoughtforge.inference.unified_backend import load_backend_from_config
-    unified_backend = load_backend_from_config()
+    try:
+        # Load unified backend from user_config.yaml if present
+        from thoughtforge.inference.unified_backend import load_backend_from_config
+        unified_backend = load_backend_from_config()
 
-    model_path = Path(args.model) if args.model else None
-    core = ThoughtForgeCore(model_path=model_path, backend=unified_backend)
+        model_path = Path(args.model) if args.model else None
+        core = ThoughtForgeCore(model_path=model_path, backend=unified_backend)
 
-    if args.chat:
-        _run_chat(core, args.retrieval, args.history, args.system)
-    elif args.query:
-        _run_single(core, args.query, args.retrieval)
-    else:
-        _run_repl(core, args.retrieval)
+        if args.chat:
+            _run_chat(core, args.retrieval, args.history, args.system)
+        elif args.query:
+            _run_single(core, args.query, args.retrieval)
+        else:
+            _run_repl(core, args.retrieval)
+
+    except ThoughtForgeError as exc:
+        print(f"\nThoughtForge Error: {exc.message}", file=sys.stderr)
+        if exc.suggested_fix:
+            print(f"Fix: {exc.suggested_fix}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\nThe forge grows quiet. Walk well.")
 
 
 if __name__ == "__main__":
