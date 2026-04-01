@@ -5,11 +5,23 @@ Usage:
   # Interactive REPL:
   python run_thoughtforge.py
 
+  # Persistent chat mode:
+  python run_thoughtforge.py --chat
+
   # Single query:
   python run_thoughtforge.py "What is Yggdrasil?"
 
   # With a GGUF model:
   python run_thoughtforge.py --model /models/phi-3-mini-q4.gguf
+
+  # Chat with history file:
+  python run_thoughtforge.py --chat --history sessions/my_session.json
+
+  # With a system prompt:
+  python run_thoughtforge.py --chat --system "You are a Norse mythology expert."
+
+  # Show backend info:
+  python run_thoughtforge.py --backend
 
   # Override hardware profile:
   python run_thoughtforge.py --profile desktop_cpu
@@ -61,6 +73,30 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Retrieval path override: sql|vector|hybrid (default: auto from intent)",
     )
     p.add_argument(
+        "--chat",
+        action="store_true",
+        default=False,
+        help="Enter persistent chat mode",
+    )
+    p.add_argument(
+        "--history",
+        metavar="FILE",
+        default=None,
+        help="Load chat history from FILE at start; auto-save on exit",
+    )
+    p.add_argument(
+        "--system",
+        metavar="PROMPT",
+        default=None,
+        help="Set system prompt for this session",
+    )
+    p.add_argument(
+        "--backend",
+        action="store_true",
+        default=False,
+        help="Show current backend info and exit",
+    )
+    p.add_argument(
         "--debug",
         action="store_true",
         default=False,
@@ -79,7 +115,6 @@ def _setup_logging(debug: bool) -> None:
 
 
 def _display_result(result: object, query: str) -> None:
-    """Print the FinalResponseRecord in a readable format."""
     sep = "═" * 72
 
     print(f"\n{sep}")
@@ -102,6 +137,140 @@ def _display_result(result: object, query: str) -> None:
     print(f"Enforcement : {enf_str}")
     print(f"Tokens      : {token_count}")
     print()
+
+
+def _show_backend_info() -> None:
+    from thoughtforge.inference.unified_backend import load_backend_from_config
+    backend = load_backend_from_config()
+    if backend is None:
+        print("Backend: none configured (knowledge-only mode)")
+        print("Run `python setup_thoughtforge.py` to configure a backend.")
+        return
+    print(f"Backend     : {backend.backend_name()}")
+    healthy = backend.health_check()
+    print(f"Health      : {'OK' if healthy else 'UNREACHABLE'}")
+
+
+def _handle_chat_command(
+    command: str,
+    history: object,
+    history_file: str | None,
+) -> None:
+    parts = command.strip().split(None, 1)
+    cmd = parts[0].lower()
+
+    if cmd == "/clear":
+        history.clear()  # type: ignore[attr-defined]
+        print("History cleared.")
+
+    elif cmd == "/save":
+        if history_file:
+            history.save(Path(history_file))  # type: ignore[attr-defined]
+            print(f"Saved to {history_file}")
+        else:
+            dest = parts[1].strip() if len(parts) > 1 else ""
+            if dest:
+                history.save(Path(dest))  # type: ignore[attr-defined]
+                print(f"Saved to {dest}")
+            else:
+                print("Usage: /save [FILE]  (no default history file set)")
+
+    elif cmd == "/load":
+        if len(parts) < 2:
+            print("Usage: /load FILE")
+            return
+        src = Path(parts[1].strip())
+        if not src.exists():
+            print(f"File not found: {src}")
+            return
+        from thoughtforge.cognition.chat_history import ChatHistory
+        loaded = ChatHistory.load(src)
+        # Replace messages in-place
+        history.messages.clear()          # type: ignore[attr-defined]
+        history.messages.extend(loaded.messages)  # type: ignore[attr-defined]
+        print(f"Loaded {len(history)} turns from {src}")
+
+    elif cmd == "/history":
+        print(history.format_for_display())  # type: ignore[attr-defined]
+
+    elif cmd in ("/quit", "/exit", "/q"):
+        raise KeyboardInterrupt
+
+    else:
+        print(f"Unknown command: {cmd}")
+        print("Commands: /clear  /save [FILE]  /load FILE  /history  /quit")
+
+
+def _run_chat(
+    core: object,
+    retrieval_path: str | None,
+    history_file: str | None,
+    system_prompt: str | None,
+) -> None:
+    from thoughtforge.cognition.chat_history import ChatHistory
+    from thoughtforge.inference.unified_backend import load_backend_from_config
+
+    history = ChatHistory(system_prompt=system_prompt or "")
+    if history_file and Path(history_file).exists():
+        history = ChatHistory.load(Path(history_file))
+
+    # Backend info for header
+    backend = load_backend_from_config()
+    backend_label = backend.backend_name() if backend else "knowledge-only"
+
+    print("MindSpark: ThoughtForge — Chat Mode")
+    print(f"Backend: {backend_label}")
+    if history_file:
+        print(f"History: {history_file}  ({len(history)} turns loaded)")
+    print("Commands: /clear  /save [FILE]  /load FILE  /history  /quit")
+    print()
+
+    while True:
+        try:
+            user_input = input("You > ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+
+        if not user_input:
+            continue
+
+        if user_input.startswith("/"):
+            try:
+                _handle_chat_command(user_input, history, history_file)
+            except KeyboardInterrupt:
+                break
+            continue
+
+        history.add_user(user_input)
+        try:
+            result = core.think(  # type: ignore[attr-defined]
+                user_input,
+                retrieval_path=retrieval_path,
+                history=history,
+            )
+        except Exception as e:
+            print(f"[Forge Error] {e}", file=sys.stderr)
+            continue
+
+        history.add_assistant(result.text, turn_id=result.turn_id)
+        print(f"\nForge > {result.text}\n")
+
+        citations = getattr(result, "citations", [])
+        retrieval_confidence = getattr(result, "retrieval_confidence", 0.0)
+        enforcement_passed = getattr(result, "enforcement_passed", False)
+        if citations:
+            enf = "PASS" if enforcement_passed else "REVIEW"
+            print(
+                f"  [Citations: {', '.join(citations[:3])} | "
+                f"Confidence: {retrieval_confidence:.2f} | {enf}]"
+            )
+        print()
+
+    if history_file:
+        history.save(Path(history_file))
+        print(f"History saved to {history_file}")
+    else:
+        print("The forge grows quiet. Walk well.")
 
 
 def _run_single(core: object, query: str, retrieval_path: str | None) -> None:
@@ -147,11 +316,20 @@ def main() -> None:
     if not args.debug:
         setup_logging(config={"logging": {"level": "WARNING"}})
 
+    if args.backend:
+        _show_backend_info()
+        return
+
+    # Load unified backend from user_config.yaml if present
+    from thoughtforge.inference.unified_backend import load_backend_from_config
+    unified_backend = load_backend_from_config()
+
     model_path = Path(args.model) if args.model else None
+    core = ThoughtForgeCore(model_path=model_path, backend=unified_backend)
 
-    core = ThoughtForgeCore(model_path=model_path)
-
-    if args.query:
+    if args.chat:
+        _run_chat(core, args.retrieval, args.history, args.system)
+    elif args.query:
         _run_single(core, args.query, args.retrieval)
     else:
         _run_repl(core, args.retrieval)
