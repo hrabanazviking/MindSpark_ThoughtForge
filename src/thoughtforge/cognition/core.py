@@ -46,6 +46,8 @@ from thoughtforge.refinement.enforcement import EnforcementGate
 from thoughtforge.refinement.salvage import FragmentSalvage
 from thoughtforge.utils.config import load_config
 from thoughtforge.utils.paths import get_knowledge_db_path, get_memory_dir
+from thoughtforge.utils.perf import get_perf_tracker
+from thoughtforge.utils.validators import sanitise_query
 
 logger = logging.getLogger(__name__)
 
@@ -79,9 +81,11 @@ class ThoughtForgeCore:
         model_path: str | Path | None = None,
         memory_dir: Path | None = None,
         db_path: Path | None = None,
+        backend: Any = None,
     ) -> None:
         self._config = config or load_config()
         self._model_path = Path(model_path) if model_path else None
+        self._unified_backend = backend   # UnifiedBackend instance or None
 
         self._knowledge = KnowledgeForge(
             db_path=db_path or get_knowledge_db_path(),
@@ -94,11 +98,19 @@ class ThoughtForgeCore:
         self._enforcement = EnforcementGate()
 
         self._engine: Any = None      # TurboQuantEngine — loaded lazily
+        self._perf = get_perf_tracker()
         self._personality = self._store.load_personality_core()
 
         # Try to load personality from config path if not in memory dir
         if self._personality is None:
             self._personality = _load_personality_from_config(self._config)
+
+        # Self-heal any detectable issues on startup
+        try:
+            from thoughtforge.utils.self_heal import SelfHealer
+            SelfHealer().heal_all()
+        except Exception as _heal_exc:
+            logger.debug("SelfHealer startup pass failed (non-critical): %s", _heal_exc)
 
         logger.info(
             "ThoughtForgeCore ready | model=%s | personality=%s | db=%s",
@@ -114,6 +126,7 @@ class ThoughtForgeCore:
         user_text: str,
         retrieval_path: str | None = None,
         num_drafts: int | None = None,
+        history: "Any | None" = None,
     ) -> FinalResponseRecord:
         """
         Full memory-enforced cognition pipeline for one user turn.
@@ -126,6 +139,7 @@ class ThoughtForgeCore:
         Returns:
             FinalResponseRecord — always returns, never raises on content failure.
         """
+        user_text = sanitise_query(user_text)
         turn_id = _new_turn_id()
         turn = RuntimeTurnState(turn_id=turn_id)
         t_start = time.perf_counter()
@@ -148,6 +162,17 @@ class ThoughtForgeCore:
 
         # ── Step 3: Build scaffold ─────────────────────────────────────────────
         scaffold = self._scaffold_builder.build(sketch, bundle, self._personality)
+        # Inject chat history context into the fact_block when provided
+        if history is not None:
+            history_context = history.to_prompt_context(max_chars=1500)
+            if history_context:
+                if scaffold.fact_block:
+                    scaffold.fact_block = (
+                        f"Conversation history:\n{history_context}\n\n"
+                        f"Knowledge:\n{scaffold.fact_block}"
+                    )
+                else:
+                    scaffold.fact_block = f"Conversation history:\n{history_context}"
         turn.scaffold = scaffold
 
         # ── Step 4–6: Generate, score, salvage ────────────────────────────────
@@ -179,14 +204,20 @@ class ThoughtForgeCore:
         turn.total_tokens_used = final.token_count
         turn.completed_at = _now_iso()
 
+        total_ms = (time.perf_counter() - t_start) * 1000
         logger.info(
             "think() done turn=%s | score=%.3f tier=%s | tokens=%d | %dms total",
             turn_id,
             final.scores.composite,
             final.scores.quality_tier,
             final.token_count,
-            int((time.perf_counter() - t_start) * 1000),
+            int(total_ms),
         )
+
+        # Record performance metrics
+        self._perf.record("think.total", total_ms)
+        self._perf.record("think.retrieval", turn.retrieval_ms)
+        self._perf.record("think.generation", turn.generation_ms)
 
         return final
 
@@ -230,13 +261,17 @@ class ThoughtForgeCore:
         bundle: MemoryActivationBundle,
         num_drafts: int | None,
     ) -> list[CandidateRecord]:
-        """Generate candidate responses via TurboQuantEngine. Returns [] if no model."""
+        """Generate candidate responses via TurboQuantEngine or UnifiedBackend. Returns [] if no model."""
         if self._engine is None and self._model_path is not None:
             try:
                 self.load_model()
             except Exception as e:
                 logger.warning("Failed to load model: %s — running knowledge-only", e)
                 return []
+
+        # Route through UnifiedBackend when no local engine is loaded
+        if self._engine is None and self._unified_backend is not None:
+            return self._generate_via_unified_backend(sketch, scaffold, bundle)
 
         if self._engine is None:
             return []
@@ -272,6 +307,45 @@ class ThoughtForgeCore:
                 logger.warning("Candidate generation failed (mode=%s): %s", mode, e)
 
         return candidates
+
+    def _generate_via_unified_backend(
+        self,
+        sketch: InputSketch,
+        scaffold: CognitionScaffold,
+        bundle: MemoryActivationBundle,
+    ) -> list[CandidateRecord]:
+        """Generate a single candidate via the UnifiedBackend (Ollama, LM Studio, HF, etc.)."""
+        from thoughtforge.inference.unified_backend import GenerationRequest
+
+        memory_cues = self._prompt_builder.extract_memory_cues(bundle)
+        mode = scaffold.candidate_modes[0] if scaffold.candidate_modes else "practical"
+        prompt = self._prompt_builder.build_candidate_prompt(
+            sketch=sketch,
+            scaffold=scaffold,
+            mode=mode,
+            memory_cues=memory_cues,
+        )
+        try:
+            req = GenerationRequest(
+                prompt=prompt,
+                temperature=_mode_temperature(mode),
+                max_tokens=512,
+            )
+            resp = self._unified_backend.generate(req)
+            if resp.error:
+                logger.warning("UnifiedBackend error: %s", resp.error)
+                return []
+            cid = f"cand_{uuid.uuid4().hex[:6]}"
+            return [CandidateRecord(
+                candidate_id=cid,
+                mode=mode,
+                text=resp.text,
+                token_estimate=resp.tokens_generated,
+                scores=_score_candidate(resp.text, sketch, scaffold),
+            )]
+        except Exception as e:
+            logger.warning("UnifiedBackend generate failed: %s", e)
+            return []
 
     def _score_and_extract_fragments(
         self,

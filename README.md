@@ -1,4 +1,12 @@
-![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/main/IMG_0393.png](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/main/IMG_0393.png)
+---
+
+![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/image-13-thoughtforge-mindspark.jpg](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/image-13-thoughtforge-mindspark.jpg)
+
+---
+
+![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/assets/IMG_0393.png](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/assets/IMG_0393.png)
+
+---
 
 # MindSpark: ThoughtForge
 
@@ -31,7 +39,7 @@ ThoughtForge is designed to excel in resource-starved environments.
 
 ---
 
-![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/main/IMG_0394.jpeg](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/main/IMG_0394.jpeg)
+![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/assets/IMG_0394.jpeg](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/assets/IMG_0394.jpeg)
 
 ---
 
@@ -58,4 +66,4 @@ RuneForgeAI, where runes carve wisdom into iron minds. Creating uncensored **Nor
 
 ---
 
-![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/main/IMG_0407.jpeg](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/main/IMG_0407.jpeg)
+![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/assets/IMG_0407.jpeg](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/assets/IMG_0407.jpeg)

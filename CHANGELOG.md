@@ -7,6 +7,54 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [1.2.0] — 2026-04-01
+
+### Added
+
+**Phase 8 — Robustness, Self-Healing, and Production Hardening**
+- `src/thoughtforge/utils/health.py` — `HealthChecker` with per-component checks (config, backend, DB, memory, disk, dependencies); `report()` produces a human-readable diagnostic
+- `src/thoughtforge/utils/self_heal.py` — `SelfHealer` with config repair, JSONL line quarantine with backup, YAML/JSON reset, and DB integrity + schema rebuild; `atomic_write()` helper for all file writes
+- `src/thoughtforge/utils/perf.py` — `PerfTracker` ring-buffer (1000 events) with p50/p95/p99 stats; `get_perf_tracker()` module singleton; `bottleneck_report()` ASCII table
+- `src/thoughtforge/etl/db_integrity.py` — `DBIntegrityChecker` with PRAGMA integrity_check, WAL enforcement, FTS5 shadow-table validation, VACUUM, and 24-hour result cache
+- `forge_doctor.py` — root-level diagnostic CLI: `python forge_doctor.py [--fix] [--json] [--verbose]`
+- `ThoughtForgeCore`: `sanitise_query()` applied on every `think()` entry; `PerfTracker` records total/retrieval/generation latency; `SelfHealer.heal_all()` runs on startup
+- `run_thoughtforge.py`: `ThoughtForgeError` caught at `main()` — prints user-friendly message + suggested fix instead of traceback
+- Fixed `retry.py` sentinel syntax (`_SENTINEL := object()` in default was invalid Python 3.10 — moved to module level)
+- 90 new tests across `test_phase8_health.py`, `test_phase8_errors.py`, `test_phase8_perf.py`
+
+### Tests
+- **620 tests passing** (530 → 620, +90 in Phase 8)
+
+---
+
+## [1.1.0] — 2026-04-01
+
+### Added
+
+**Phase 7 — Setup Wizard + Multi-Backend + Chat Mode**
+- `setup_thoughtforge.py` — interactive setup wizard: detects hardware, checks for running backends,
+  guides model selection/pull, builds knowledge base, runs test query, writes `configs/user_config.yaml`
+- `src/thoughtforge/inference/unified_backend.py` — `UnifiedBackend` ABC with `GenerationRequest` /
+  `GenerationResponse` dataclasses and `load_backend_from_config()` factory
+- `src/thoughtforge/inference/ollama_backend.py` — Ollama HTTP backend with model listing and pull support
+- `src/thoughtforge/inference/lmstudio_backend.py` — LM Studio / generic OpenAI-compatible backend
+- `src/thoughtforge/inference/hf_backend.py` — HuggingFace Inference API backend with retry on 503
+- `src/thoughtforge/inference/turboquant_backend.py` — TurboQuantEngine wrapped as `UnifiedBackend`
+- `src/thoughtforge/inference/model_browser.py` — curated GGUF catalogue (14 models, 5 hardware tiers)
+  with `huggingface_hub` download and local GGUF detection
+- `src/thoughtforge/cognition/chat_history.py` — `ChatHistory` with OpenAI-format export,
+  char-budget trimming, and JSON persistence
+- `configs/user_config.yaml` — user config template with all backend settings
+- `run_thoughtforge.py` — `--chat` persistent chat mode, `--history`, `--system`, `--backend` flags;
+  in-chat commands: `/clear`, `/save`, `/load`, `/history`, `/quit`
+- `ThoughtForgeCore.think()` gains optional `history: ChatHistory` parameter; context injected into scaffold
+- `ThoughtForgeCore.__init__()` gains optional `backend: UnifiedBackend` parameter
+- 83 new tests in `test_phase7_backends.py` and `test_phase7_chat.py`
+
+**Test suite: 530 tests passing** (up from 447)
+
+---
+
 ## [1.0.0] — 2026-03-31
 
 ### Added
