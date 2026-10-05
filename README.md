@@ -1,4 +1,3 @@
----
 
 ![https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/image-13-thoughtforge-mindspark.jpg](https://raw.githubusercontent.com/hrabanazviking/MindSpark_ThoughtForge/refs/heads/development/image-13-thoughtforge-mindspark.jpg)
 
