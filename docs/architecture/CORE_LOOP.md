@@ -331,7 +331,7 @@ reason). All verified by reading, F1/F3 also by the live trace.
 | Finding | Status | Settled by |
 |---|---|---|
 | F1 `num_drafts` dead parameter | CLOSED | TF-034 (wired as a draft cap) |
-| F2 retrieval gate checks the wrong path | **OPEN** | TF-041 owns the fix; still true at TF-039 |
+| F2 retrieval gate checks the wrong path | CLOSED | TF-041 (gate now reads the configured `self._knowledge.db_path`; proven both ways — was OPEN at TF-039) |
 | F3 turn state built and discarded | CLOSED | TF-025 (retained, `salvage_ms` measured) + TF-038 (trace export) |
 | F4 module docstring's 9 steps ≠ code's steps | CLOSED | TF-039 (docstring rewritten to the reconciled 7-step loop) |
 | F5 memory triggers computed, not consumed | RULED | TF-020 (extraction is the router's contract) |
@@ -354,7 +354,15 @@ The same record as data, with live evidence checks, is
   with a custom `db_path` is gated by the default file's existence:
   a valid custom DB is skipped when the default is absent, and a
   missing custom DB is not what the check detects. Proposed owner:
-  TF-041 (knowledge store mapped).
+  TF-041 (knowledge store mapped). **TF-041 update: FIXED** —
+  `_retrieve` now gates on `self._knowledge.db_path` (the
+  configured path) and never calls the default-path helper; the
+  behaviour is proven both ways in
+  `tests/test_tf041_knowledge_store_map.py` (a populated custom
+  DB is retrieved while the default is absent; a missing custom
+  DB is not even created while the default exists), and the
+  `RECONCILED_FINDINGS` record in `core_docs.py` was flipped to
+  closed with this evidence, as TF-039's checker instructed.
 - **F3 — Turn state is built, timed, and thrown away.**
   `RuntimeTurnState.salvage_ms` is never assigned (compose/salvage
   time is unmeasured), and the state object itself is local to

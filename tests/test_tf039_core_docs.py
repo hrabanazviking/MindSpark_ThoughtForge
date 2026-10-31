@@ -15,9 +15,12 @@ The reconciliation lives as verifiable data in
 Pinned here:
 
   * every CORE_LOOP §8 finding F1–F8 has exactly one reconciled
-    status (5 closed, 2 ruled, 1 still open — F2, owned by
-    TF-041, recorded open rather than hidden), and the live
-    checker finds no stale evidence in either direction,
+    status (at TF-039: 5 closed, 2 ruled, 1 still open — F2,
+    owned by TF-041, recorded open rather than hidden; TF-041
+    has since closed F2 with evidence and the distribution pin
+    below was updated by that slice with the reason recorded),
+    and the live checker finds no stale evidence in either
+    direction,
   * F4's fix is real: the core module docstring states the
     reconciled 7-step loop and the old 9-step tail is gone;
     the InputSketch comments name the router's true intent /
@@ -87,10 +90,15 @@ class TestFindingsRecord:
         by_status: dict[str, list[str]] = {}
         for row in RECONCILED_FINDINGS:
             by_status.setdefault(row["status"], []).append(row["finding"])
-        assert sorted(by_status["closed"]) == ["F1", "F3", "F4", "F7", "F8"]
+        # TF-041 superseded this pin with reason: at TF-039 the
+        # distribution was 5 closed / 2 ruled / 1 open (F2);
+        # TF-041 landed the F2 fix and flipped F2's record to
+        # closed with evidence, exactly as TF-039's checker
+        # instructed ("if TF-041 fixed the gate, flip F2's
+        # status"). No finding stands open after TF-041.
+        assert sorted(by_status["closed"]) == ["F1", "F2", "F3", "F4", "F7", "F8"]
         assert sorted(by_status["ruled"]) == ["F5", "F6"]
-        # F2 stays OPEN, owned by TF-041 — not quietly closed here.
-        assert by_status["open"] == ["F2"]
+        assert by_status.get("open", []) == []
         owner = {r["finding"]: r["owner"] for r in RECONCILED_FINDINGS}
         assert owner["F2"] == "TF-041"
 

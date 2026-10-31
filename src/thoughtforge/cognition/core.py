@@ -826,8 +826,16 @@ class ThoughtForgeCore:
         turn.generation_failures.append(failure)
 
     def _retrieve(self, sketch: InputSketch) -> MemoryActivationBundle:
-        """Retrieve knowledge records. Returns empty bundle if DB unavailable."""
-        db = get_knowledge_db_path()
+        """Retrieve knowledge records. Returns empty bundle if DB unavailable.
+
+        TF-041 (CORE_LOOP §8-F2, closed): the existence gate reads
+        the CONFIGURED db path — ``self._knowledge.db_path``, the
+        path this core was built with — never the default path.
+        Before this fix the gate tested ``get_knowledge_db_path()``,
+        so a core built with a custom ``db_path`` was gated by a
+        different file's existence entirely.
+        """
+        db = self._knowledge.db_path
         if not db.exists():
             logger.debug("Knowledge DB not found at %s — skipping retrieval", db)
             return MemoryActivationBundle()

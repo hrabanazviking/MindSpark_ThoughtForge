@@ -361,6 +361,12 @@ model's turn differs only in who wrote the candidates.
   check is Part III's first slice (TF-041, knowledge store
   mapped) — this slice records it open with its owner, in the
   findings data, in CORE_LOOP §8's status table, and here.
+  **TF-041 addendum (2026-10-31):** TF-041 has since landed
+  the fix — `_retrieve` gates on the configured
+  `self._knowledge.db_path` — and flipped F2's record in
+  `RECONCILED_FINDINGS` to **CLOSED** with its evidence, as
+  §2's checker instructed; the table in §2 stands as the
+  TF-039-time record.
 - **The freeze is not bumped.** §4 records the additions;
   folding them into the frozen tables as v1.1.0 is left as a
   named, verifiable act (TF-192), not done silently inside a

@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
+import textwrap
 from typing import Any
 
 # ── CORE_LOOP §8 findings, reconciled ────────────────────────────────────────
@@ -71,13 +72,16 @@ RECONCILED_FINDINGS: tuple[dict[str, Any], ...] = (
     {
         "finding": "F2",
         "subject": "retrieval gate checks the wrong (default) DB path",
-        "status": "open",
+        "status": "closed",
         "owner": "TF-041",
         "evidence": (
-            "still true at TF-039: _retrieve tests "
-            "get_knowledge_db_path().exists(), not "
-            "self._knowledge.db_path; Part III's first slice owns "
-            "the fix — recorded open, not hidden"
+            "fixed by TF-041 (Part III's first slice): _retrieve "
+            "gates on self._knowledge.db_path — the configured "
+            "path this core was built with — and never calls "
+            "get_knowledge_db_path(); behaviour proven both ways "
+            "(custom DB retrieved while the default is absent; "
+            "missing custom DB not even created while the "
+            "default exists) in tests/test_tf041_knowledge_store_map.py"
         ),
     },
     {
@@ -187,12 +191,25 @@ def findings_problems() -> list[str]:
         if "num_drafts" not in params:
             problems.append(f"F1: {driver} lost its num_drafts parameter")
 
-    # F2 — still open: the gate still reads the default path.
+    # F2 — closed by TF-041: the gate reads the configured path.
+    # AST-checked (actual calls), not substring-checked — the
+    # fixed method's docstring names the old call in prose.
+    import ast
+
     retrieve_src = inspect.getsource(ThoughtForgeCore._retrieve)
-    if "get_knowledge_db_path" not in retrieve_src:
+    called = {
+        node.func.id
+        for node in ast.walk(ast.parse(textwrap.dedent(retrieve_src)))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+    if "get_knowledge_db_path" in called:
         problems.append(
-            "F2: _retrieve no longer checks the default DB path — "
-            "if TF-041 fixed the gate, flip F2's status with evidence"
+            "F2: _retrieve again calls get_knowledge_db_path() — "
+            "the TF-041 gate fix was reverted"
+        )
+    if "self._knowledge.db_path" not in retrieve_src:
+        problems.append(
+            "F2: _retrieve does not gate on self._knowledge.db_path"
         )
 
     # F3 — state retained, salvage measured, trace exportable.
