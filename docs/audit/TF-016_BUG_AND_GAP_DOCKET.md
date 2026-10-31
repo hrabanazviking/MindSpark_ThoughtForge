@@ -10,8 +10,9 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 46 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 1 FIXED in
-Part I, 1 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
+**Totals: 46 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 2 FIXED
+(D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II), 1
+CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
 Part II 7 · Part III 5 · Part IV 7 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 
@@ -52,7 +53,7 @@ Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 | D-ORPHAN-1 | `knowledge/lifecycle.py` is test-only: MemoryLifecycle is never wired into the live engine — no fact ever ages, decays, or is pruned at runtime (TF-011) | TF-045 (lifecycle wiring) | III | OPEN |
 | D-ORPHAN-2 | `utils/retry.py` is test-only: CircuitBreaker/retry protect no production backend call (TF-011) | TF-073 (backend health & fallback) | IV | OPEN |
 | D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN |
-| D-DUP-1 | Three copied private helpers, drift-prone: `_now_iso` ×3 (one byte-identical pair), `_split_sentences` ×2, `_build_messages` ×2 (TF-011) | TF-025-era hygiene (one shared utils home) | II | OPEN |
+| D-DUP-1 | Three copied private helpers, drift-prone: `_now_iso` ×3 (one byte-identical pair), `_split_sentences` ×2, `_build_messages` ×2 (TF-011) | TF-025-era hygiene (one shared utils home) | II | **FIXED by TF-025**: implementations now live once in `utils/common.py` (`now_iso` / `split_sentences` / `build_messages`); old private names are aliases, identity-pinned by tests/test_tf025_turn_state.py |
 | D-DUP-2 | `MindSpark_ThoughtForge/` shadow directory holds md5-identical copies of root RULES.AI.md / PHILOSOPHY.md — copies that can silently diverge (TF-011; its README was not read or touched, per law) | TF-182 (Part X docs verdict) | X | OPEN |
 | D-PROF-1 | Every profile's entire `memory` + `retrieval` + `deployment` sections, `max_params_b`, and `recommended_models` are read by no code — the per-profile budget claims are unenforced on all six profiles (TF-012) | TF-056 (memory budgets) + TF-069 (profile runner) + TF-110 (subset craft) | III | OPEN |
 | D-PROF-2 | Selector floors ≠ the JSONs' claimed floors on all six rows (TF-012): pi_5 handed to 2 GB devices, desktop_cpu to 6 GB, desktop_gpu to 6 GB VRAM, server_gpu selected with RAM never checked; phone_low is also the x86 low-RAM fallback and pi_zero a phone landing. Sub-items: the selector class docstring's rule order is not the code's order; failed RAM detection assumes 4 GB; the `n_gpu_layers` ladder exists only in the resolver, stated in no JSON; BUILD_PLAN_v1's pi_zero size (1B) disagrees with its JSON (0.5B) | TF-069 (profile runner); truth table v2 TF-086 | IV | OPEN |

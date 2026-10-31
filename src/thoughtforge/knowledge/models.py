@@ -21,14 +21,12 @@ Storage formats:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Literal
 
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+# TF-025 (D-DUP-1): _now_iso's one implementation lives in
+# utils/common.py; this name is its alias, kept for the field
+# factories below and for existing importers.
+from thoughtforge.utils.common import now_iso as _now_iso
 
 
 RecordStatus = Literal["created", "reinforced", "active", "cooling", "stale", "archived", "deleted"]
@@ -452,7 +450,15 @@ class WritebackRecord:
 
 @dataclass
 class RuntimeTurnState:
-    """Full transient state for one complete turn execution."""
+    """Full transient state for one complete turn execution.
+
+    TF-025: the typed turn-state object for the whole core loop.
+    ``phase`` holds one of ``cognition.turn_state.PHASE_ORDER`` and
+    only ever moves forward (see ``advance_phase`` there);
+    ``repair_attempted`` records the quality-gate repair branch;
+    ``salvage_ms`` is the measured compose (salvage + enforcement)
+    time — exactly 0 when no candidates existed and no salvage ran.
+    """
 
     turn_id: str
     input_sketch: InputSketch | None = None
@@ -468,3 +474,10 @@ class RuntimeTurnState:
     retrieval_ms: int = 0
     generation_ms: int = 0
     salvage_ms: int = 0
+    phase: str = "created"
+    repair_attempted: bool = False
+
+    @property
+    def is_complete(self) -> bool:
+        """True once the turn has reached the completed phase."""
+        return self.phase == "completed" and bool(self.completed_at)

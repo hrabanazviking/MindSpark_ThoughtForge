@@ -14,6 +14,9 @@ from thoughtforge.inference.unified_backend import (
     GenerationResponse,
     UnifiedBackend,
 )
+# TF-025 (D-DUP-1): _build_messages' one implementation lives in
+# utils/common.py; this name is its alias.
+from thoughtforge.utils.common import build_messages as _build_messages
 
 logger = logging.getLogger(__name__)
 
@@ -129,14 +132,3 @@ class OllamaBackend(UnifiedBackend):
             logger.error("OllamaBackend.pull_model failed: %s", exc)
             return False
 
-
-def _build_messages(request: GenerationRequest) -> list[dict]:
-    """Return the messages list, building from system_prompt + prompt when needed."""
-    if request.messages:
-        return request.messages
-
-    msgs: list[dict] = []
-    if request.system_prompt:
-        msgs.append({"role": "system", "content": request.system_prompt})
-    msgs.append({"role": "user", "content": request.prompt})
-    return msgs

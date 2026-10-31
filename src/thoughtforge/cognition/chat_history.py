@@ -16,7 +16,6 @@ import json
 import logging
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 
 from thoughtforge.cognition.history_discipline import (
@@ -28,12 +27,11 @@ from thoughtforge.cognition.history_discipline import (
     Summariser,
     select_window,
 )
+# TF-025 (D-DUP-1): _now_iso's one implementation lives in
+# utils/common.py; this name is its alias.
+from thoughtforge.utils.common import now_iso as _now_iso
 
 logger = logging.getLogger(__name__)
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 @dataclass

@@ -27,6 +27,7 @@ from typing import Any
 
 from thoughtforge.cognition.history_discipline import CORE_HISTORY_MAX_CHARS
 from thoughtforge.cognition.prompt_builder import PromptBuilder
+from thoughtforge.cognition.turn_state import advance_phase
 from thoughtforge.cognition.router import InputRouter
 from thoughtforge.cognition.scaffold import ScaffoldBuilder
 from thoughtforge.knowledge.forge import KnowledgeForge
@@ -107,6 +108,10 @@ class ThoughtForgeCore:
         self._enforcement = EnforcementGate()
 
         self._engine: Any = None      # TurboQuantEngine — loaded lazily
+        # TF-025: the most recent turn's full typed state, retained
+        # after think() returns (was built and discarded — CORE_LOOP
+        # §8-F3). Trace *export* of it is TF-038's slice.
+        self._last_turn_state: RuntimeTurnState | None = None
         self._perf = get_perf_tracker()
         self._personality = self._store.load_personality_core()
 
@@ -130,6 +135,13 @@ class ThoughtForgeCore:
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
+    @property
+    def last_turn_state(self) -> RuntimeTurnState | None:
+        """TF-025: the last completed turn's typed state (None before
+        the first think()). The same object think() built — retained,
+        not copied; callers must treat it as read-only."""
+        return self._last_turn_state
+
     def think(
         self,
         user_text: str,
@@ -151,6 +163,7 @@ class ThoughtForgeCore:
         user_text = sanitise_query(user_text)
         turn_id = _new_turn_id()
         turn = RuntimeTurnState(turn_id=turn_id)
+        self._last_turn_state = turn
         t_start = time.perf_counter()
 
         logger.info("think() turn=%s text=%r", turn_id, user_text[:80])
@@ -161,12 +174,14 @@ class ThoughtForgeCore:
         if retrieval_path:
             sketch.retrieval_path = retrieval_path
         turn.input_sketch = sketch
+        advance_phase(turn, "routed")
 
         # ── Step 2: Retrieve knowledge ─────────────────────────────────────────
         t_ret = time.perf_counter()
         bundle = self._retrieve(sketch)
         turn.memory_bundle = bundle
         turn.retrieval_ms = int((time.perf_counter() - t_ret) * 1000)
+        advance_phase(turn, "retrieved")
         logger.debug("Retrieved %d records in %dms", bundle.total_retrieved, turn.retrieval_ms)
 
         # ── Step 3: Build scaffold ─────────────────────────────────────────────
@@ -183,6 +198,7 @@ class ThoughtForgeCore:
                 else:
                     scaffold.fact_block = f"Conversation history:\n{history_context}"
         turn.scaffold = scaffold
+        advance_phase(turn, "scaffolded")
 
         # ── Step 4–6: Generate, score, salvage ────────────────────────────────
         t_gen = time.perf_counter()
@@ -192,12 +208,20 @@ class ThoughtForgeCore:
         fragments = self._score_and_extract_fragments(candidates, sketch, scaffold)
         turn.fragments = fragments
         turn.generation_ms = int((time.perf_counter() - t_gen) * 1000)
+        advance_phase(turn, "generated")
 
         # ── Step 7: Refine or fallback to knowledge-only summary ───────────────
+        # TF-025: salvage_ms is MEASURED around the compose step
+        # (salvage + enforcement). On the knowledge-only path no
+        # salvage runs, so it stays exactly 0 — "did not run", never
+        # "unmeasured" (closes CORE_LOOP §8-F3's timing half).
         if candidates:
-            final = self._compose_final(sketch, scaffold, bundle, candidates, fragments, turn_id=turn_id)
+            t_salvage = time.perf_counter()
+            final = self._compose_final(turn)
+            turn.salvage_ms = int((time.perf_counter() - t_salvage) * 1000)
         else:
             final = self._knowledge_only_response(turn_id, sketch, bundle)
+        advance_phase(turn, "composed")
 
         # ── Step 8: Quality gate → repair if needed ────────────────────────────
         if final.scores.composite < _QUALITY_REPAIR_THRESHOLD and candidates:
@@ -205,13 +229,15 @@ class ThoughtForgeCore:
                 "Quality below threshold (%.3f < %.3f) — attempting repair",
                 final.scores.composite, _QUALITY_REPAIR_THRESHOLD,
             )
-            repaired = self._repair(turn_id, sketch, scaffold, bundle, final)
+            turn.repair_attempted = True
+            repaired = self._repair(turn, final)
             if repaired.scores.composite > final.scores.composite:
                 final = repaired
 
         turn.final_response = final
         turn.total_tokens_used = final.token_count
         turn.completed_at = _now_iso()
+        advance_phase(turn, "completed")
 
         total_ms = (time.perf_counter() - t_start) * 1000
         logger.info(
@@ -227,6 +253,7 @@ class ThoughtForgeCore:
         self._perf.record("think.total", total_ms)
         self._perf.record("think.retrieval", turn.retrieval_ms)
         self._perf.record("think.generation", turn.generation_ms)
+        self._perf.record("think.salvage", turn.salvage_ms)
 
         return final
 
@@ -389,16 +416,22 @@ class ThoughtForgeCore:
 
     def _compose_final(
         self,
-        sketch: InputSketch,
-        scaffold: CognitionScaffold,
-        bundle: MemoryActivationBundle,
-        candidates: list[CandidateRecord],
-        fragments: list[FragmentRecord],
-        turn_id: str = "",
+        turn: RuntimeTurnState,
     ) -> FinalResponseRecord:
         """
         Compose the final response via FragmentSalvage, then run EnforcementGate.
+
+        TF-025: takes the typed turn state — sketch, scaffold, bundle,
+        candidates and fragments are read from it, not passed as a
+        loose argument bundle.
         """
+        sketch = turn.input_sketch
+        scaffold = turn.scaffold
+        bundle = turn.memory_bundle
+        candidates = turn.candidates
+        fragments = turn.fragments
+        turn_id = turn.turn_id
+        assert sketch is not None and scaffold is not None and bundle is not None
         rid = f"resp_{uuid.uuid4().hex[:8]}"
         kept = [f for f in fragments if f.keep]
 
@@ -505,15 +538,20 @@ class ThoughtForgeCore:
 
     def _repair(
         self,
-        turn_id: str,
-        sketch: InputSketch,
-        scaffold: CognitionScaffold,
-        bundle: MemoryActivationBundle,
+        turn: RuntimeTurnState,
         previous: FinalResponseRecord,
     ) -> FinalResponseRecord:
-        """Repair pass — tighter prompt, lower temperature."""
+        """Repair pass — tighter prompt, lower temperature.
+
+        TF-025: takes the typed turn state, like _compose_final.
+        """
         if self._engine is None:
             return previous
+        turn_id = turn.turn_id
+        sketch = turn.input_sketch
+        scaffold = turn.scaffold
+        bundle = turn.memory_bundle
+        assert sketch is not None and scaffold is not None and bundle is not None
 
         memory_cues = self._prompt_builder.extract_memory_cues(bundle, max_cues=2)
         repair_prompt = self._prompt_builder.build_repair_prompt(
@@ -688,10 +726,10 @@ def _check_citation_gate(text: str, bundle: MemoryActivationBundle) -> bool:
 
 # ── Text helpers ───────────────────────────────────────────────────────────────
 
-def _split_sentences(text: str) -> list[str]:
-    """Split text into sentences for fragment extraction."""
-    parts = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [p.strip() for p in parts if p.strip()]
+# TF-025 (D-DUP-1): _split_sentences' one implementation lives in
+# utils/common.py; this name is its alias (existing tests import it
+# from here).
+from thoughtforge.utils.common import split_sentences as _split_sentences  # noqa: E402
 
 
 def _mode_temperature(mode: str) -> float:
@@ -713,9 +751,9 @@ def _new_turn_id() -> str:
     return f"turn_{uuid.uuid4().hex[:8]}"
 
 
-def _now_iso() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat()
+# TF-025 (D-DUP-1): _now_iso's one implementation lives in
+# utils/common.py; this name is its alias.
+from thoughtforge.utils.common import now_iso as _now_iso  # noqa: E402
 
 
 def _load_personality_from_config(config: dict[str, Any]) -> Any:

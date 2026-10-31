@@ -22,6 +22,11 @@ import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+# TF-025 (D-DUP-1): _split_sentences' one implementation lives in
+# utils/common.py; this name is its alias (existing tests import it
+# from here).
+from thoughtforge.utils.common import split_sentences as _split_sentences
+
 if TYPE_CHECKING:
     from thoughtforge.cognition.prompt_builder import PromptBuilder
     from thoughtforge.knowledge.models import (
@@ -372,10 +377,3 @@ class FragmentSalvage:
                 qids.add(qid)
         return qids
 
-
-# ── Text helpers ───────────────────────────────────────────────────────────────
-
-def _split_sentences(text: str) -> list[str]:
-    """Split text into sentences."""
-    parts = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [p.strip() for p in parts if p.strip()]
