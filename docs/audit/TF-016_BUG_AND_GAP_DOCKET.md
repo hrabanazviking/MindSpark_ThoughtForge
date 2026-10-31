@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 75 entries — 41 OPEN, 1 OPEN-ENVIRONMENT, 31 FIXED
+**Totals: 77 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 31 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -24,7 +24,7 @@ TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
 TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
 D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 25 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 27 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -106,7 +106,16 @@ assignment — the local-first routing slice, its first
 consumer: the server-shaped backends gained tri-state
 per-model surfaces and the router consumes them; the
 fix is at routing grade, with `health_check()`'s
-server-level semantics unchanged.)
+server-level semantics unchanged. Entries D-CARD-1
+and D-CARD-2 were added by TF-078 in Part IV under
+the same rule — measured by that slice's model-card
+reconciliation: the root MODEL_CARD.md table drifts
+from the profiles/catalogue on 3 of 6 rows, and the
+profiles' recommended names overlap the catalogue
+only partially (6 carded / 5 family-only / 4 with no
+card at all), so "recommended" and "supported" name
+different sets until TF-086's truth table and
+TF-136/TF-183's doc work rule on them.)
 
 ## The docket
 
@@ -166,7 +175,9 @@ server-level semantics unchanged.)
 | D-OAI-2 | A conventional OpenAI base URL broke the LM Studio leg (found by TF-076): the shape's convention lets a base end in /v1 (https://api.openai.com/v1), and the leg appended /v1/chat/completions unconditionally — probe: base https://api.example.test/v1 produced .../v1/v1/chat/completions | TF-076 | IV | **FIXED by TF-076**: the shared `normalize_base_url` strips a trailing /v1 (with or without trailing slash) once, in both legs; bare, /v1, and /v1/ bases all produce the one route URL (pinned) |
 | D-OAI-3 | A response without a usage block reported tokens_generated 0 over real text in the LM Studio leg (found by TF-076): `usage.get("completion_tokens", 0)` — a false count where TF-074's Aesir binding had already established the honest pattern | TF-076 | IV | **FIXED by TF-076**: the shared parser returns completion_tokens None when no usage is reported and both legs fall back to the declared contract estimate (TF-071's lmstudio counting-surface note amended in scope) — never a silent 0 |
 | D-OAI-4 | The TF-076 OpenAI-compatible backend has never faced a real third-party shape-speaking server (LM Studio, vLLM, LocalAI, llama.cpp server, the hosted OpenAI API): proofs are fixture transports in the shape's own forms plus a real HTTP round trip against a stdlib fixture server on loopback — the wire is exercised, no vendor dialect is | TF-086 (truth table v2 must carry it NOT PROVEN until a real server faces the backend) | IV | OPEN |
-| D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN |
+| D-CARD-1 | The root `MODEL_CARD.md` compatible-models table drifts from the profiles/catalogue it names — measured by TF-078's live parse (`inference/model_cards.model_card_discrepancies()`): server_gpu's row pairs Q4_K_M against the profile's TF-068-ratified fp16 default and names Mixtral, which has no catalogue entry; phone_low's Q2_K TinyLlama pairing exists in the catalogue only at Q4_K_M; pi_zero's "TinyLlama-1.1B subset" and pi_5's "Phi-3-mini-128k" name no catalogue entry (3 of 6 rows drift; desktop_cpu/desktop_gpu rows are clean) (found by TF-078) | TF-136 (claims audit strikes or proves each row) + TF-183 (doc care makes the correction, existing text preserved) | IV | OPEN — filed by TF-078; the per-model cards in `inference/model_cards.py` are the measured evidence those slices rule from; the root card is not edited by TF-078 |
+| D-CARD-2 | "Recommended" and "supported" name different sets: the profiles' 15 distinct `recommended_models` overlap the 15-entry curated catalogue only partially — measured by TF-078's audit (`RECOMMENDED_AUDIT`, recomputed live): 6 carded (family + quant carried, with version drift noted), 5 family_only (this quant/variant not catalogued), 4 with no card at all (Granite-1B, Gemma-2B, LLaMA-3-13B, Mixtral-8x7B — recommended with no size truth anywhere in-tree); 8 catalogue entries are recommended by no profile (found by TF-078) | TF-086 (truth table v2 rules whether the recommendation lists or the catalogue change) | IV | OPEN |
+| D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN — **narrowed by TF-078** (model_browser share): the catalogue data is no longer test-only — `CURATED_MODELS` is read live by production modules TF-066 (`turboquant_map`), TF-067 (`quant_quality`), TF-069 (`profile_runner`) and TF-078 (`model_cards` builds the in-repo cards on it). The class's behaviour surface (`list_curated` / `download` / `detect_existing_ggufs`) still has no production caller — no tool or engine path instantiates `ModelBrowser` — and wiring a downloader is an install-surface act, reassigned to TF-179 (user docs I: install + first model). The db_integrity (TF-167), subset (TF-110) and onnx_export (TF-070) shares stand as filed |
 | D-DUP-1 | Three copied private helpers, drift-prone: `_now_iso` ×3 (one byte-identical pair), `_split_sentences` ×2, `_build_messages` ×2 (TF-011) | TF-025-era hygiene (one shared utils home) | II | **FIXED by TF-025**: implementations now live once in `utils/common.py` (`now_iso` / `split_sentences` / `build_messages`); old private names are aliases, identity-pinned by tests/test_tf025_turn_state.py |
 | D-DUP-2 | `MindSpark_ThoughtForge/` shadow directory holds md5-identical copies of root RULES.AI.md / PHILOSOPHY.md — copies that can silently diverge (TF-011; its README was not read or touched, per law) | TF-182 (Part X docs verdict) | X | OPEN |
 | D-PROF-1 | Every profile's entire `memory` + `retrieval` + `deployment` sections, `max_params_b`, and `recommended_models` are read by no code — the per-profile budget claims are unenforced on all six profiles (TF-012) | TF-056 (memory budgets) + TF-069 (profile runner) + TF-110 (subset craft) | III | OPEN — **narrowed by TF-056**: the `memory` + `retrieval` sections are now read live and enforced — `knowledge/memory_budgets.py` resolves each profile's per-kind soft/hard caps, bundle cap and sql/vector/timeout retrieval caps from its shipped JSON; MemoryLifecycle takes a profile and evicts by its caps (the flat default, proven to be desktop's budget, stands when no profile is given), the core builds its lifecycle on the selected profile and caps retrieval through the budget's plan, and KnowledgeForge.retrieve accepts the sql/vector caps. The `deployment` section, `max_params_b`, and `recommended_models` remain read by no code — TF-069/TF-110 keep those shares. **Narrowed again by TF-069**: those three are now read live by `inference/profile_runner.py` — deployment reported per profile (extras included), `max_params_b` judged against the profile's RAM ceiling under catalogue-calibrated accounting, and every recommended name judged against the cap; the runner also boots each profile's stack in simulation (selector self-selection, TF-056 budget, core, engine). TF-110 keeps the subset craft alone |
