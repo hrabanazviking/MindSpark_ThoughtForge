@@ -86,7 +86,14 @@ from thoughtforge.knowledge.models import (
     MemoryActivationBundle,
     RuntimeTurnState,
 )
+from thoughtforge.knowledge.lifecycle import MemoryLifecycle
 from thoughtforge.knowledge.store import MemoryStore
+from thoughtforge.knowledge.writeback import WritebackOutcome, apply_writeback
+from thoughtforge.refinement.citation_enforcement import (
+    CitationCheck,
+    check_citations,
+    cited_markers_in,
+)
 from thoughtforge.refinement.enforcement import EnforcementGate
 from thoughtforge.refinement.salvage import FragmentSalvage
 from thoughtforge.utils.config import load_config
@@ -169,6 +176,29 @@ class ThoughtForgeCore:
             db_path=db_path or get_knowledge_db_path(),
         )
         self._store = MemoryStore(memory_dir=memory_dir or get_memory_dir())
+        # TF-045: the memory lifecycle, wired into the live engine
+        # over this core's own store (was test-only — TF-011's
+        # D-ORPHAN-1: no fact ever aged at runtime). Two surfaces:
+        # the active thread state is cooled once per completed turn
+        # in _finish_turn, and prune_memory() below is the explicit
+        # operator surface for a full prune pass. Fact pruning is
+        # NEVER automatic per turn — retirement of facts is an
+        # operator's act, not a side effect of chatting.
+        self._lifecycle = MemoryLifecycle(
+            store=self._store,
+            profile_id=self._conversation_config.profile_id,
+        )
+        # TF-047: the most recent writeback outcome (knowledge/
+        # writeback.py), retained like the last turn state. None
+        # until a turn actually carries a writeback — a turn with
+        # no writeback writes nothing and reports nothing.
+        self._last_writeback_outcome: Any = None
+        # TF-049: the most recent composed turn's per-claim
+        # citation check (refinement/citation_enforcement.py),
+        # retained like the writeback outcome. None until a turn
+        # with candidates composes — the knowledge-only path
+        # presents records directly and runs no claim check.
+        self._last_citation_check: Any = None
         self._router = InputRouter()
         self._scaffold_builder = ScaffoldBuilder()
         self._prompt_builder = PromptBuilder()
@@ -215,10 +245,17 @@ class ThoughtForgeCore:
             self._personality
         )
 
-        # Self-heal any detectable issues on startup
+        # Self-heal any detectable issues on startup — in THIS
+        # core's own store and knowledge DB only (TF-055, D-PER-1:
+        # the un-targeted healer repaired the DEFAULT deployment's
+        # files, so building a core for one persona mutated
+        # another persona's store at construction).
         try:
             from thoughtforge.utils.self_heal import SelfHealer
-            SelfHealer().heal_all()
+            SelfHealer(
+                memory_dir=self._store.dir,
+                knowledge_db_path=self._knowledge.db_path,
+            ).heal_all()
         except Exception as _heal_exc:
             logger.debug("SelfHealer startup pass failed (non-critical): %s", _heal_exc)
 
@@ -237,6 +274,33 @@ class ThoughtForgeCore:
         the first think()). The same object think() built — retained,
         not copied; callers must treat it as read-only."""
         return self._last_turn_state
+
+    @property
+    def last_citation_check(self) -> CitationCheck | None:
+        """TF-049: the per-claim cite-or-explain check of the
+        last composed turn (None until a turn with candidates
+        composes — a knowledge-only turn runs no claim check)."""
+        return self._last_citation_check
+
+    @property
+    def last_writeback_outcome(self) -> WritebackOutcome | None:
+        """TF-047: the outcome of the last writeback this core
+        applied (None until one is applied — a turn carrying no
+        writeback leaves it untouched)."""
+        return self._last_writeback_outcome
+
+    def apply_writeback(
+        self, writeback: Any, *, enforcement_passed: bool
+    ) -> WritebackOutcome:
+        """TF-047: apply one writeback to this core's memory store
+        through the gated leg (knowledge/writeback.py) and retain
+        the outcome. ``enforcement_passed`` is the producing
+        turn's EnforcementGate verdict: False writes nothing."""
+        outcome = apply_writeback(
+            self._store, writeback, enforcement_passed=enforcement_passed
+        )
+        self._last_writeback_outcome = outcome
+        return outcome
 
     @property
     def conversation_config(self) -> ConversationConfig:
@@ -321,6 +385,88 @@ class ThoughtForgeCore:
         return export_turn_trace(
             self._last_turn_state, conversation=conversation
         )
+
+    def last_turn_inspector(self) -> dict[str, Any] | None:
+        """TF-061: the last turn's memory inspector export —
+        what this core's store and knowledge DB hold, the
+        turn's trace identity, why its retrieval fired
+        (per-record dimension explanations + the forge's
+        retained rejection report), and the retained
+        per-claim citation check, as one detached JSON-safe
+        document (knowledge/inspector.py). None before the
+        first turn. A MINOR addition under TF-034's rules —
+        recorded in core_docs POST_FREEZE_ADDITIONS and the
+        freeze doc §7 as it landed."""
+        if self._last_turn_state is None:
+            return None
+        from thoughtforge.knowledge.inspector import build_inspector_report
+
+        bundle = self._last_turn_state.memory_bundle
+        # The forge's retained report is passed only when it
+        # demonstrably belongs to this turn's bundle (its fired
+        # ids are the bundle's records, in order). A turn whose
+        # retrieval never reached the forge (DB missing, leg
+        # failed — _retrieve's empty-bundle paths) leaves an
+        # older report behind; pairing it with this turn would
+        # explain the wrong retrieval, so the inspector then
+        # reports rejections as unknown instead.
+        report = self._knowledge.last_retrieval_report
+        if report is not None and bundle is not None:
+            if report.get("fired") != [
+                r.record_id for r in bundle.activated_records
+            ]:
+                report = None
+        return build_inspector_report(
+            store=self._store,
+            db_path=self._knowledge.db_path,
+            trace=self.last_turn_trace(),
+            bundle=bundle,
+            retrieval_report=report,
+            citation_check=self._last_citation_check,
+            weights=self._knowledge.retrieval_weights,
+        )
+
+    @property
+    def memory_budget(self) -> Any:
+        """TF-056: this conversation's memory budget — the
+        selected profile's (TF-032), resolved live from its
+        shipped JSON (knowledge/memory_budgets.py), or None
+        when no profile was selected, in which case the
+        lifecycle's flat default caps (the desktop budget) and
+        the standing flat retrieval request apply, exactly as
+        before this slice. The budget caps this core's store
+        eviction (its lifecycle is built on the same profile)
+        and its per-turn retrieval cost (see _retrieve). A
+        MINOR addition under TF-034's rules — the frozen v1
+        tables are untouched; recorded in POST_FREEZE_ADDITIONS.
+        """
+        profile_id = self._conversation_config.profile_id
+        if profile_id is None:
+            return None
+        from thoughtforge.knowledge.memory_budgets import budget_for_profile
+
+        return budget_for_profile(profile_id)
+
+    def prune_memory(self, mode: str = "routine") -> dict[str, int]:
+        """TF-045: run one memory-lifecycle prune pass over this
+        core's store and return its counts ({archived, deleted,
+        deduplicated}) — the live engine's surface for the lifecycle
+        that was test-only until this slice (D-ORPHAN-1). ``mode``
+        is one of light / routine / heavy / emergency (the
+        lifecycle's own threshold tables rule what each retires;
+        knowledge/lifecycle_rules.py states their edges). Pruning
+        is explicit: the core never prunes facts on its own — the
+        only automatic lifecycle act is per-turn thread cooling in
+        _finish_turn, and the thread state is ephemeral by design.
+        A MINOR addition under TF-034's rules — the frozen v1
+        tables are untouched; TF-039's additions record (extended
+        by TF-045) / TF-192 carry it into the next reconciliation.
+        TF-056: the pass enforces the selected profile's memory
+        budget caps (this core's lifecycle is built on that
+        profile); with no profile selected the flat default caps
+        apply, as before.
+        """
+        return self._lifecycle.prune(mode)  # type: ignore[arg-type]
 
     @property
     def determinism_mode(self) -> DeterminismMode:
@@ -782,6 +928,32 @@ class ThoughtForgeCore:
         turn.total_tokens_used = final.token_count
         turn.completed_at = _now_iso()
         advance_phase(turn, "completed")
+        # TF-045: one turn of lifecycle cooling for the active
+        # thread state — the runtime aging the lifecycle module was
+        # built for (D-ORPHAN-1). cool_thread() is a no-op when no
+        # thread state exists; when the cooled state goes stale it
+        # is cleared by the lifecycle itself. A lifecycle failure
+        # must never kill a completed turn, so it is logged at
+        # warning (visible, never silent) and the final stands.
+        try:
+            self._lifecycle.cool_thread()
+        except Exception as exc:  # noqa: BLE001 — turn must survive
+            logger.warning("TF-045 thread cooling failed: %s", exc)
+        # TF-047: conversation → memory writeback — if the turn
+        # carries a writeback, apply it through the gated leg
+        # (knowledge/writeback.py), gated on this final's own
+        # enforcement verdict. A turn with no writeback writes
+        # nothing. Same discipline as the cooling above: a
+        # writeback failure is logged at warning and the final
+        # stands — learning must never kill a completed turn.
+        if turn.writeback is not None:
+            try:
+                self.apply_writeback(
+                    turn.writeback,
+                    enforcement_passed=final.enforcement_passed,
+                )
+            except Exception as exc:  # noqa: BLE001 — turn must survive
+                logger.warning("TF-047 writeback failed: %s", exc)
         return final
 
     def load_model(self, model_path: str | Path | None = None) -> None:
@@ -841,10 +1013,28 @@ class ThoughtForgeCore:
             return MemoryActivationBundle()
 
         try:
+            # TF-056: a selected profile caps this retrieval
+            # through its memory budget's plan (knowledge/
+            # memory_budgets.py) — bundle, sql and vector legs
+            # all bounded by the profile's stated cost. No
+            # profile selected: the standing flat request,
+            # byte-identical to the pre-TF-056 call.
+            profile_id = self._conversation_config.profile_id
+            if profile_id is None:
+                return self._knowledge.retrieve(
+                    query=sketch.raw_text,
+                    path=sketch.retrieval_path,
+                    top_k=10,
+                )
+            from thoughtforge.knowledge.memory_budgets import retrieval_plan
+
+            plan = retrieval_plan(profile_id, requested_top_k=10)
             return self._knowledge.retrieve(
                 query=sketch.raw_text,
                 path=sketch.retrieval_path,
-                top_k=10,
+                top_k=plan.bundle_top_k,
+                sql_max_results=plan.sql_max_results,
+                vector_top_k=plan.vector_top_k,
             )
         except Exception as e:
             logger.warning("Knowledge retrieval failed: %s — using empty bundle", e)
@@ -1321,13 +1511,18 @@ class ThoughtForgeCore:
             generation_seed=self._next_generation_seed(),
         )
 
-        # Run EnforcementGate
+        # Run EnforcementGate — TF-049: with the bundle's
+        # records, so the per-claim cite-or-explain check runs
+        # alongside the legacy any-QID floor; the check is
+        # retained on the core for inspectors (TF-061's data).
         retrieved_qids = EnforcementGate.extract_qids_from_bundle(bundle.activated_records)
         enforcement = self._enforcement.check(
             text=salvage_result.text,
             citations=salvage_result.citations,
             retrieved_qids=retrieved_qids,
+            records=bundle.activated_records,
         )
+        self._last_citation_check = enforcement.claim_check
 
         final_text = enforcement.text     # may have forge note appended on fail
         scores = _score_final(final_text, sketch, scaffold)
@@ -1581,21 +1776,28 @@ _QID_RE = re.compile(r'\bQ\d{3,}\b')
 
 
 def _extract_citations(text: str, bundle: MemoryActivationBundle) -> list[str]:
-    """Extract QID citations mentioned in the text."""
-    qids_in_text = set(_QID_RE.findall(text))
-    valid_qids = {
-        r.raw.get("qid", "")
-        for r in bundle.activated_records
-        if r.raw.get("qid")
+    """Extract citation markers mentioned in the text.
+
+    TF-049: every retrieved kind's TF-048 marker counts, not
+    only QIDs — a cited reference chunk, place, or edge is a
+    citation. For entities the marker IS the QID, so the
+    pre-TF-049 behaviour for Wikidata records is unchanged.
+    """
+    from thoughtforge.knowledge.citations import citation_for_record
+
+    valid_markers = {
+        citation_for_record(r).marker for r in bundle.activated_records
     }
-    cited = list(qids_in_text & valid_qids)
-    return cited
+    return list(cited_markers_in(text) & valid_markers)
 
 
 def _check_citation_gate(text: str, bundle: MemoryActivationBundle) -> bool:
     """
-    Minimal citation enforcement: pass if KB was empty (nothing to cite)
-    or if at least one QID from the retrieved bundle appears in the text.
+    Citation enforcement for the repair path: the legacy
+    any-QID floor (pass if the KB held no Wikidata records,
+    else at least one retrieved QID must appear) AND TF-049's
+    per-claim cite-or-explain check — the same checker the
+    EnforcementGate runs in _compose_final, not a second logic.
     """
     if not bundle.activated_records:
         return True
@@ -1604,9 +1806,9 @@ def _check_citation_gate(text: str, bundle: MemoryActivationBundle) -> bool:
         for r in bundle.activated_records
         if r.raw.get("qid")
     }
-    if not valid_qids:
-        return True     # No Wikidata records — citation gate passes
-    return bool(set(_QID_RE.findall(text)) & valid_qids)
+    if valid_qids and not (set(_QID_RE.findall(text)) & valid_qids):
+        return False
+    return check_citations(text, bundle.activated_records).passed
 
 
 # ── Text helpers ───────────────────────────────────────────────────────────────

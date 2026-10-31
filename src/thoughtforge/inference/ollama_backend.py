@@ -50,6 +50,10 @@ class OllamaBackend(UnifiedBackend):
             }
             if request.stop:
                 payload["options"]["stop"] = request.stop  # type: ignore[index]
+            if request.seed is not None:
+                # TF-065 seed duty: Ollama honours a sampler seed
+                # through options.seed — forward the carried seed.
+                payload["options"]["seed"] = request.seed  # type: ignore[index]
 
             resp = requests.post(
                 f"{self.base_url}/api/chat",
@@ -86,6 +90,46 @@ class OllamaBackend(UnifiedBackend):
             return resp.status_code == 200
         except Exception:
             return False
+
+    def capabilities(self):
+        """TF-065 contract record: simulated streaming (no
+        generate_stream override), estimate token counting
+        (no tokeniser endpoint is assumed), seed honoured
+        via options.seed, served by a local-or-remote Ollama."""
+        from thoughtforge.inference.backend_contract import BackendCapabilities
+
+        return BackendCapabilities(
+            name=self.backend_name(),
+            streaming="simulated",
+            token_counting="estimate",
+            seed="honoured",
+            placement="local_or_remote",
+            model=self.model,
+        )
+
+    def model_listed(self) -> bool | None:
+        """TF-077 (D-HEALTH-2): is the configured model in
+        the server's /api/tags list? Tri-state, mirroring
+        TF-076's surface: None when the server could not
+        be asked — unknown, never dressed as absent (the
+        older list_local_models() returns [] for both).
+        Ollama names carry tags; a configured name without
+        one matches the server's implied ':latest'."""
+        try:
+            resp = requests.get(f"{self.base_url}/api/tags", timeout=10)
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            names = [m.get("name") for m in data.get("models", [])
+                     if isinstance(m, dict)]
+            if self.model in names:
+                return True
+            if ":" not in self.model \
+                    and f"{self.model}:latest" in names:
+                return True
+            return False
+        except Exception:  # noqa: BLE001 — unknown, stated
+            return None
 
     def list_local_models(self) -> list[str]:
         try:

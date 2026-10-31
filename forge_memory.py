@@ -13,6 +13,7 @@ Usage:
   python forge_memory.py all --wikidata-dump /path/to/dump.json.gz
 """
 
+import json
 import logging
 import sys
 from pathlib import Path
@@ -23,9 +24,19 @@ from thoughtforge.etl.embeddings import build_entity_embeddings, build_reference
 from thoughtforge.etl.schema import get_entity_count, initialize_schema, rebuild_fts_indexes
 from thoughtforge.etl.sources import ConceptNetETL, DBpediaETL, GeoNamesETL, ReferenceDataETL
 from thoughtforge.etl.wikidata import WikidataETL
+from thoughtforge.knowledge.forge_toolset import (
+    ADD_KIND_NAMES,
+    add_record,
+    export_store_bundle,
+    find_record,
+    inspect_records,
+    inspect_store,
+    prune_store,
+)
+from thoughtforge.knowledge.store import MemoryStore
 from thoughtforge.utils.config import load_config
 from thoughtforge.utils.logging_setup import setup_logging
-from thoughtforge.utils.paths import get_knowledge_db_path
+from thoughtforge.utils.paths import get_knowledge_db_path, get_memory_dir
 
 # Bootstrap logging before any Click commands run
 setup_logging(load_config())
@@ -34,11 +45,13 @@ logger = logging.getLogger("forge_memory")
 
 @click.group()
 @click.option("--db", default=None, help="Path to knowledge.db (default: auto-resolved)")
+@click.option("--memory-dir", default=None, help="Path to the memory store directory (default: auto-resolved; used by add/inspect/prune/export)")
 @click.pass_context
-def cli(ctx: click.Context, db: str | None) -> None:
+def cli(ctx: click.Context, db: str | None, memory_dir: str | None) -> None:
     """ThoughtForge Memory Forge — sovereign offline knowledge database builder."""
     ctx.ensure_object(dict)
     ctx.obj["db_path"] = Path(db) if db else get_knowledge_db_path()
+    ctx.obj["memory_dir"] = Path(memory_dir) if memory_dir else get_memory_dir()
 
 
 @cli.command()
@@ -261,6 +274,106 @@ def build_all(
     click.echo("Knowledge Forge complete!")
     click.echo("=" * 60)
     ctx.invoke(status)
+
+
+# ── Memory-store toolset (TF-057) ─────────────────────────────────────────────
+# The four commands below operate on the MEMORY STORE (--memory-dir),
+# not the knowledge database (--db). Their logic lives in
+# thoughtforge.knowledge.forge_toolset; these are thin shells that
+# print its JSON reports. A toolset refusal (ValueError) is a click
+# error naming the problem — nothing is written on a refused call.
+
+
+def _memory_store(ctx: click.Context) -> MemoryStore:
+    return MemoryStore(memory_dir=ctx.obj["memory_dir"])
+
+
+def _echo_toolset(fn) -> None:  # type: ignore[no-untyped-def]
+    try:
+        report = fn()
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+@cli.command()
+@click.option("--kind", required=True, type=click.Choice(ADD_KIND_NAMES), help="Record kind to add")
+@click.option("--summary", default="", help="The record's summary text")
+@click.option("--tag", "tags", multiple=True, help="Tag (repeatable)")
+@click.option("--category", default="", help="Preference category (user_preference)")
+@click.option("--value", default="", help="Preference value (user_preference)")
+@click.option("--fact-json", default=None, help="Fact payload as a JSON object (user_fact)")
+@click.option("--pattern-step", "pattern_shape", multiple=True, help="Pattern step (repeatable; response_pattern)")
+@click.option("--tone", default="", help="Episode tone (episode)")
+@click.option("--importance", default=None, type=float)
+@click.option("--confidence", default=None, type=float)
+@click.option("--quality", default=None, type=float)
+@click.option("--record-id", default=None, help="Explicit record id (default: generated)")
+@click.pass_context
+def add(ctx: click.Context, kind: str, summary: str, tags: tuple[str, ...],
+        category: str, value: str, fact_json: str | None,
+        pattern_shape: tuple[str, ...], tone: str,
+        importance: float | None, confidence: float | None,
+        quality: float | None, record_id: str | None) -> None:
+    """Add one memory record by hand (stamped source='manual_entry')."""
+    fact_value = None
+    if fact_json is not None:
+        try:
+            fact_value = json.loads(fact_json)
+        except json.JSONDecodeError as exc:
+            raise click.ClickException(f"--fact-json is not valid JSON: {exc}") from exc
+        if not isinstance(fact_value, dict):
+            raise click.ClickException("--fact-json must be a JSON object")
+    store = _memory_store(ctx)
+    _echo_toolset(lambda: add_record(
+        store, kind, summary=summary, tags=list(tags), category=category,
+        value=value, fact_value=fact_value,
+        pattern_shape=list(pattern_shape), tone=tone,
+        importance=importance, confidence=confidence, quality=quality,
+        record_id=record_id,
+    ))
+
+
+@cli.command()
+@click.option("--record-id", default=None, help="Show exactly this record")
+@click.option("--kind", default=None, help="List only this record kind")
+@click.option("--tag", default=None, help="List only records carrying this tag")
+@click.option("--status", default=None, help="List only records with this status")
+@click.option("--text", default=None, help="List only records whose summary contains this text")
+@click.option("--profile", default=None, help="Also report the store against this hardware profile's budget")
+@click.pass_context
+def inspect(ctx: click.Context, record_id: str | None, kind: str | None,
+            tag: str | None, status: str | None, text: str | None,
+            profile: str | None) -> None:
+    """Inspect the memory store (read-only): whole-store report,
+    a filtered record list, or one record by id."""
+    store = _memory_store(ctx)
+    if record_id is not None:
+        _echo_toolset(lambda: find_record(store, record_id))
+    elif any(v is not None for v in (kind, tag, status, text)):
+        _echo_toolset(lambda: inspect_records(
+            store, kind=kind, tag=tag, status=status, text=text))
+    else:
+        _echo_toolset(lambda: inspect_store(store, profile_id=profile))
+
+
+@cli.command()
+@click.option("--mode", default="routine", show_default=True, help="Prune mode: light | routine | heavy | emergency")
+@click.option("--profile", default=None, help="Enforce this hardware profile's memory caps (TF-056)")
+@click.pass_context
+def prune(ctx: click.Context, mode: str, profile: str | None) -> None:
+    """Prune the memory store by the lifecycle rules (TF-045)."""
+    store = _memory_store(ctx)
+    _echo_toolset(lambda: prune_store(store, mode=mode, profile_id=profile))
+
+
+@cli.command()
+@click.option("--out", required=True, type=click.Path(), help="Where to write the store bundle JSON")
+@click.pass_context
+def export(ctx: click.Context, out: str) -> None:
+    """Export the whole memory store as one verified bundle (TF-052)."""
+    store = _memory_store(ctx)
+    _echo_toolset(lambda: export_store_bundle(store, Path(out)))
 
 
 if __name__ == "__main__":

@@ -123,7 +123,21 @@ _INTENT_TO_CANDIDATE_MODES: dict[str, list[str]] = {
 # ── Fact block assembly ────────────────────────────────────────────────────────
 
 def _build_fact_block(records: list[ActivatedRecord], max_records: int = 8) -> str:
-    """Assemble a compact fact block from top-scored knowledge records."""
+    """Assemble a compact fact block from top-scored knowledge records.
+
+    TF-048 (cite-or-explain I): every line opens with the record's
+    citation marker — ``[<marker>]`` from the record's
+    CitationPayload, which the record carries by construction
+    (knowledge/models.derive_citation). Before this slice the
+    marker was improvised here from raw fields — a QID when one
+    existed, a bare source name otherwise — and a record with
+    neither qid nor label fell through to its bare cue, entering
+    the prompt with NO citation at all. That fall-through is gone:
+    the payload's marker is never empty, so no line can be
+    uncited. The 8-line budget is unchanged (the bundle may hold
+    more; every record still carries its payload, and the lines
+    that enter the prompt are the top-scored ones, as before).
+    """
     if not records:
         return ""
 
@@ -131,23 +145,17 @@ def _build_fact_block(records: list[ActivatedRecord], max_records: int = 8) -> s
     lines: list[str] = []
     for r in top:
         raw: dict[str, Any] = r.raw or {}
-        qid = raw.get("qid", "")
         label = raw.get("label_en") or raw.get("title") or r.record_id
         desc = raw.get("description_en") or raw.get("content", "")
-        source = raw.get("source", r.record_type)
+        marker = r.citation.marker if r.citation is not None else r.record_id
 
-        if qid:
-            line = f"[{qid}] {label}"
-            if desc:
-                short = desc[:120].rsplit(" ", 1)[0]
-                line += f" — {short}"
-        elif label:
-            line = f"[{source}] {label}"
+        if label:
+            line = f"[{marker}] {label}"
             if desc:
                 short = desc[:120].rsplit(" ", 1)[0]
                 line += f" — {short}"
         else:
-            line = r.cue
+            line = f"[{marker}] {r.cue}"
 
         lines.append(line)
 

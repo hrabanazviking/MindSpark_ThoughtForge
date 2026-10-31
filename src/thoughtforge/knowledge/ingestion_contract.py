@@ -29,10 +29,15 @@ TF-039/TF-041 pattern) and validates against it:
   * ``DB_PROVENANCE`` — the closed provenance vocabulary of the
     knowledge DB, proven live from the schema's own ``source``
     defaults. ``MEMORY_PROVENANCE`` — the contract's vocabulary
-    for the provenance stamp a memory record *should* carry;
-    no record carries one today (the gap is pinned by
-    ``contract_problems()``; TF-047 owns stamping it when it
-    wires conversation → memory writeback).
+    for the provenance stamp on memory records. At TF-042 no
+    record could carry one (the gap was pinned by
+    ``contract_problems()``); TF-047 closed it for the four
+    writeback kinds — ``user_preference``, ``user_fact``,
+    ``episode``, ``response_pattern`` now carry a ``source``
+    field and the writeback leg stamps every record it writes.
+    Identity and thread state carry no stamp by ruling (they are
+    not ingested claims), and the pin now checks exactly that
+    split.
   * ``record_problems()`` — the validator for memory records
     (dataclass instance or plain dict). ``MemoryStore``'s
     ingestion gates (append_* / save_*) now call it and refuse
@@ -107,10 +112,12 @@ DB_PROVENANCE: tuple[str, ...] = (
 )
 
 # MEMORY_PROVENANCE is *contract-defined*: the vocabulary for the
-# provenance stamp on memory-side ingestion. No persisted memory
-# record has a field to carry it today — that absence is the
-# slice's headline finding, pinned in contract_problems() and
-# owned forward: TF-047 (writeback wiring) stamps new facts,
+# provenance stamp on memory-side ingestion. At TF-042 no
+# persisted memory record had a field to carry it — that absence
+# was the slice's headline finding, pinned in
+# contract_problems(). TF-047 closed it for the four writeback
+# kinds: they carry a `source` field and the writeback leg
+# (knowledge/writeback.py) stamps every record it writes.
 # TF-057 (forge_memory toolset) stamps manual entries.
 
 MEMORY_PROVENANCE: tuple[str, ...] = (
@@ -144,7 +151,7 @@ FACT_KINDS: tuple[dict[str, Any], ...] = (
      "identity_fields": ("record_id",),
      "content_fields": ("category", "summary"),
      "content_rule": "category_and_summary",
-     "provenance_field": None,
+     "provenance_field": "source",
      "confidence_field": ("confidence", 0.5),
      "confidence_note": "",
      "summary_cap": 160},
@@ -153,7 +160,7 @@ FACT_KINDS: tuple[dict[str, Any], ...] = (
      "identity_fields": ("record_id",),
      "content_fields": ("summary", "fact_value"),
      "content_rule": "summary_or_fact_value",
-     "provenance_field": None,
+     "provenance_field": "source",
      "confidence_field": ("confidence", 0.6),
      "confidence_note": "",
      "summary_cap": 180},
@@ -162,7 +169,7 @@ FACT_KINDS: tuple[dict[str, Any], ...] = (
      "identity_fields": ("record_id",),
      "content_fields": ("summary",),
      "content_rule": "summary",
-     "provenance_field": None,
+     "provenance_field": "source",
      "confidence_field": ("confidence", 0.5),
      "confidence_note": "",
      "summary_cap": 240},
@@ -171,7 +178,7 @@ FACT_KINDS: tuple[dict[str, Any], ...] = (
      "identity_fields": ("record_id",),
      "content_fields": ("summary", "pattern_shape"),
      "content_rule": "summary_or_pattern_shape",
-     "provenance_field": None,
+     "provenance_field": "source",
      "confidence_field": ("confidence", 0.6),
      "confidence_note": "",
      "summary_cap": None},
@@ -316,10 +323,11 @@ def record_problems(record: Any, *, kind: str | None = None) -> list[str]:
     means the record may be ingested. Pure — writes nothing.
     Unknown keys are NOT problems (``from_dict`` ignores them by
     design, TF-041 K12); a missing provenance stamp is not a
-    problem *here* either, because no memory record has a field
-    to carry one — that gap is contract-level, pinned by
-    ``contract_problems()``, and becomes an ingestion-time
-    requirement only on the writeback path
+    problem *here* either — legacy records predate the stamp
+    (TF-047 added the ``source`` field to the four writeback
+    kinds with a ``""`` default). The stamp is contract-level,
+    pinned by ``contract_problems()``, and becomes an
+    ingestion-time requirement only on the writeback path
     (``writeback_fact_problems``).
     """
     data = _as_dict(record)
@@ -646,18 +654,28 @@ def contract_problems() -> list[str]:
     if set(MEMORY_PROVENANCE) & set(DB_PROVENANCE):
         problems.append("provenance vocabularies overlap — the two stores' stamps must stay distinguishable")
 
-    # THE GAP, pinned: no persisted memory record can carry a
-    # provenance stamp today. When TF-047 (or another slice) adds
-    # the field, this check fires and the contract must be
-    # updated with that evidence in the same commit.
-    for row in PERSISTED_RECORDS:
-        cls = getattr(models_module, row["name"])
+    # THE PROVENANCE SPLIT, pinned (was TF-042's gap pin; TF-047
+    # closed the gap for the writeback kinds and this pin now
+    # checks the split both ways): a kind whose FACT_KINDS row
+    # promises a `source` stamp must carry the field, and a kind
+    # whose row promises none (identity, thread state) must not
+    # grow one silently.
+    for row in FACT_KINDS:
+        if row["store"] != "memory":
+            continue
+        cls = getattr(models_module, row["record"])
         field_names = {f.name for f in dataclasses.fields(cls)}
-        if "source" in field_names or "provenance" in field_names:
+        if row["provenance_field"] == "source":
+            if "source" not in field_names:
+                problems.append(
+                    f"provenance: {row['record']} promises a source stamp "
+                    "in FACT_KINDS but carries no source field"
+                )
+        elif "source" in field_names or "provenance" in field_names:
             problems.append(
-                f"provenance gap closed for {row['name']}: a memory record "
-                "gained a provenance field — update FACT_KINDS and this "
-                "pin with the wiring evidence (TF-047)"
+                f"provenance: {row['record']} gained a provenance field "
+                "but its FACT_KINDS row promises none — update the row "
+                "and this pin with the wiring evidence"
             )
 
     # The store's ingestion gates are wired to the validator:

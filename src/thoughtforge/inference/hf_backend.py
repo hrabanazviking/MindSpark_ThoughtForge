@@ -61,9 +61,35 @@ class HuggingFaceBackend(UnifiedBackend):
                 headers=headers,
                 timeout=8,
             )
-            return resp.status_code < 500
+            # TF-073 (D-HEALTH-1): exactly 200 — the pre-fix
+            # below-500 test counted 401 (rejected credentials)
+            # and 404 (no such model) as healthy.
+            return resp.status_code == 200
         except Exception:
             return False
+
+    def capabilities(self):
+        """TF-065 contract record: a REMOTE backend (the one
+        shipped backend that is not local-first), simulated
+        streaming, estimate token counting — its
+        tokens_generated is the contract estimate, the same
+        basis as its count_tokens (TF-071; pre-TF-071 it was
+        a word-split count under a token name — D-TOK-3) —
+        seed honoured on both the client and raw-request
+        legs."""
+        from thoughtforge.inference.backend_contract import BackendCapabilities
+
+        return BackendCapabilities(
+            name=self.backend_name(),
+            streaming="simulated",
+            token_counting="estimate",
+            seed="honoured",
+            placement="remote",
+            model=self.model,
+            notes=("tokens_generated is the contract estimate, "
+                   "the same basis as count_tokens — not a "
+                   "model token count",),
+        )
 
     # ── Private helpers ────────────────────────────────────────────────────────
 
@@ -79,16 +105,21 @@ class HuggingFaceBackend(UnifiedBackend):
     def _generate_via_client(self, request: GenerationRequest, start: float) -> GenerationResponse:
         prompt = _build_prompt(request)
         try:
+            client_kwargs: dict = {}
+            if request.seed is not None:
+                # TF-065 seed duty (client leg).
+                client_kwargs["seed"] = request.seed
             result = self._client.text_generation(  # type: ignore[union-attr]
                 prompt,
                 temperature=request.temperature,
                 max_new_tokens=request.max_tokens,
                 stop_sequences=request.stop or None,
+                **client_kwargs,
             )
             text: str = result if isinstance(result, str) else str(result)
             return GenerationResponse(
                 text=text,
-                tokens_generated=len(text.split()),  # approximate; client doesn't always return counts
+                tokens_generated=self.count_tokens(text),  # TF-071: contract estimate; the client doesn't always return counts
                 finish_reason="stop",
                 backend_used=self.backend_name(),
                 latency_ms=(time.monotonic() - start) * 1000,
@@ -115,6 +146,9 @@ class HuggingFaceBackend(UnifiedBackend):
         }
         if request.stop:
             payload["parameters"]["stop"] = request.stop  # type: ignore[index]
+        if request.seed is not None:
+            # TF-065 seed duty (raw-request leg).
+            payload["parameters"]["seed"] = request.seed  # type: ignore[index]
 
         try:
             resp = requests.post(
@@ -141,7 +175,7 @@ class HuggingFaceBackend(UnifiedBackend):
 
             return GenerationResponse(
                 text=text,
-                tokens_generated=len(text.split()),
+                tokens_generated=self.count_tokens(text),  # TF-071: contract estimate, as the client leg
                 finish_reason="stop",
                 backend_used=self.backend_name(),
                 latency_ms=(time.monotonic() - start) * 1000,

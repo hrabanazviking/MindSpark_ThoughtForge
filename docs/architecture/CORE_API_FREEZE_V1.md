@@ -164,6 +164,12 @@ here and as data (`POST_FREEZE_ADDITIONS` in
 | `thoughtforge.cognition.small_model_floor` | module (`FloorBudget`, `check_floor_turn`, `run_floor_conversation`) | TF-037 |
 | `thoughtforge.cognition.traces` | module (`TRACE_FORMAT`, `export_turn_trace`, `trace_problems`, `write_turn_trace`) | TF-038 |
 | `ConversationConfig.max_refinement_passes` | record field (the D-PROF-4 fix) | TF-037 |
+| `prune_memory` | core method (the D-ORPHAN-1 wiring; recorded by TF-045 as it landed) | TF-045 |
+| `apply_writeback` | core method (the conversation → memory leg; recorded by TF-047 as it landed) | TF-047 |
+| `last_writeback_outcome` | core property | TF-047 |
+| `last_citation_check` | core property (the per-claim cite-or-explain check of the last composed turn; recorded by TF-049 as it landed) | TF-049 |
+| `memory_budget` | core property (the selected profile's memory budget; recorded by TF-056 as it landed) | TF-056 |
+| `last_turn_inspector` | core method (the last turn's memory inspector export; recorded by TF-061 as it landed) | TF-061 |
 
 The frozen tables and `API_VERSION` (1.0.0) are **not** changed
 by the recording: folding these additions into the tables with

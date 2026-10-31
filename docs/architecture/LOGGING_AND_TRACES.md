@@ -153,7 +153,11 @@ the candidates, not in the state's shape.
   quant detail) joins at TF-084, which consumes this format.
 - **Why a retrieval fired**, beyond what the bundle itself
   carries, is TF-061's inspector data — also a consumer of this
-  export, not a change to it.
+  export, not a change to it. *(TF-061, landed: the inspector
+  lives in `knowledge/inspector.py` + `docs/architecture/
+  MEMORY_INSPECTOR.md`, and this trace's retrieval entries now
+  also carry each record's TF-048 citation payload — the one
+  change TF-061 made here, on TF-048's assignment.)*
 - **Prompt text per candidate** is not in the trace: prompts are
   rebuilt by the prompt builders from the scaffold + bundle the
   trace *does* carry (TF-023's contract), and TF-019's scaffold

@@ -83,6 +83,15 @@ writeback, **TF-057** stamps manual entries in the forge_memory
 toolset, **TF-052** stamps imports. Until then, provenance for
 memory is honestly NOT CARRIED, never implied.
 
+**Landed since (all three assignments now stand):** TF-047's
+writeback stamps `conversation_writeback` (and honours
+`user_stated` where the entry carries it), TF-052's import
+stamps `import`, and TF-057's forge_memory toolset stamps
+every manual add `manual_entry` by construction — see
+`FORGE_TOOLSET.md`. The four stamped kinds carry the field;
+personality core and thread state still carry none, by the
+rulings above.
+
 ## 4. Confidence: what the numbers actually mean
 
 A confidence is a probability-like rating in [0, 1] — 0 = no

@@ -312,12 +312,73 @@ POST_FREEZE_ADDITIONS: tuple[dict[str, Any], ...] = (
         "note": "the turn-trace format, exporter, and checker",
     },
     {
+        "name": "prune_memory",
+        "kind": "core-method",
+        "added_by": "TF-045",
+        "note": (
+            "one explicit memory-lifecycle prune pass over the "
+            "core's store (the D-ORPHAN-1 wiring); per-turn thread "
+            "cooling rides _finish_turn, not the public surface"
+        ),
+    },
+    {
+        "name": "apply_writeback",
+        "kind": "core-method",
+        "added_by": "TF-047",
+        "note": (
+            "apply one WritebackRecord to the core's store through "
+            "the gated writeback leg (knowledge/writeback.py), "
+            "retaining the outcome; _finish_turn calls it for a "
+            "turn carrying a writeback, gated on the final's "
+            "enforcement verdict"
+        ),
+    },
+    {
+        "name": "last_writeback_outcome",
+        "kind": "core-property",
+        "added_by": "TF-047",
+        "note": "the last writeback outcome this core applied (None until one is)",
+    },
+    {
+        "name": "last_citation_check",
+        "kind": "core-property",
+        "added_by": "TF-049",
+        "note": (
+            "the last composed turn's per-claim cite-or-explain "
+            "check (refinement/citation_enforcement.py), retained "
+            "from the EnforcementGate result in _compose_final; "
+            "None until a turn with candidates composes"
+        ),
+    },
+    {
+        "name": "memory_budget",
+        "kind": "core-property",
+        "added_by": "TF-056",
+        "note": (
+            "the selected profile's memory budget (knowledge/"
+            "memory_budgets.py), resolved live; None when no "
+            "profile was selected — the flat default caps and "
+            "retrieval request then apply, as before TF-056"
+        ),
+    },
+    {
         "name": "ConversationConfig.max_refinement_passes",
         "kind": "record-field",
         "added_by": "TF-037",
         "note": (
             "the profile's refinement cap, resolved live (the "
             "D-PROF-4 fix); refinement_max_passes() reads it"
+        ),
+    },
+    {
+        "name": "last_turn_inspector",
+        "kind": "core-method",
+        "added_by": "TF-061",
+        "note": (
+            "the last turn's memory inspector export (knowledge/"
+            "inspector.py): store + knowledge DB holdings, the "
+            "turn's identity, why its retrieval fired, and the "
+            "retained citation check, as one JSON-safe document"
         ),
     },
 )

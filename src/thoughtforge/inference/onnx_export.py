@@ -51,7 +51,42 @@ class ExportResult:
     quantized: bool
     vocab_size: int
     embedding_dim: int
-    exporter_used: str          # "optimum" | "torch" | "mock"
+    exporter_used: str          # "optimum" | "torch" (no other path exists)
+
+
+#: The registered default model's dimension — the ONLY
+#: honest fallback for an unprobeable config (TF-053's
+#: registry carries the same 384 for all-MiniLM-L6-v2).
+_DEFAULT_EMBEDDING_DIM = 384
+
+
+def _probe_embedding_dim(model_name: str) -> int:
+    """The embedding dimension of *model_name*, probed from
+    its config (``hidden_size``) — never assumed. Falls back
+    to the TF-053 registry's dimension for a registered
+    model, and only then to the default model's 384 when
+    neither source answers (TF-070, D-ONNX-1: the optimum
+    path previously returned 384 for EVERY model)."""
+    try:
+        from transformers import AutoConfig
+
+        dim = AutoConfig.from_pretrained(model_name).hidden_size
+        if dim:
+            return int(dim)
+    except Exception:
+        pass
+    try:
+        from thoughtforge.etl.embedding_discipline import (
+            EMBEDDING_MODELS,
+            canonical_model_name,
+        )
+
+        row = EMBEDDING_MODELS.get(canonical_model_name(model_name))
+        if row:
+            return int(row["dimension"])
+    except Exception:
+        pass
+    return _DEFAULT_EMBEDDING_DIM
 
 
 # ── OnnxExporter ──────────────────────────────────────────────────────────────
@@ -99,7 +134,7 @@ class OnnxExporter:
 
         # Fall back to torch
         try:
-            return self._export_with_torch(model_name, output_dir, opset)
+            return self._export_with_torch(model_name, output_dir, opset, quantize)
         except ImportError:
             pass
 
@@ -138,8 +173,14 @@ class OnnxExporter:
 
         onnx_path = output_dir / _ONNX_MODEL_FILENAME
 
+        quantized = False
         if quantize:
-            onnx_path = self._quantize_optimum(output_dir)
+            onnx_path, quantized = self._quantize_optimum(output_dir)
+            if not quantized:
+                logger.warning(
+                    "OnnxExporter: quantization was requested but NOT "
+                    "applied — the result is the unquantized model"
+                )
 
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         vocab_size = tokenizer.vocab_size
@@ -148,20 +189,27 @@ class OnnxExporter:
             model_name=model_name,
             output_dir=output_dir,
             onnx_path=onnx_path,
-            quantized=quantize,
+            quantized=quantized,
             vocab_size=vocab_size,
-            embedding_dim=384,          # all-MiniLM-L6-v2 default; probed at runtime
+            embedding_dim=_probe_embedding_dim(model_name),
             exporter_used="optimum",
         )
 
-    def _quantize_optimum(self, output_dir: Path) -> Path:
-        """Apply int8 quantization to the exported ONNX model."""
+    def _quantize_optimum(self, output_dir: Path) -> tuple[Path, bool]:
+        """Apply int8 quantization to the exported ONNX model.
+
+        Returns (path, actually_quantized): the quantized path
+        with True only when a quantized file really landed;
+        the plain model path with False when the quantizer is
+        unavailable or produced no quantized file — a request
+        is never reported as an achievement (TF-070, D-ONNX-1).
+        """
         try:
             from optimum.onnxruntime import ORTQuantizer
             from optimum.onnxruntime.configuration import AutoQuantizationConfig
         except ImportError as e:
             logger.warning("ORTQuantizer not available — skipping quantization: %s", e)
-            return output_dir / _ONNX_MODEL_FILENAME
+            return output_dir / _ONNX_MODEL_FILENAME, False
 
         quantizer = ORTQuantizer.from_pretrained(output_dir)
         qconfig = AutoQuantizationConfig.avx512_vnni(is_static=False)
@@ -171,16 +219,27 @@ class OnnxExporter:
         )
         q_path = output_dir / _ONNX_QUANTIZED_FILENAME
         if not q_path.exists():
-            q_path = output_dir / _ONNX_MODEL_FILENAME
-        return q_path
+            return output_dir / _ONNX_MODEL_FILENAME, False
+        return q_path, True
 
     def _export_with_torch(
         self,
         model_name: str,
         output_dir: Path,
         opset: int,
+        quantize: bool = False,
     ) -> ExportResult:
-        """Export via torch.onnx.export (no quantization support)."""
+        """Export via torch.onnx.export (no quantization support).
+
+        A ``quantize`` request reaching this path is NOT
+        honoured and never silently dropped: it is announced
+        in the log and the result reports quantized=False
+        (TF-070, D-ONNX-1)."""
+        if quantize:
+            logger.warning(
+                "OnnxExporter: quantization requested but the torch "
+                "export path cannot quantize — exporting unquantized"
+            )
         try:
             import torch
             from transformers import AutoModel, AutoTokenizer
@@ -292,6 +351,11 @@ class ONNXEmbedder:
             providers = ["CUDAExecutionProvider"] + providers
 
         session = ort.InferenceSession(str(onnx_path), providers=providers)
+        # The file actually loaded is observable truth
+        # (TF-070): plain model preferred, quantized the
+        # fallback — the choice is recorded, never silent.
+        self.onnx_path = onnx_path
+        self.quantized = onnx_path.name == _ONNX_QUANTIZED_FILENAME
         logger.debug("ONNXEmbedder: loaded session from %s", onnx_path)
         return session
 
