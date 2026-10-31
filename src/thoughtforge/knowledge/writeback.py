@@ -76,12 +76,18 @@ append stores (profile, episodes, patterns) in that order.
 Reinforce increments ``times_reinforced``, sets status
 ``reinforced``, and rewrites that store (the rewrite mechanisms
 are TF-041's prune machinery, reused, not duplicated). Archive
-and delete set the status and rewrite, which drops the record
-from its file — the store's own deletion shape. An id found
+sets the status and rewrites, which drops the record from its
+file — the store's own retirement shape. **Delete (TF-051)**
+no longer stops at the home file: it routes through
+``knowledge/forgetting.py``'s ``forget_record`` (with the
+thread state out of reach, per the ruling below), so a
+writeback-ordered deletion also rebuilds the tag index,
+purges the recent queue, and scrubs episode links, and is
+applied only when the forgetting proof passes — an id found
 nowhere is a recorded refusal (``record not found``), never a
 silent no-op. The personality core is deliberately NOT
 reachable from any of these lists: writeback cannot archive or
-delete identity.
+delete identity (forgetting refuses it by name).
 
 **Thread updates** apply to the one working-tier record: the
 fields an update names (topic / summary / tags / open_loops /
@@ -124,6 +130,7 @@ from thoughtforge.knowledge.contradictions import (
     apply_contradiction_resolution,
     assess_contradiction,
 )
+from thoughtforge.knowledge.forgetting import forget_record
 from thoughtforge.knowledge.ingestion_contract import (
     FACT_KINDS,
     MEMORY_PROVENANCE,
@@ -535,6 +542,19 @@ def _mutate_records(
     action: str,
 ) -> None:
     for record_id in record_ids:
+        if action == "delete":
+            # TF-051: a writeback-ordered deletion is a
+            # user-ordered forgetting — total (store, tag
+            # index, recent queue, episode links) and proven,
+            # with the thread state out of writeback's reach.
+            report = forget_record(
+                store, str(record_id), include_thread=False
+            )
+            if report.forgotten:
+                _apply(outcome, leg, str(record_id), None)
+            else:
+                _refuse(outcome, leg, str(record_id), [report.reason])
+            continue
         found = _find_record(store, str(record_id))
         if found is None:
             _refuse(
@@ -547,7 +567,7 @@ def _mutate_records(
             record.times_reinforced += 1
             record.status = "reinforced"
         else:
-            record.status = "archived" if action == "archive" else "deleted"
+            record.status = "archived"
         record.updated_at = _now_iso()
         _rewrite_for(store, home, records)
         _apply(outcome, leg, record.record_id, None)
@@ -696,6 +716,7 @@ def writeback_problems() -> list[str]:
     from thoughtforge.cognition import core as core_module
     from thoughtforge.knowledge import scoring as scoring_module
     from thoughtforge.knowledge.contradictions import contradiction_problems
+    from thoughtforge.knowledge.forgetting import forgetting_problems
 
     problems: list[str] = []
 
@@ -703,6 +724,11 @@ def writeback_problems() -> list[str]:
     # still checks out against the live tree.
     if contradiction_problems():
         problems.append("TF-050 contradiction handling no longer checks out (contradiction_problems)")
+
+    # TF-051: the forgetting leg this module's delete routes
+    # through still checks out against the live tree.
+    if forgetting_problems():
+        problems.append("TF-051 forgetting no longer checks out (forgetting_problems)")
 
     # The gates are the named constants, not copies.
     expected = {
