@@ -266,15 +266,138 @@ class InputSketch:
 
 # ── 8. MemoryActivationBundle ──────────────────────────────────────────────────
 
+@dataclass(frozen=True)
+class CitationPayload:
+    """TF-048: the citation an activated record carries by construction.
+
+    One payload per retrieved item, derived deterministically from
+    the record's own raw retrieval dict (see ``derive_citation``):
+    ``marker`` is the exact bracket token the prompt renders
+    (``[marker]`` — a bare QID for Wikidata entities, so the
+    existing QID citation checks in refinement/ keep matching it;
+    ``ref:<chunk_id>`` for reference chunks; ``geonames:<id>`` for
+    places; ``conceptnet:<c1>|<relation>|<c2>`` for ConceptNet
+    edges; ``<source>:<record_id>`` for everything else). ``source``
+    is the retrieval source name, ``locator`` the durable pointer
+    back to the stored claim (the QID, the reference chunk's
+    source_file — TF-042: that file IS a reference chunk's
+    provenance — the GeoNames id, the edge's triple text), and
+    ``label`` the human name the prompt line shows.
+    """
+
+    marker: str
+    source: str
+    record_id: str
+    record_type: str
+    locator: str
+    label: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "marker": self.marker,
+            "source": self.source,
+            "record_id": self.record_id,
+            "record_type": self.record_type,
+            "locator": self.locator,
+            "label": self.label,
+        }
+
+
+def derive_citation(
+    record_id: str,
+    record_type: str,
+    raw: dict[str, Any] | None,
+) -> CitationPayload:
+    """Derive the citation payload for one retrieved item.
+
+    Pure and total: any raw dict yields a payload, and the marker
+    is never empty — an item whose raw carries no stronger identity
+    falls back to ``<source>:<record_id>`` (or
+    ``<source>:unidentified`` when even the id is empty), so the
+    prompt-side rule "every line is cited" has no silent exception.
+    Identity fields follow TF-042's contract per kind: entities by
+    qid, reference chunks by chunk_id + source_file, GeoNames
+    places by geonames_id, ConceptNet edges by their triple.
+    """
+    raw = raw or {}
+    label = str(raw.get("label_en") or raw.get("title") or "")
+
+    qid = raw.get("qid")
+    if qid:
+        return CitationPayload(
+            marker=str(qid),
+            source=str(raw.get("source") or "wikidata"),
+            record_id=str(record_id),
+            record_type=str(record_type),
+            locator=str(qid),
+            label=label,
+        )
+
+    chunk_id = raw.get("chunk_id")
+    if chunk_id:
+        return CitationPayload(
+            marker=f"ref:{chunk_id}",
+            source=str(raw.get("source") or "reference"),
+            record_id=str(record_id),
+            record_type=str(record_type),
+            locator=str(raw.get("source_file") or chunk_id),
+            label=label,
+        )
+
+    geonames_id = raw.get("geonames_id")
+    if geonames_id:
+        return CitationPayload(
+            marker=f"geonames:{geonames_id}",
+            source=str(raw.get("source") or "geonames"),
+            record_id=str(record_id),
+            record_type=str(record_type),
+            locator=str(geonames_id),
+            label=label,
+        )
+
+    concept1 = raw.get("concept1")
+    concept2 = raw.get("concept2")
+    if concept1 and concept2:
+        relation = str(raw.get("relation") or "")
+        return CitationPayload(
+            marker=f"conceptnet:{concept1}|{relation}|{concept2}",
+            source=str(raw.get("source") or "conceptnet"),
+            record_id=str(record_id),
+            record_type=str(record_type),
+            locator=str(raw.get("content") or f"{concept1} {relation} {concept2}"),
+            label=label,
+        )
+
+    source = str(raw.get("source") or record_type or "unknown")
+    return CitationPayload(
+        marker=f"{source}:{record_id}" if record_id else f"{source}:unidentified",
+        source=source,
+        record_id=str(record_id),
+        record_type=str(record_type),
+        locator=str(record_id or ""),
+        label=label,
+    )
+
+
 @dataclass
 class ActivatedRecord:
-    """A single activated memory record with its retrieval score and compressed cue."""
+    """A single activated memory record with its retrieval score and compressed cue.
+
+    TF-048: ``citation`` is the record's CitationPayload, derived
+    in ``__post_init__`` whenever the caller did not supply one —
+    a retrieved item cannot exist without its citation payload.
+    """
 
     record_id: str
     record_type: str
     score: float
     cue: str                               # 5–18 word compressed cue
     raw: dict[str, Any] = field(default_factory=dict)
+    citation: CitationPayload | None = None
+
+    def __post_init__(self) -> None:
+        if self.citation is None:
+            self.citation = derive_citation(self.record_id, self.record_type, self.raw)
 
 
 @dataclass

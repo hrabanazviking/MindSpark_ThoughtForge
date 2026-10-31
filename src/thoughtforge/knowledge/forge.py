@@ -206,6 +206,14 @@ class KnowledgeForge:
                         for row in rows:
                             results.append({
                                 "content": f"{row['concept1']} {row['relation']} {row['concept2']}",
+                                # TF-048: the triple fields ride along —
+                                # TF-042 names them the edge's identity,
+                                # and the citation payload is built from
+                                # them; before this they were selected
+                                # and then dropped.
+                                "concept1": row["concept1"],
+                                "relation": row["relation"],
+                                "concept2": row["concept2"],
                                 "label_en": row["concept1"],
                                 "weight": row["weight"],
                                 "fts_score": row["weight"],
@@ -338,7 +346,14 @@ class KnowledgeForge:
 
         for record in scored_records:
             cue = self._build_cue(record)
-            record_type = record.get("record_type", "entity")
+            # TF-048: vector reference results carry no record_type
+            # (their `source` says "reference_chunk") and used to be
+            # labelled "entity" by this default — a chunk is not an
+            # entity, and the citation payload now repeats the type,
+            # so the fallback derives it from the chunk identity.
+            record_type = record.get("record_type") or (
+                "reference_chunk" if record.get("chunk_id") else "entity"
+            )
             record_id = (
                 record.get("qid")
                 or str(record.get("chunk_id", ""))
