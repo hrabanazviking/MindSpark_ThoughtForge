@@ -1256,6 +1256,10 @@ class ThoughtForgeCore:
             prompt_builder=self._prompt_builder,
             sketch=sketch,
             scaffold=scaffold,
+            # TF-037: the selected profile's refine-pass cap
+            # (phone_low 1, pi_zero 0); no profile → the standing
+            # salvage default of 2, byte-identical to before.
+            max_passes=self._conversation_config.refinement_max_passes(),
             # TF-036: one seeded draw per compose for the salvage
             # refine passes (None when determinism mode is off).
             generation_seed=self._next_generation_seed(),

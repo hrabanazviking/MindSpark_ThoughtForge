@@ -44,9 +44,19 @@ What a selection DOES, honestly stated:
     With no profile selected the 512 stands, byte-identical to
     before this slice. The local-engine path takes no token cap
     from anywhere today (TF-021 recorded it) and still doesn't;
-    retrieval top_k, salvage passes, history budgets and mode
-    temperatures stay flat — TF-033/TF-037/TF-098 own those, and
-    D-PROF-3 stays open for them, narrowed not closed.
+    retrieval top_k, history budgets and mode temperatures stay
+    flat — TF-033/TF-037/TF-098 own those, and D-PROF-3 stays
+    open for them, narrowed not closed.
+    TF-037 added one more live profile value to this surface:
+    the profile's ``generation.max_refinement_passes`` is resolved
+    alongside the token cap and the core's compose step passes it
+    to ``FragmentSalvage.forge`` as ``max_passes`` (phone_low → 1,
+    pi_zero → 0, no profile → the salvage default of 2 stands,
+    byte-identical). Before TF-037 salvage ran a flat 2 passes on
+    every profile — measured on the phone_low floor, 7 of 20
+    fixture turns ran a second refine pass the profile forbids.
+    TF-098 keeps the general refinement-cost discipline (measured
+    cost across all profiles); this wiring is the floor's share.
   * ``depth`` — replaces the scaffold's derived depth for every
     turn of the conversation (the prompt builder's length hint is
     keyed by depth, so this steers prompt shape directly).
@@ -92,6 +102,11 @@ MAX_CANDIDATE_MODES = 2
 # unchanged when no profile is selected.
 DEFAULT_MAX_TOKENS = 512
 
+# FragmentSalvage's standing refine-pass count (its own
+# ``_MAX_REFINE_PASSES``). It stands unchanged when no profile is
+# selected (TF-037).
+DEFAULT_REFINE_PASSES = 2
+
 
 @dataclass(frozen=True)
 class ConversationConfig:
@@ -106,6 +121,7 @@ class ConversationConfig:
     personality_core_path: str | None = None
     profile_id: str | None = None
     max_response_tokens: int | None = None
+    max_refinement_passes: int | None = None
     strategy: str | None = None
     depth: str | None = None
     candidate_modes: tuple[str, ...] | None = None
@@ -127,11 +143,19 @@ class ConversationConfig:
             return self.max_response_tokens
         return DEFAULT_MAX_TOKENS
 
+    def refinement_max_passes(self) -> int:
+        """The salvage refine-pass cap for this conversation
+        (TF-037): the selected profile's, or the standing 2."""
+        if self.max_refinement_passes is not None:
+            return self.max_refinement_passes
+        return DEFAULT_REFINE_PASSES
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "personality_core_path": self.personality_core_path,
             "profile_id": self.profile_id,
             "max_response_tokens": self.max_response_tokens,
+            "max_refinement_passes": self.max_refinement_passes,
             "strategy": self.strategy,
             "depth": self.depth,
             "candidate_modes": (
@@ -148,6 +172,7 @@ class ConversationConfig:
             personality_core_path=data.get("personality_core_path"),
             profile_id=data.get("profile_id"),
             max_response_tokens=data.get("max_response_tokens"),
+            max_refinement_passes=data.get("max_refinement_passes"),
             strategy=data.get("strategy"),
             depth=data.get("depth"),
             candidate_modes=tuple(modes) if modes is not None else None,
@@ -213,6 +238,7 @@ def resolve_conversation_config(
 
     profile_id = conversation.get("profile_id") or None
     max_response_tokens: int | None = None
+    max_refinement_passes: int | None = None
     if profile_id is not None:
         valid = _valid_profile_ids()
         if profile_id not in valid:
@@ -221,9 +247,13 @@ def resolve_conversation_config(
                 f"valid profiles: {', '.join(valid)}"
             )
         profile = _load_profile(profile_id)
-        tokens = (profile.get("generation") or {}).get("max_response_tokens")
+        generation = profile.get("generation") or {}
+        tokens = generation.get("max_response_tokens")
         if tokens is not None:
             max_response_tokens = int(tokens)
+        passes = generation.get("max_refinement_passes")
+        if passes is not None:
+            max_refinement_passes = int(passes)
 
     strategy = conversation.get("strategy") or None
     if strategy is not None:
@@ -272,6 +302,7 @@ def resolve_conversation_config(
         personality_core_path=personality_path,
         profile_id=profile_id,
         max_response_tokens=max_response_tokens,
+        max_refinement_passes=max_refinement_passes,
         strategy=strategy,
         depth=depth,
         candidate_modes=candidate_modes,
@@ -295,6 +326,7 @@ def apply_conversation_config(scaffold: Any, config: ConversationConfig) -> Any:
 
 __all__ = [
     "DEFAULT_MAX_TOKENS",
+    "DEFAULT_REFINE_PASSES",
     "MAX_CANDIDATE_MODES",
     "VALID_DEPTHS",
     "ConversationConfig",
