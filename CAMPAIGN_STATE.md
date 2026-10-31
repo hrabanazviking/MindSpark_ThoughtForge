@@ -12,7 +12,8 @@ Sparse checkout: src, tests, docs, benchmarks, configs, hardware_profiles, scrip
 - TF-004 DONE — docs/audit/TF-004_BASELINE_TESTS.md: 620 collected, 618 passed, 1 skipped, 1 failed (ENVIRONMENT: missing sentence-transformers on this VM). Campaign zero line pinned there.
 - TF-003 DONE — plan-vs-tree matrix: docs/audit/TF-003_PLAN_VS_TREE_MATRIX.md (all BP phases DONE-in-fact or PARTIAL; plan status lines stale in every row; TASK_PHASE1/2 docs absent from tree).
 - Discovered-defect fix (manual-only workflows law): .github/workflows/ci.yml converted from push/PR auto-triggers to workflow_dispatch only — banked locally in its own commit, not pushed.
-- Next: TF-005 entry points actually run, then TF-006 research wing census, in roadmap order.
+- TF-005 DONE — docs/audit/TF-005_BASELINE_ENTRY_POINTS.md: all 3 root instruments run; run_thoughtforge answers honestly over an empty store; forge_memory init/status proven on a synthetic /tmp store (light declared deps installed user-local; sentence-transformers deliberately not — D-ENV-1).
+- Next: TF-006 research wing census, TF-007 data census (metadata only), in roadmap order.
 
 ## Banked (local commits, not pushed — pushes await Volmarr's word beyond the filing)
 - TF-001 filing commit e7d21aa (this one was pushed, filing exception)
