@@ -300,7 +300,17 @@ class TestSimulatedStream:
         turn = core.last_turn_state
         assert turn is not None and turn.candidates == []
         assert events[-1].final is not None
-        assert events[-1].final.mode == "knowledge_only"
+        # TF-031 superseded this pin (was mode == "knowledge_only"):
+        # a backend failure with nothing to show is a stated failure
+        # (mode "failed"), never a silent knowledge-only completion.
+        # The streamed detail is the no-text one, not "backend down":
+        # the default generate_stream yields nothing on an error
+        # response, so the error string never crosses the stream
+        # contract (docket D-HON-1, owned by TF-084; the plain
+        # backend path records resp.error exactly — TF-031 tests).
+        assert events[-1].final.mode == "failed"
+        assert "backend" in events[-1].final.text
+        assert "returned no text" in events[-1].final.text
 
 
 # ── Failure honesty ────────────────────────────────────────────────────────────
@@ -322,6 +332,10 @@ class TestStreamFailure:
         assert events[-1].kind == "final"
 
     def test_all_candidates_fail_degrades_to_knowledge_only(self) -> None:
+        # Name kept from TF-026; the landing changed under TF-031:
+        # with an empty store there is no knowledge to degrade TO,
+        # so the turn now lands on a stated failure (mode "failed")
+        # instead of a knowledge_only record blaming the knowledge.
         class _DeadEngine:
             def generate_stream(self, prompt, params=None):
                 raise RuntimeError("engine dead")
@@ -333,7 +347,8 @@ class TestStreamFailure:
         assert [e.kind for e in events].count("candidate_error") == 2
         assert events[-1].kind == "final"
         assert events[-1].final is not None
-        assert events[-1].final.mode == "knowledge_only"
+        assert events[-1].final.mode == "failed"
+        assert "engine dead" in events[-1].final.text
 
 
 # ── think() parity ─────────────────────────────────────────────────────────────

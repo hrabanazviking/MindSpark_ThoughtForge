@@ -467,6 +467,13 @@ class RuntimeTurnState:
     ``resume_count`` counts the times a cut turn was taken up
     again; the cut fields are cleared when a resume begins, so
     they always describe the *current* cut, never a stale one.
+
+    TF-031: ``generation_failures`` carries the turn's
+    ``cognition.error_honesty.GenerationFailure`` records — one
+    per generation failure the core caught (kept untyped here to
+    avoid a models → cognition import cycle). Empty on a clean
+    turn and on a deliberate no-model turn: failures exist only
+    where generation was attempted and did not produce.
     """
 
     turn_id: str
@@ -489,6 +496,7 @@ class RuntimeTurnState:
     interrupt_reason: str = ""
     interrupted_phase: str = ""
     resume_count: int = 0
+    generation_failures: list = field(default_factory=list)
 
     @property
     def is_complete(self) -> bool:

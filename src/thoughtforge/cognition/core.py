@@ -25,6 +25,14 @@ import uuid
 from pathlib import Path
 from typing import Any, Iterator
 
+from thoughtforge.cognition.error_honesty import (
+    GenerationFailure,
+    apply_partial_disclosure,
+    degraded_knowledge_text,
+    failure_text,
+    generation_failures,
+    turn_failures,
+)
 from thoughtforge.cognition.history_discipline import CORE_HISTORY_MAX_CHARS
 from thoughtforge.cognition.interruption import (
     InterruptToken,
@@ -509,6 +517,40 @@ class ThoughtForgeCore:
             if repaired.scores.composite > final.scores.composite:
                 final = repaired
 
+        # ── TF-031: error honesty — the final text must say what
+        # actually happened when generation failed. Applied after
+        # the repair decision, to whichever final stands, exactly
+        # once. A deliberate no-model turn records no failures and
+        # is untouched (byte-identical knowledge-only answers).
+        visible_failures = generation_failures(turn_failures(turn))
+        if visible_failures:
+            clauses = "; ".join(f.describe() for f in visible_failures)
+            if candidates:
+                # Partial failure: the composed answer is real, and
+                # carries its disclosure.
+                apply_partial_disclosure(final, visible_failures)
+            elif bundle.activated_records:
+                # Total failure with knowledge to show: the records
+                # are presented as retrieved knowledge under a
+                # stated failure — never as a model answer.
+                final.text = degraded_knowledge_text(visible_failures, final.text)
+                final.token_count = len(final.text.split())
+                final.enforcement_notes = (
+                    f"{final.enforcement_notes}; model failure: {clauses}"
+                    if final.enforcement_notes
+                    else f"model failure: {clauses}"
+                )
+            else:
+                # Total failure, nothing to show: a stated failure
+                # replaces the empty-store text (which would blame
+                # the knowledge for the model's failure).
+                final.text = failure_text(visible_failures)
+                final.token_count = len(final.text.split())
+                final.enforcement_passed = False
+                final.enforcement_notes = f"model failure: {clauses}"
+                final.salvage_path = "model_failed"
+                final.mode = "failed"
+
         turn.final_response = final
         turn.total_tokens_used = final.token_count
         turn.completed_at = _now_iso()
@@ -530,6 +572,31 @@ class ThoughtForgeCore:
             self._engine = None
 
     # ── Internal pipeline steps ────────────────────────────────────────────────
+
+    def _record_failure(
+        self,
+        turn: RuntimeTurnState | None,
+        stage: str,
+        detail: str = "",
+        *,
+        exc: BaseException | None = None,
+        mode: str = "",
+    ) -> None:
+        """TF-031: record one generation failure on the turn state.
+
+        Every swallow point in candidate generation calls this, so
+        a caught failure is data on the turn — never only a log
+        line. ``turn`` may be None on legacy call paths that carry
+        no turn state; recording is then skipped (the log line at
+        the call site remains).
+        """
+        if turn is None:
+            return
+        if exc is not None:
+            failure = GenerationFailure.from_exception(stage, exc, mode=mode)
+        else:
+            failure = GenerationFailure(stage=stage, mode=mode, detail=detail)
+        turn.generation_failures.append(failure)
 
     def _retrieve(self, sketch: InputSketch) -> MemoryActivationBundle:
         """Retrieve knowledge records. Returns empty bundle if DB unavailable."""
@@ -584,13 +651,14 @@ class ThoughtForgeCore:
                 self.load_model()
             except Exception as e:
                 logger.warning("Failed to load model: %s — running knowledge-only", e)
+                self._record_failure(turn, "model_load", exc=e)
                 return candidates
 
         # Route through UnifiedBackend when no local engine is loaded
         if self._engine is None and self._unified_backend is not None:
             _check()
             produced = self._generate_via_unified_backend(
-                sketch, scaffold, bundle, only_modes=only_modes,
+                sketch, scaffold, bundle, only_modes=only_modes, turn=turn,
             )
             candidates.extend(produced)
             return candidates
@@ -620,6 +688,15 @@ class ThoughtForgeCore:
                         temperature=_mode_temperature(mode),
                     ),
                 )
+                if not result.text or not result.text.strip():
+                    # TF-031: an empty completion is a failure, not
+                    # a candidate — nothing was answered.
+                    logger.warning("Candidate generation returned no text (mode=%s)", mode)
+                    self._record_failure(
+                        turn, "candidate",
+                        "engine returned no text (empty generation)", mode=mode,
+                    )
+                    continue
                 cid = f"cand_{uuid.uuid4().hex[:6]}"
                 candidates.append(CandidateRecord(
                     candidate_id=cid,
@@ -632,6 +709,7 @@ class ThoughtForgeCore:
                 raise
             except Exception as e:
                 logger.warning("Candidate generation failed (mode=%s): %s", mode, e)
+                self._record_failure(turn, "candidate", exc=e, mode=mode)
 
         return candidates
 
@@ -642,8 +720,13 @@ class ThoughtForgeCore:
         bundle: MemoryActivationBundle,
         *,
         only_modes: list[str] | None = None,
+        turn: RuntimeTurnState | None = None,
     ) -> list[CandidateRecord]:
-        """Generate a single candidate via the UnifiedBackend (Ollama, LM Studio, HF, etc.)."""
+        """Generate a single candidate via the UnifiedBackend (Ollama, LM Studio, HF, etc.).
+
+        TF-031: every non-production is recorded on the turn — the
+        backend's error channel, an exception, and an empty text
+        alike. Before TF-031 all three silently became []."""
         from thoughtforge.inference.unified_backend import GenerationRequest
 
         memory_cues = self._prompt_builder.extract_memory_cues(bundle)
@@ -665,6 +748,14 @@ class ThoughtForgeCore:
             resp = self._unified_backend.generate(req)
             if resp.error:
                 logger.warning("UnifiedBackend error: %s", resp.error)
+                self._record_failure(turn, "backend", resp.error, mode=mode)
+                return []
+            if not resp.text or not resp.text.strip():
+                logger.warning("UnifiedBackend returned no text (mode=%s)", mode)
+                self._record_failure(
+                    turn, "backend",
+                    "backend returned no text (empty generation)", mode=mode,
+                )
                 return []
             cid = f"cand_{uuid.uuid4().hex[:6]}"
             return [CandidateRecord(
@@ -676,6 +767,7 @@ class ThoughtForgeCore:
             )]
         except Exception as e:
             logger.warning("UnifiedBackend generate failed: %s", e)
+            self._record_failure(turn, "backend", exc=e, mode=mode)
             return []
 
     # ── TF-026: streamed candidate generation ─────────────────────────────
@@ -712,6 +804,7 @@ class ThoughtForgeCore:
                 self.load_model()
             except Exception as e:
                 logger.warning("Failed to load model: %s — running knowledge-only", e)
+                self._record_failure(turn, "model_load", exc=e)
                 return candidates
 
         if self._engine is None and self._unified_backend is not None:
@@ -767,6 +860,20 @@ class ThoughtForgeCore:
                             kind="chunk", turn_id=turn_id, mode=mode,
                             candidate_id=cid, text=chunk, native=False,
                         )
+                if not text or not text.strip():
+                    # TF-031: a stream that completes empty produced
+                    # no candidate — a failure, stated as such.
+                    logger.warning("Streamed candidate returned no text (mode=%s)", mode)
+                    self._record_failure(
+                        turn, "candidate",
+                        "engine returned no text (empty generation)", mode=mode,
+                    )
+                    yield StreamEvent(
+                        kind="candidate_error", turn_id=turn_id, mode=mode,
+                        candidate_id=cid,
+                        text="engine returned no text (empty generation)",
+                    )
+                    continue
                 candidates.append(CandidateRecord(
                     candidate_id=cid,
                     mode=mode,
@@ -784,6 +891,7 @@ class ThoughtForgeCore:
                 # A partial stream is discarded whole: a candidate
                 # is its completed text or it is not a candidate.
                 logger.warning("Streamed candidate generation failed (mode=%s): %s", mode, e)
+                self._record_failure(turn, "candidate", exc=e, mode=mode)
                 yield StreamEvent(
                     kind="candidate_error", turn_id=turn_id, mode=mode,
                     candidate_id=cid, text=str(e),
@@ -854,6 +962,11 @@ class ThoughtForgeCore:
                 # The default stream yields nothing on a backend
                 # error (GenerationResponse.error) — no candidate,
                 # exactly as _generate_via_unified_backend returns [].
+                # TF-031: recorded on the turn as a backend failure.
+                self._record_failure(
+                    turn, "backend",
+                    "backend returned no text (error or empty)", mode=mode,
+                )
                 yield StreamEvent(
                     kind="candidate_error", turn_id=turn_id, mode=mode,
                     candidate_id=cid, text="backend returned no text (error or empty)",
@@ -876,6 +989,7 @@ class ThoughtForgeCore:
             raise
         except Exception as e:
             logger.warning("UnifiedBackend streamed generate failed: %s", e)
+            self._record_failure(turn, "backend", exc=e, mode=mode)
             yield StreamEvent(
                 kind="candidate_error", turn_id=turn_id, mode=mode,
                 candidate_id=cid, text=str(e),
@@ -1081,6 +1195,10 @@ class ThoughtForgeCore:
             )
         except Exception as e:
             logger.warning("Repair pass failed: %s — returning previous result", e)
+            # TF-031: recorded on the turn, not announced on the
+            # answer — the composed answer the user holds is real
+            # and complete; nothing was fabricated (error_honesty).
+            self._record_failure(turn, "repair", exc=e)
             return previous
 
 

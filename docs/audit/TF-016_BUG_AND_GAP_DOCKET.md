@@ -10,11 +10,14 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 46 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 2 FIXED
+**Totals: 47 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 2 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II), 1
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 5 · Part IV 7 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 5 · Part IV 8 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
+(Entry D-HON-1 was added by TF-031 in Part II — a defect found by
+that slice's own tests, numbered here per this docket's rule that
+nothing found stays unnumbered.)
 
 ## The docket
 
@@ -66,6 +69,7 @@ Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 | D-REC-1 | TASK_PHASE1 and TASK_PHASE2 docs are absent from the tree (git ls-tree, TF-003) — a gap in the record, not in the software; their work exists as code | None — TF-015 verdict: no reconstruction commissioned (inventing them retroactively would falsify the record); TF-182 notes the gap for new readers | X | **CLOSED-BY-VERDICT** |
 | D-REL-1 | BP Phase 6's release claims are NOT PROVEN from the tree: no v1.0 GitHub release, HF model cards, or public demo is evidenced (TF-003) | TF-185 (release shaping) | X | OPEN |
 | D-DOC-1 | BUILD_PLAN_v1's spec pointers drift: of its 14 named spec files, 8 match exactly, 2 differ by case, 4 stand under drifted names — all subjects present, the plan's filenames unreliable (TF-015). No elder spec is renamed by the verdict | TF-182 (developer docs carry the correct pointers) | X | OPEN |
+| D-HON-1 | The streamed unified-backend path loses the backend's error string: `UnifiedBackend.generate_stream`'s default yields nothing at all when the response carries an error, so a streamed turn can only record "backend returned no text (error or empty)" while the plain path records `resp.error` exactly (found by TF-031's tests, 2026-10-31). The failure is stated either way (TF-031); only the detail is thinner on the stream | TF-084 (inference traces join cognition traces — the stream contract's error channel is inference-side) | IV | OPEN |
 
 ## Notes the table cannot hold
 
