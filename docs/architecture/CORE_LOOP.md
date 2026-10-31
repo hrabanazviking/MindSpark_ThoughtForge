@@ -88,6 +88,14 @@ against the project root). A best-effort `SelfHealer().heal_all()`
 runs at startup; its failure is logged at debug level and never
 blocks construction.
 
+*TF-055 note:* the startup heal is now targeted — the core passes
+its own store dir and knowledge DB path to `SelfHealer`, which
+accepts them as explicit parameters (D-PER-1: the un-targeted
+healer repaired the DEFAULT deployment's store, so constructing
+one persona's core mutated another persona's files). Identity
+precedence is pinned by TF-055: the store's own core wins over
+the config assignment (docs/architecture/PERSONA_SEPARATION.md).
+
 Callers in the tree: `run_thoughtforge.py` (single-shot, REPL, and
 chat modes), `setup_thoughtforge.py` (one smoke `think`), and
 `locustfile.py` (concurrent knowledge-only load). `think()` is the

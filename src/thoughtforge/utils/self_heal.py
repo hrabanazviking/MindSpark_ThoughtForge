@@ -74,12 +74,24 @@ class SelfHealer:
     healing was not possible.  Errors are logged, never re-raised.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        memory_dir: Path | None = None,
+        knowledge_db_path: Path | None = None,
+    ) -> None:
         self._configs_dir = get_configs_dir()
         self._user_config_path = self._configs_dir / "user_config.yaml"
         self._default_config_path = self._configs_dir / "default.yaml"
-        self._memory_dir = get_memory_dir()
-        self._knowledge_db_path = get_knowledge_db_path()
+        # TF-055 (D-PER-1): the heal target is explicit. The
+        # defaults preserve the standalone behaviour (heal the
+        # default deployment's store + DB); a ThoughtForgeCore
+        # passes its OWN store dir and DB path, so constructing a
+        # core for one persona can no longer rewrite another
+        # persona's store files (measured pre-fix: a core built
+        # on a temp store quarantined a corrupt line in the
+        # DEFAULT store and reset its thread state file).
+        self._memory_dir = memory_dir or get_memory_dir()
+        self._knowledge_db_path = knowledge_db_path or get_knowledge_db_path()
 
     # ── Public API ─────────────────────────────────────────────────────────────
 

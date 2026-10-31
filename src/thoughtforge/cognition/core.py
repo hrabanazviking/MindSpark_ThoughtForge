@@ -242,10 +242,17 @@ class ThoughtForgeCore:
             self._personality
         )
 
-        # Self-heal any detectable issues on startup
+        # Self-heal any detectable issues on startup — in THIS
+        # core's own store and knowledge DB only (TF-055, D-PER-1:
+        # the un-targeted healer repaired the DEFAULT deployment's
+        # files, so building a core for one persona mutated
+        # another persona's store at construction).
         try:
             from thoughtforge.utils.self_heal import SelfHealer
-            SelfHealer().heal_all()
+            SelfHealer(
+                memory_dir=self._store.dir,
+                knowledge_db_path=self._knowledge.db_path,
+            ).heal_all()
         except Exception as _heal_exc:
             logger.debug("SelfHealer startup pass failed (non-critical): %s", _heal_exc)
 

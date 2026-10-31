@@ -10,13 +10,13 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 51 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 9 FIXED
+**Totals: 53 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 10 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
-TF-054 in Part III), 1
+TF-054 in Part III; D-PER-1 by TF-055 in Part III), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 9 · Part IV 8 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 11 · Part IV 8 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -24,7 +24,10 @@ nothing found stays unnumbered. Entries D-EMB-1 and D-EMB-2 were
 added by TF-053 in Part III under the same rule — defects that
 slice's own probes found and fixed in scope. Entries D-VEC-1
 and D-VEC-2 were added by TF-054 in Part III under the same
-rule.)
+rule. Entries D-PER-1 and D-PER-2 were added by TF-055 in
+Part III under the same rule — D-PER-1 found by that slice's
+probes and fixed in scope; D-PER-2 closed by that slice's
+verdict with evidence.)
 
 ## The docket
 
@@ -64,6 +67,8 @@ rule.)
 | D-EMB-2 | The embedding model's name was split in two spellings — `all-MiniLM-L6-v2` (etl, forge, config) vs `sentence-transformers/all-MiniLM-L6-v2` (onnx_export) — splitting the loader's name-keyed cache and the DB's exact-match `model_name` filter, so embeddings built under one spelling were invisible to searches under the other (found by TF-053) | TF-053 | III | **FIXED by TF-053**: `embedding_discipline.canonical_model_name()` folds every spelling of a registered model to the canonical name, wired through the ETL loader, both embedding builders (rows are stored canonically), both vector searches, and the forge's constructor (proven: a search under the hub spelling finds a row stored under the canonical name, with a fake backend) |
 | D-VEC-1 | One corrupt embedding blob poisoned the whole vector search: both searches stacked every blob with `np.stack`, so a NULL / empty / truncated / non-multiple-of-4 blob raised and returned nothing (every good row lost), and a right-length non-finite blob scored NaN and sorted ahead of a perfect 1.0 match (found by TF-054) | TF-054 | III | **FIXED by TF-054**: both searches load through `etl/vector_store.load_searchable_rows` — corrupt rows are skipped by row, logged with id and class (`null_blob` / `empty_blob` / `wrong_byte_count` / `non_finite`), and the good rows are scored; a store whose rows are all corrupt searches empty instead of raising |
 | D-VEC-2 | The embedding builders stored wrong-dimension vectors blindly (a fake 10-dim model produced stored 40-byte poison rows) and embedding writes ran at the schema's `synchronous = NORMAL`, so a power failure could lose the last committed batches — the Samtal lesson (WAL + `synchronous = FULL`) applied nowhere in the embedding path (found by TF-054) | TF-054 | III | **FIXED by TF-054**: both builders gate every vector through `etl/vector_store.validated_blob` (exact registered dimension, all-finite — a bad batch raises before any of its rows is written) and write on connections hardened by `harden_write_connection` (`synchronous = FULL`); per-batch transactions mean a mid-build crash leaves a partial, resumable index, never a half-landed batch |
+| D-PER-1 | A core's startup self-heal rewrote ANOTHER persona's store: `ThoughtForgeCore` ran `SelfHealer().heal_all()` un-targeted, so the healer repaired the DEFAULT deployment's memory dir + knowledge DB whatever store the core was built on — quarantining/resetting that store's files (and potentially renaming its DB) at any core's construction, while the constructed core's own store was never healed (found by TF-055's probe P3: a planted corrupt line in a fake default home was quarantined by constructing a core on a different persona's store) | TF-055 | III | **FIXED by TF-055**: `SelfHealer` takes an explicit `memory_dir` / `knowledge_db_path` target (defaults preserve the standalone behaviour) and the core passes its OWN store dir + DB path; post-fix probe: the foreign home is byte-identical after construction and the owning core's own corrupt line is healed in its own home, backup included |
+| D-PER-2 | The config personality fallback is a global assignment that can silently persona an empty-store core: a core whose store holds no personality core loads the YAML at the shared config's `cognition.personality_core_path`, so two personae served under ONE shared config share its assignment (measured TF-030 — default config → shipped `pers_001`; probed again by TF-055 P4 — empty store + a config naming persona A's core file runs as A) | TF-055 (verdict) | III | **CLOSED-BY-VERDICT by TF-055**: not a store bleed — the assignment never reads or writes any store, and identity precedence is pinned with evidence (a store's own core ALWAYS wins over the config file; the assignment applies only to a store holding no core). The ruled contract: serving two personae takes two stores AND two configs (or a config with no personality path); one shared config is one shared assignment, by the same rule as one shared directory (`knowledge/persona_separation.SEPARATION_SURFACES`). TF-030/TF-032/TF-038 own the fallback's semantics, unchanged |
 | D-ORPHAN-1 | `knowledge/lifecycle.py` is test-only: MemoryLifecycle is never wired into the live engine — no fact ever ages, decays, or is pruned at runtime (TF-011) | TF-045 (lifecycle wiring) | III | **FIXED by TF-045**: the core now holds a MemoryLifecycle over its own store — `_finish_turn` cools the active thread state once per completed turn (thread aging at runtime, cleared when stale) and `ThoughtForgeCore.prune_memory(mode)` runs an explicit prune pass; fact pruning is deliberately never automatic per turn (retirement is an operator's act). TF-041's K10 checker was flipped to pin the wiring's presence. Two further defects found by TF-045's probes and fixed in the same slice: hard-cap enforcement deleted PROTECTED records (the cap path ignored retention_class — a protected record was cap-deleted in the probe), now guarded (protection outranks the cap); and `MemoryLifecycle.reinforce` crashed on response patterns (`ResponsePatternRecord` had no `times_reinforced` field — every other record type carries one, and TF-042's counter vocabulary already named it), field added with default 0 |
 | D-ORPHAN-2 | `utils/retry.py` is test-only: CircuitBreaker/retry protect no production backend call (TF-011) | TF-073 (backend health & fallback) | IV | OPEN |
 | D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN |
