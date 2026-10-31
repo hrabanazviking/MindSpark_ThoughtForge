@@ -9,6 +9,15 @@ shorthand is listed as a numbered finding in §8, with a proposed
 owning slice. TF-039 reconciles this doc with shipped behaviour at
 the end of Part II; TF-182 reconciles it again for developers.
 
+**TF-039 reconciliation (2026-10-31):** this doc's §8 findings
+now carry a status table (5 closed, 2 ruled, F2 still open under
+TF-041), and TF-039 notes are appended where TF-020–TF-038
+changed the behaviour mapped below (drivers, config caps,
+retained state, traces). The original TF-019 text stands
+unrewritten as the map it was; the reconciled-as-data record is
+`src/thoughtforge/cognition/core_docs.py` with the write-up in
+`docs/architecture/CORE_DOCS_RECONCILED.md`.
+
 Principal source: `src/thoughtforge/cognition/core.py`
 (`ThoughtForgeCore.think`, 735 lines in the module). Supporting
 modules: `cognition/router.py`, `cognition/scaffold.py`,
@@ -84,6 +93,13 @@ chat modes), `setup_thoughtforge.py` (one smoke `think`), and
 `locustfile.py` (concurrent knowledge-only load). `think()` is the
 only public turn entry point; `load_model` / `unload_model` manage
 the local engine explicitly.
+
+*TF-039 reconciliation:* `think()` is no longer the only driver —
+`think_stream()` (TF-026) and `resume_turn()` (TF-027) drive the
+same `_run_turn` pipeline, and the inspection surface
+(`last_turn_state`, `last_turn_trace`, `last_turn_latency`, the
+conversation properties) is frozen at TF-034 with its post-freeze
+minor additions recorded at TF-039 (CORE_API_FREEZE_V1 §7).
 
 ## 3. Step 1 — Routing (`cognition/router.py`)
 
@@ -194,6 +210,13 @@ first candidate mode only, `GenerationRequest(max_tokens=512)` —
 the 512 is hard-coded here (profile-blindness, TF-012 D-PROF-3).
 A backend-reported error yields zero candidates.
 
+*TF-039 reconciliation:* since TF-032 the 512 is the *default*,
+not a hard code — a conversation selecting a profile gets that
+profile's `generation.max_response_tokens` as its cap on the
+plain and streamed paths alike (phone_low → 180, measured in
+TF-032/TF-037). Backend errors now also land on the turn as
+TF-031 failure records, not only as zero candidates.
+
 **C. No engine, no backend:** zero candidates → step 6′.
 
 A generation exception inside a mode is logged and that mode is
@@ -225,6 +248,13 @@ sketch, scaffold)`:
    generates from the refine prompt and replaces the best text only
    if its score improves. Unified-backend turns never refine —
    salvage falls through to the best draft.
+
+   *TF-039 reconciliation:* since TF-037 the pass count is the
+   conversation's resolved refinement cap — the selected
+   profile's `max_refinement_passes` where one is selected
+   (phone_low 1, pi_zero 0), the standing 2 otherwise. TF-037
+   found and fixed the pre-fix state, in which the profile's
+   promise was read by no cognition code.
 4. Fallback: best-scoring draft verbatim (`salvage_path="best_draft"`).
 
 Then `EnforcementGate.check(text, citations, retrieved_qids)` runs
@@ -265,6 +295,12 @@ generation milliseconds, token count = final's word count) and
 records three perf metrics. The turn state is then discarded —
 callers receive only the `FinalResponseRecord` (§8-F3).
 
+*TF-039 reconciliation:* the discard is history. Since TF-025
+the state is phased, retained on `core.last_turn_state`, and
+carries a measured `salvage_ms`; since TF-038 the whole turn
+exports as one trace via `core.last_turn_trace()`. §8-F3 is
+CLOSED (§8 status table).
+
 ## 7. Memory: the loop reads, it does not write
 
 The roadmap shorthand for the lifecycle ends “… → memory”. As built,
@@ -289,6 +325,22 @@ gap so Part II work does not assume it.
 Numbered for the TF-016 docket's closure rule (owning slice flips
 status with evidence; TF-192 verifies none left open without a
 reason). All verified by reading, F1/F3 also by the live trace.
+
+**TF-039 reconciliation — status of every finding:**
+
+| Finding | Status | Settled by |
+|---|---|---|
+| F1 `num_drafts` dead parameter | CLOSED | TF-034 (wired as a draft cap) |
+| F2 retrieval gate checks the wrong path | **OPEN** | TF-041 owns the fix; still true at TF-039 |
+| F3 turn state built and discarded | CLOSED | TF-025 (retained, `salvage_ms` measured) + TF-038 (trace export) |
+| F4 module docstring's 9 steps ≠ code's steps | CLOSED | TF-039 (docstring rewritten to the reconciled 7-step loop) |
+| F5 memory triggers computed, not consumed | RULED | TF-020 (extraction is the router's contract) |
+| F6 two fragment thresholds / systems | RULED not-a-defect | TF-022 (different instruments, cross-documented) |
+| F7 `prompt_text` never filled | CLOSED | TF-023 (field removed) |
+| F8 brainstorming duplicates a mode | CLOSED | TF-021 (`[brainstorm_distinct, practical]`) |
+
+The same record as data, with live evidence checks, is
+`RECONCILED_FINDINGS` in `src/thoughtforge/cognition/core_docs.py`.
 
 - **F1 — `num_drafts` is a dead parameter.** `think(user_text,
   retrieval_path, num_drafts)` documents it as “Override draft count

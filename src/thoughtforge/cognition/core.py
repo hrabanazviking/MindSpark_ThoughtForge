@@ -1,16 +1,32 @@
 """
 ThoughtForgeCore — the main memory-enforced cognition pipeline.
 
-Orchestrates the full think() loop:
-  1. InputRouter     → InputSketch
-  2. KnowledgeForge  → MemoryActivationBundle
-  3. ScaffoldBuilder → CognitionScaffold
-  4. PromptBuilder   → candidate prompts
-  5. TurboQuantEngine → draft generation
-  6. FragmentSalvage → scored drafts + refine passes → best text
-  7. EnforcementGate → citation integrity check
-  8. Quality gate    → repair pass if needed
-  9. FinalResponseRecord assembly
+Orchestrates the one turn loop (the reconciled map is
+docs/architecture/CORE_LOOP.md, TF-019 as reconciled by TF-039):
+
+  1. ROUTE      InputRouter → InputSketch
+  2. RETRIEVE   KnowledgeForge → MemoryActivationBundle
+  3. SCAFFOLD   ScaffoldBuilder → CognitionScaffold (the caller's
+                history, the will layer's standing goal, and the
+                persona block are folded into its fact_block)
+  4. GENERATE   local engine | unified backend | none →
+                CandidateRecords (PromptBuilder builds every
+                prompt inside this step and step 7; generation
+                failures are recorded on the turn, never silently
+                swallowed — TF-031)
+  5. FRAGMENT   per-sentence scoring; fragments kept at ≥ 0.25 on
+                the turn record (the salvage engine's own 0.54
+                threshold inside step 6 is a different instrument)
+  6. COMPOSE    FragmentSalvage → best text, then EnforcementGate
+                inside the same step → FinalResponseRecord — or,
+                with no candidates, the knowledge-only / stated-
+                failure record
+  7. QUALITY GATE  composite < 0.40 and candidates exist → one
+                repair generation, kept only if it scores higher
+
+think(), think_stream(), and resume_turn() are three drivers of
+this one pipeline (_run_turn); the finished turn's state is
+retained on last_turn_state and exportable via last_turn_trace().
 
 Works without a model (knowledge-only mode) and without a knowledge DB
 (model-only mode). Degrades gracefully in both cases.

@@ -144,3 +144,30 @@ TF-041; F4 → TF-039; the trace half of F3 → TF-038).
 - The service shape: TF-153/TF-154 build the callable
   service on top of this library freeze and version their
   own contract against it.
+
+## 7. Post-freeze minor additions — recorded at TF-039
+
+TF-035–TF-038 grew the surface by **minor additions only**
+(§4's rules: adding a name is minor). They were recorded in
+their own slices as they landed, each deferring the freeze
+record to the next reconciliation; TF-039 makes that record
+here and as data (`POST_FREEZE_ADDITIONS` in
+`src/thoughtforge/cognition/core_docs.py`, live-checked by
+`additions_problems()`):
+
+| Addition | Kind | Added by |
+|---|---|---|
+| `determinism_mode` | core property | TF-036 |
+| `last_turn_trace` | core method | TF-038 |
+| `thoughtforge.cognition.determinism` | module (`DeterminismMode`, `turn_fingerprint`, `run_seeded_script`) | TF-036 |
+| `thoughtforge.cognition.concurrency` | module (`CONCURRENCY_SURFACES`, `isolation_problems`, `run_concurrent_turns`) | TF-035 |
+| `thoughtforge.cognition.small_model_floor` | module (`FloorBudget`, `check_floor_turn`, `run_floor_conversation`) | TF-037 |
+| `thoughtforge.cognition.traces` | module (`TRACE_FORMAT`, `export_turn_trace`, `trace_problems`, `write_turn_trace`) | TF-038 |
+| `ConversationConfig.max_refinement_passes` | record field (the D-PROF-4 fix) | TF-037 |
+
+The frozen tables and `API_VERSION` (1.0.0) are **not** changed
+by the recording: folding these additions into the tables with
+a 1.1.0 bump is a freeze reconciliation act of its own, and
+TF-192 verifies at campaign end that none stands unrecorded.
+Until that fold-in, a consumer relying on an addition above
+should name it as post-freeze, exactly as this table does.

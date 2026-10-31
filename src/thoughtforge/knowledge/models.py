@@ -244,10 +244,10 @@ class InputSketch:
     """Transient representation of the user's current message. Not persisted."""
 
     raw_text: str
-    intent: str = ""                       # e.g. "question", "command", "request", "chitchat"
+    intent: str = ""                       # the router's taxonomy (TF-020): technical_debugging | technical_spec_request | editing_refinement | brainstorming | naming_or_branding | planning_request | emotional_support | factual_query | light_conversation
     topic: str = ""
-    tone_in: str = ""                      # detected tone of user's message
-    response_mode: str = "conversational"  # conversational | technical | supportive | creative
+    tone_in: str = ""                      # detected tone of user's message: frustrated | tired | urgent | curious | playful | focused | neutral
+    response_mode: str = "conversational"  # the router's modes (TF-020): structured_technical | concise_editorial | creative_brainstorm | calm_supportive | factual_direct | light_natural_chat (the default here is a construction fallback the router never emits)
     memory_triggers: list[str] = field(default_factory=list)
     urgency: float = 0.5                   # 0.0 = low, 1.0 = urgent
     retrieval_path: str = "hybrid"         # sql | vector | hybrid
