@@ -95,6 +95,10 @@ class UserPreferenceRecord:
     retention_class: RetentionClass = "standard"
     stale_after_turns: int = 200
     record_type: str = "user_preference"
+    # TF-047: provenance stamp (TF-042's MEMORY_PROVENANCE
+    # vocabulary). "" on legacy records written before the stamp
+    # existed; the writeback leg always stamps new records.
+    source: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -126,6 +130,8 @@ class UserFactRecord:
     retention_class: RetentionClass = "standard"
     stale_after_turns: int = 500
     record_type: str = "user_fact"
+    # TF-047: provenance stamp — see UserPreferenceRecord.source.
+    source: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -160,6 +166,8 @@ class EpisodicMemoryRecord:
     retention_class: RetentionClass = "ephemeral"
     stale_after_turns: int = 30
     record_type: str = "episode"
+    # TF-047: provenance stamp — see UserPreferenceRecord.source.
+    source: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -193,6 +201,8 @@ class ResponsePatternRecord:
     retention_class: RetentionClass = "standard"
     stale_after_turns: int = 100
     record_type: str = "response_pattern"
+    # TF-047: provenance stamp — see UserPreferenceRecord.source.
+    source: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()

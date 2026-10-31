@@ -322,6 +322,24 @@ POST_FREEZE_ADDITIONS: tuple[dict[str, Any], ...] = (
         ),
     },
     {
+        "name": "apply_writeback",
+        "kind": "core-method",
+        "added_by": "TF-047",
+        "note": (
+            "apply one WritebackRecord to the core's store through "
+            "the gated writeback leg (knowledge/writeback.py), "
+            "retaining the outcome; _finish_turn calls it for a "
+            "turn carrying a writeback, gated on the final's "
+            "enforcement verdict"
+        ),
+    },
+    {
+        "name": "last_writeback_outcome",
+        "kind": "core-property",
+        "added_by": "TF-047",
+        "note": "the last writeback outcome this core applied (None until one is)",
+    },
+    {
         "name": "ConversationConfig.max_refinement_passes",
         "kind": "record-field",
         "added_by": "TF-037",

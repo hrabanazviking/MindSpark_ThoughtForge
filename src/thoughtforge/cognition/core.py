@@ -88,6 +88,7 @@ from thoughtforge.knowledge.models import (
 )
 from thoughtforge.knowledge.lifecycle import MemoryLifecycle
 from thoughtforge.knowledge.store import MemoryStore
+from thoughtforge.knowledge.writeback import WritebackOutcome, apply_writeback
 from thoughtforge.refinement.enforcement import EnforcementGate
 from thoughtforge.refinement.salvage import FragmentSalvage
 from thoughtforge.utils.config import load_config
@@ -179,6 +180,11 @@ class ThoughtForgeCore:
         # NEVER automatic per turn — retirement of facts is an
         # operator's act, not a side effect of chatting.
         self._lifecycle = MemoryLifecycle(store=self._store)
+        # TF-047: the most recent writeback outcome (knowledge/
+        # writeback.py), retained like the last turn state. None
+        # until a turn actually carries a writeback — a turn with
+        # no writeback writes nothing and reports nothing.
+        self._last_writeback_outcome: Any = None
         self._router = InputRouter()
         self._scaffold_builder = ScaffoldBuilder()
         self._prompt_builder = PromptBuilder()
@@ -247,6 +253,26 @@ class ThoughtForgeCore:
         the first think()). The same object think() built — retained,
         not copied; callers must treat it as read-only."""
         return self._last_turn_state
+
+    @property
+    def last_writeback_outcome(self) -> WritebackOutcome | None:
+        """TF-047: the outcome of the last writeback this core
+        applied (None until one is applied — a turn carrying no
+        writeback leaves it untouched)."""
+        return self._last_writeback_outcome
+
+    def apply_writeback(
+        self, writeback: Any, *, enforcement_passed: bool
+    ) -> WritebackOutcome:
+        """TF-047: apply one writeback to this core's memory store
+        through the gated leg (knowledge/writeback.py) and retain
+        the outcome. ``enforcement_passed`` is the producing
+        turn's EnforcementGate verdict: False writes nothing."""
+        outcome = apply_writeback(
+            self._store, writeback, enforcement_passed=enforcement_passed
+        )
+        self._last_writeback_outcome = outcome
+        return outcome
 
     @property
     def conversation_config(self) -> ConversationConfig:
@@ -820,6 +846,21 @@ class ThoughtForgeCore:
             self._lifecycle.cool_thread()
         except Exception as exc:  # noqa: BLE001 — turn must survive
             logger.warning("TF-045 thread cooling failed: %s", exc)
+        # TF-047: conversation → memory writeback — if the turn
+        # carries a writeback, apply it through the gated leg
+        # (knowledge/writeback.py), gated on this final's own
+        # enforcement verdict. A turn with no writeback writes
+        # nothing. Same discipline as the cooling above: a
+        # writeback failure is logged at warning and the final
+        # stands — learning must never kill a completed turn.
+        if turn.writeback is not None:
+            try:
+                self.apply_writeback(
+                    turn.writeback,
+                    enforcement_passed=final.enforcement_passed,
+                )
+            except Exception as exc:  # noqa: BLE001 — turn must survive
+                logger.warning("TF-047 writeback failed: %s", exc)
         return final
 
     def load_model(self, model_path: str | Path | None = None) -> None:
