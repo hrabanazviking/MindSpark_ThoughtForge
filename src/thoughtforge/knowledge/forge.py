@@ -367,9 +367,19 @@ class KnowledgeForge:
             # Importance proxy: popularity for entities, weight for conceptnet
             importance = min(record.get("popularity_score", 0.0) + record.get("weight", IMPORTANCE_WEIGHT_DEFAULT), 1.0)
 
-            # Recency: knowledge graph records are static; use source-based proxy
+            # Recency: TF-059 — a record carrying its own
+            # timestamp ages for real (decayed recency of
+            # its age at the default half-life, knowledge/
+            # freshness.py). Knowledge graph records carry
+            # no timestamp (the schema has no date column),
+            # so they keep the source-based proxy below —
+            # stated, not hidden (D-FRESH-1).
+            from thoughtforge.knowledge.freshness import recency_from_timestamps
+
             source = record.get("source", "wikidata")
-            recency = SOURCE_RECENCY_PROXIES.get(source, DEFAULT_SOURCE_RECENCY)
+            recency = recency_from_timestamps(record)
+            if recency is None:
+                recency = SOURCE_RECENCY_PROXIES.get(source, DEFAULT_SOURCE_RECENCY)
 
             dims = RetrievalDimensions(
                 semantic_similarity=sim,

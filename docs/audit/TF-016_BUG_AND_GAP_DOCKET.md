@@ -10,14 +10,14 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 54 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 11 FIXED
+**Totals: 55 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 12 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
 TF-054 in Part III; D-PER-1 by TF-055 in Part III; D-REF-1
-by TF-058 in Part III), 2
+by TF-058 in Part III; D-FRESH-1 by TF-059 in Part III), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 12 · Part IV 8 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 13 · Part IV 8 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -30,7 +30,9 @@ Part III under the same rule — D-PER-1 found by that slice's
 probes and fixed in scope; D-PER-2 closed by that slice's
 verdict with evidence. Entry D-REF-1 was added by TF-058 in
 Part III under the same rule — found by that slice's probes
-and fixed in scope.)
+and fixed in scope. Entry D-FRESH-1 was added by TF-059 in
+Part III under the same rule — found by that slice's probes
+and fixed in scope for timestamp-carrying records.)
 
 ## The docket
 
@@ -86,6 +88,7 @@ and fixed in scope.)
 | D-DATA-3 | No provenance/licence file inside `data/`; provenance for external-source sets lives only in ETL code comments (TF-007 finding 4) | TF-106 (source registry) + TF-190 | VI | OPEN |
 | D-DATA-4 | Most of `data/` is not ingestible by ReferenceDataETL: persona imagery (225 jpg / 152.9 MB) and the lone .csv/.py/.rst fall outside its supported set — ingestion must skip by rule, not by accident (TF-007 finding 1) | TF-118 (reference library as a source) + TF-058 (binding) | VI | OPEN — **narrowed by TF-058**: the read side now skips by classified, counted rule (`knowledge/reference_library.FILE_CLASSES`: readable / image / other, every skip named in `chunk_report()`) and dedups readable files by SHA-256 before chunking. The ingestion side — the ETL's own silent `continue` past unsupported files and its double-chunking of duplicate files — remains TF-118's share |
 | D-REF-1 | A library ingested by `ReferenceDataETL.build()` (or the `forge_memory reference` command) was invisible to retrieval: `reference_chunks` is searched through an external-content FTS5 table that a plain INSERT never populates, and neither the build nor the command rebuilt it (only the embeddings step did) — probed by TF-058: after a plain build of the synthetic library (3 files / 6 chunks), `KnowledgeForge.sql_retrieve` returned 0 rows for every query (found by TF-058) | TF-058 | III | **FIXED by TF-058**: `ReferenceDataETL.build()` now calls `rebuild_fts_indexes(self.db_path)` before returning (stats unchanged); proven behaviourally — after a plain build, the forge's SQL pass returns the reference rows and `retrieve(min_score=0)` bundles them, no manual rebuild |
+| D-FRESH-1 | Retrieval recency was time-blind: `KnowledgeForge._score_records` set the recency dimension from `SOURCE_RECENCY_PROXIES`, a per-source constant — probed by TF-059: two records identical except a `created_at` of 2020 vs 2026 scored exactly the same composite (0.57); a record's actual age never entered its score, and the knowledge DB's tables carry no timestamp column at all (found by TF-059) | TF-059 | III | **FIXED by TF-059** for timestamp-carrying records: `_score_records` now takes a record's own timestamp (`updated_at`/`created_at`/`last_used_at`/`timestamp`, via `knowledge/freshness.recency_from_timestamps`) as decayed recency at the default half-life instead of the source proxy; timestamp-less records — every record the shipped DB tables produce today, and TF-043's whole fixture corpus — keep the proxy byte-identically, so the pinned baseline does not move. The stated remainder: the ETL schema carries no date column, so DB recency stays a proxy until an ingestion slice gives it a date to carry (TF-106/TF-111's road) |
 | D-REC-1 | TASK_PHASE1 and TASK_PHASE2 docs are absent from the tree (git ls-tree, TF-003) — a gap in the record, not in the software; their work exists as code | None — TF-015 verdict: no reconstruction commissioned (inventing them retroactively would falsify the record); TF-182 notes the gap for new readers | X | **CLOSED-BY-VERDICT** |
 | D-REL-1 | BP Phase 6's release claims are NOT PROVEN from the tree: no v1.0 GitHub release, HF model cards, or public demo is evidenced (TF-003) | TF-185 (release shaping) | X | OPEN |
 | D-DOC-1 | BUILD_PLAN_v1's spec pointers drift: of its 14 named spec files, 8 match exactly, 2 differ by case, 4 stand under drifted names — all subjects present, the plan's filenames unreliable (TF-015). No elder spec is renamed by the verdict | TF-182 (developer docs carry the correct pointers) | X | OPEN |
