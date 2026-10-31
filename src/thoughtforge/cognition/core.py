@@ -32,6 +32,7 @@ from thoughtforge.cognition.interruption import (
     check_interrupt,
     mark_interrupted,
 )
+from thoughtforge.cognition.persona import PersonaExpectation, inject_persona
 from thoughtforge.cognition.prompt_builder import PromptBuilder
 from thoughtforge.cognition.streaming import StreamEvent, chunk_words
 from thoughtforge.cognition.turn_state import advance_phase, phase_index
@@ -132,6 +133,15 @@ class ThoughtForgeCore:
         if self._personality is None:
             self._personality = _load_personality_from_config(self._config)
 
+        # TF-030: the persona expectation — a construction-time
+        # snapshot of the personality in force (cognition/persona.py).
+        # Its steering block is injected into every turn's scaffold;
+        # it is also the object persona-consistency consumers score
+        # against. None when no personality is loaded.
+        self._persona_expectation = PersonaExpectation.from_record(
+            self._personality
+        )
+
         # Self-heal any detectable issues on startup
         try:
             from thoughtforge.utils.self_heal import SelfHealer
@@ -154,6 +164,13 @@ class ThoughtForgeCore:
         the first think()). The same object think() built — retained,
         not copied; callers must treat it as read-only."""
         return self._last_turn_state
+
+    @property
+    def persona_expectation(self) -> PersonaExpectation | None:
+        """TF-030: the persona in force for this core (None when no
+        personality is loaded). The live snapshot — callers must
+        treat it as read-only."""
+        return self._persona_expectation
 
     @property
     def will_ledger(self) -> GoalLedger:
@@ -362,6 +379,12 @@ class ThoughtForgeCore:
                         )
                     else:
                         scaffold.fact_block = f"Conversation history:\n{history_context}"
+            # ── TF-030: the persona steering block (traits / speech
+            # style / behavior rules from the loaded personality)
+            # prepends to the fact_block — the same injection
+            # channel as history above. Persona steers every turn,
+            # including the first: identity is not persistence.
+            inject_persona(scaffold, self._persona_expectation)
             # ── TF-029: the will layer observes the turn, then the
             # standing goal (if any, and not set this very turn)
             # prepends its one line to the fact_block — the same
