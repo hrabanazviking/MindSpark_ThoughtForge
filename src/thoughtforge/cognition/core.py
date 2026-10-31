@@ -35,6 +35,7 @@ from thoughtforge.cognition.interruption import (
 from thoughtforge.cognition.prompt_builder import PromptBuilder
 from thoughtforge.cognition.streaming import StreamEvent, chunk_words
 from thoughtforge.cognition.turn_state import advance_phase, phase_index
+from thoughtforge.cognition.will import GoalLedger, inject_will
 from thoughtforge.cognition.router import InputRouter
 from thoughtforge.cognition.scaffold import ScaffoldBuilder
 from thoughtforge.knowledge.forge import KnowledgeForge
@@ -119,6 +120,11 @@ class ThoughtForgeCore:
         # after think() returns (was built and discarded — CORE_LOOP
         # §8-F3). Trace *export* of it is TF-038's slice.
         self._last_turn_state: RuntimeTurnState | None = None
+        # TF-029: the will layer — one goal ledger per core instance
+        # (a conversation's standing goal, persisted across turns;
+        # cognition/will.py). Observed after each turn's scaffold
+        # is built; injects into that scaffold from the next turn on.
+        self._will = GoalLedger()
         self._perf = get_perf_tracker()
         self._personality = self._store.load_personality_core()
 
@@ -148,6 +154,12 @@ class ThoughtForgeCore:
         the first think()). The same object think() built — retained,
         not copied; callers must treat it as read-only."""
         return self._last_turn_state
+
+    @property
+    def will_ledger(self) -> GoalLedger:
+        """TF-029: this conversation's goal ledger (the will layer).
+        The live object — callers must treat it as read-only."""
+        return self._will
 
     def think(
         self,
@@ -350,6 +362,14 @@ class ThoughtForgeCore:
                         )
                     else:
                         scaffold.fact_block = f"Conversation history:\n{history_context}"
+            # ── TF-029: the will layer observes the turn, then the
+            # standing goal (if any, and not set this very turn)
+            # prepends its one line to the fact_block — the same
+            # injection channel history uses above. Observation is
+            # before the interrupt cut points on purpose: a cut
+            # turn still stated its goal.
+            self._will.observe_turn(sketch, scaffold.goal)
+            inject_will(scaffold, self._will)
             turn.scaffold = scaffold
             advance_phase(turn, "scaffolded")
 
