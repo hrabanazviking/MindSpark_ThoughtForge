@@ -6,7 +6,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,11 @@ class GenerationRequest:
     system_prompt: str = ""
     # OpenAI chat format; if non-empty, backend should use this directly
     messages: list[dict] = field(default_factory=list)
+    # TF-036: the determinism mode's per-call seed, when the
+    # caller selected one. None = unseeded (the standing
+    # behaviour). A backend that can seed its sampler should
+    # honour this; TF-065 owns making that a contract duty.
+    seed: int | None = None
 
 
 @dataclass
@@ -36,11 +41,50 @@ class UnifiedBackend(ABC):
     @abstractmethod
     def generate(self, request: GenerationRequest) -> GenerationResponse: ...
 
+    def generate_stream(self, request: GenerationRequest) -> Iterator[str]:
+        """Stream a generation as text chunks (TF-026).
+
+        Default: NOT native streaming — the backend's completed
+        ``generate()`` response is yielded as a single chunk (and
+        nothing at all when the response carries an error). A
+        backend that can truly stream overrides this and yields
+        incrementally; the cognition core detects the override and
+        labels its chunks native, while chunks from this default
+        are re-chunked for delivery and labelled simulated.
+        """
+        resp = self.generate(request)
+        if not resp.error and resp.text:
+            yield resp.text
+
     @abstractmethod
     def health_check(self) -> bool: ...
 
     @abstractmethod
     def backend_name(self) -> str: ...
+
+    def count_tokens(self, text: str) -> int:
+        """Count tokens in ``text`` (TF-065 contract duty).
+
+        Default: the contract estimate (~4 chars per token,
+        0 for empty) — declared ``estimate`` in the capability
+        record. A backend with a model tokeniser overrides
+        this and declares ``model`` while that tokeniser is
+        actually in hand.
+        """
+        from thoughtforge.inference.backend_contract import estimate_tokens
+
+        return estimate_tokens(text)
+
+    def capabilities(self):  # -> BackendCapabilities (TF-065)
+        """This backend's capability truth (TF-065 contract duty).
+
+        Default: the conservative record derived from the
+        class itself (see ``default_capabilities``). Shipped
+        backends override with their own declared record.
+        """
+        from thoughtforge.inference.backend_contract import default_capabilities
+
+        return default_capabilities(self)
 
 
 def load_backend_from_config(config_path: Path | None = None) -> UnifiedBackend | None:

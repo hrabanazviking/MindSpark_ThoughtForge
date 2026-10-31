@@ -1,0 +1,13 @@
+# SYNTHETIC_FIXTURE — invented places; no real dataset content.
+synthetic_fixture: true
+places:
+  - name: Lantern Hollow
+    kind: village
+    river: River Sarn
+    landmark: tide bell
+  - name: Willow Narrows
+    kind: ferry crossing
+    crossing_minutes_calm: 11
+  - name: Mill Landing
+    kind: landing
+    keeper: Wrenna the Lantern-Keeper

@@ -11,11 +11,18 @@ import time
 
 import requests
 
+from thoughtforge.inference.openai_compatible import (
+    chat_completion_outcome,
+    normalize_base_url,
+)
 from thoughtforge.inference.unified_backend import (
     GenerationRequest,
     GenerationResponse,
     UnifiedBackend,
 )
+# TF-025 (D-DUP-1): _build_messages' one implementation lives in
+# utils/common.py; this name is its alias.
+from thoughtforge.utils.common import build_messages as _build_messages
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +35,10 @@ class LMStudioBackend(UnifiedBackend):
         api_key: str = "lm-studio",
         timeout: int = 120,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        # TF-076 (D-OAI-2): the family's shared normaliser —
+        # a base ending in /v1 names the same server, and
+        # the routes below are built from the root.
+        self.base_url = normalize_base_url(base_url)
         self.model = model
         self.api_key = api_key
         self.timeout = timeout
@@ -51,6 +61,9 @@ class LMStudioBackend(UnifiedBackend):
                 payload["model"] = self.model
             if request.stop:
                 payload["stop"] = request.stop
+            if request.seed is not None:
+                # TF-065 seed duty: the OpenAI-shaped seed field.
+                payload["seed"] = request.seed
 
             headers = {"Authorization": f"Bearer {self.api_key}"}
             resp = requests.post(
@@ -62,16 +75,30 @@ class LMStudioBackend(UnifiedBackend):
             resp.raise_for_status()
             data = resp.json()
 
-            choice = data.get("choices", [{}])[0]
-            text: str = choice.get("message", {}).get("content", "")
-            finish_reason: str = choice.get("finish_reason") or "stop"
-            usage = data.get("usage", {})
-            tokens_gen: int = usage.get("completion_tokens", 0)
+            # TF-076 (D-OAI-1 / D-OAI-3): the family's ONE
+            # shared parser judges the body — finish reasons
+            # stay inside the TF-065 vocabulary, content is
+            # text or a named error (never None), no choices
+            # is a named error, and a missing usage block
+            # falls back to the declared contract estimate
+            # instead of a silent 0.
+            outcome = chat_completion_outcome(data)
+            if not outcome["ok"]:
+                return GenerationResponse(
+                    text="",
+                    error=outcome["error"],
+                    finish_reason="error",
+                    backend_used=self.backend_name(),
+                    latency_ms=(time.monotonic() - start) * 1000,
+                )
+            tokens_gen = outcome["completion_tokens"]
+            if tokens_gen is None:
+                tokens_gen = self.count_tokens(outcome["text"])
 
             return GenerationResponse(
-                text=text,
-                tokens_generated=tokens_gen,
-                finish_reason=finish_reason,
+                text=outcome["text"],
+                tokens_generated=int(tokens_gen),
+                finish_reason=outcome["finish_reason"],
                 backend_used=self.backend_name(),
                 latency_ms=(time.monotonic() - start) * 1000,
             )
@@ -97,6 +124,48 @@ class LMStudioBackend(UnifiedBackend):
         except Exception:
             return False
 
+    def capabilities(self):
+        """TF-065 contract record: simulated streaming (no
+        generate_stream override), estimate token counting
+        (the OpenAI-compatible shape guarantees no tokeniser
+        endpoint), seed honoured via the seed field, served
+        by a local-or-remote server."""
+        from thoughtforge.inference.backend_contract import BackendCapabilities
+
+        return BackendCapabilities(
+            name=self.backend_name(),
+            streaming="simulated",
+            token_counting="estimate",
+            seed="honoured",
+            placement="local_or_remote",
+            model=self.model,
+        )
+
+    def model_listed(self) -> bool | None:
+        """TF-077 (D-HEALTH-2): is the configured model in
+        the server's /v1/models list? Tri-state, mirroring
+        TF-076's surface: None when no model is configured
+        or the server could not be asked — unknown, never
+        dressed as absent (list_models() returns [] for
+        both)."""
+        if not self.model:
+            return None
+        try:
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            resp = requests.get(
+                f"{self.base_url}/v1/models",
+                headers=headers,
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            ids = [m.get("id") for m in data.get("data", [])
+                   if isinstance(m, dict)]
+            return self.model in ids
+        except Exception:  # noqa: BLE001 — unknown, stated
+            return None
+
     def list_models(self) -> list[str]:
         try:
             headers = {"Authorization": f"Bearer {self.api_key}"}
@@ -112,13 +181,3 @@ class LMStudioBackend(UnifiedBackend):
             logger.warning("LMStudioBackend.list_models failed: %s", exc)
             return []
 
-
-def _build_messages(request: GenerationRequest) -> list[dict]:
-    if request.messages:
-        return request.messages
-
-    msgs: list[dict] = []
-    if request.system_prompt:
-        msgs.append({"role": "system", "content": request.system_prompt})
-    msgs.append({"role": "user", "content": request.prompt})
-    return msgs

@@ -25,7 +25,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from thoughtforge.inference.backends import BackendInfo, build_llama_kwargs, select_backend
 from thoughtforge.inference.profiles import (
@@ -34,6 +34,7 @@ from thoughtforge.inference.profiles import (
     ResolvedGenerationParams,
     resolve_generation_params,
 )
+from thoughtforge.inference.quant_policy import QuantVerdict, check_quant_for_profile
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,10 @@ class GenerationParams:
     top_k: int = 40
     stop: list[str] = field(default_factory=list)
     stream: bool = False
+    # TF-036: per-call sampling seed (determinism mode). None =
+    # unseeded; when set it is forwarded to the llama call, and
+    # omitted entirely when None so unseeded calls are unchanged.
+    seed: int | None = None
 
 
 @dataclass
@@ -128,6 +133,7 @@ class TurboQuantEngine:
         self._verbose = verbose
 
         self._model: Any = _NOT_LOADED
+        self.quant_verdict: QuantVerdict | None = None
         self._profile_match: ProfileMatch | None = None
         self._params: ResolvedGenerationParams | None = None
         self._backend: BackendInfo | None = None
@@ -154,6 +160,37 @@ class TurboQuantEngine:
             self._profile_match.profile_id,
             self._profile_match.reason,
         )
+
+        # TF-068 (D-QUANT-1): the profile's quant is policy, not a
+        # suggestion nobody reads. Check the loaded file's
+        # filename-provable quant against the profile's policy
+        # default and record the verdict; a mismatch is announced,
+        # never silently passed (and never a hard refusal — the
+        # operator may load another quant deliberately, but not
+        # unknowingly). A filename proving no quant is recorded
+        # as unprovable, never rounded up.
+        self.quant_verdict = check_quant_for_profile(
+            self._profile_match.profile_id,
+            self.model_path.name if self.model_path else None,
+        )
+        if self.quant_verdict.status == "mismatch":
+            logger.warning(
+                "Quant policy mismatch: profile %s defaults to %s but "
+                "the loaded file %s proves %s — loading as instructed, "
+                "mismatch recorded (TF-068 quant policy)",
+                self.quant_verdict.profile_id,
+                self.quant_verdict.expected,
+                self.model_path.name if self.model_path else "",
+                self.quant_verdict.found,
+            )
+        elif self.quant_verdict.status == "unprovable":
+            logger.info(
+                "Quant policy: %s proves no quant for profile %s "
+                "(%s) — recorded as unprovable, not a mismatch",
+                self.model_path.name if self.model_path else "",
+                self.quant_verdict.profile_id,
+                self.quant_verdict.gap,
+            )
 
         # Resolve backend
         self._backend = select_backend(
@@ -243,6 +280,7 @@ class TurboQuantEngine:
                 top_k=p.get("top_k", 40),
                 stop=stop_sequences,
                 echo=False,
+                **({"seed": p["seed"]} if p.get("seed") is not None else {}),
             )
         except Exception as e:
             logger.error("Generation failed: %s", e)
@@ -276,6 +314,80 @@ class TurboQuantEngine:
             completion_tokens, elapsed_ms, tps,
         )
         return result
+
+    def generate_stream(
+        self,
+        prompt: str,
+        params: GenerationParams | None = None,
+    ) -> "Iterator[str]":
+        """
+        Stream a single generation, yielding text deltas as the
+        model produces them (TF-026).
+
+        The llama call is made with ``stream=True``; each yielded
+        item is one choice-delta's text, in order, unstripped —
+        ``"".join(generate_stream(...))`` is the raw completion,
+        where ``generate()`` returns the same text stripped.
+        Parameters and the token budget are merged and enforced
+        exactly as in ``generate()``. A failure mid-stream raises
+        RuntimeError, like ``generate()``; deltas already yielded
+        stay yielded — the caller decides what a partial stream
+        means (the cognition core discards the partial candidate).
+
+        TF-072 (D-STREAM-1): the underlying llama stream is
+        closed on EVERY exit — exhaustion, a mid-stream error,
+        and the consumer closing this generator early
+        (GeneratorExit) — via the ``finally`` below. Before this
+        fix the stream iterator was simply abandoned on the
+        error and early-close paths, leaving the model's
+        streaming state to garbage collection.
+        """
+        self._assert_ready()
+        assert self._params is not None  # guaranteed by _assert_ready
+
+        p = self._merge_params(params)
+        max_tokens = self._enforce_token_budget(p["max_tokens"])
+        stop_sequences = p.get("stop", [])
+
+        stream = None
+        try:
+            llama = self._model
+            stream = llama(
+                prompt,
+                max_tokens=max_tokens,
+                temperature=p["temperature"],
+                repeat_penalty=p["repeat_penalty"],
+                top_p=p["top_p"],
+                top_k=p.get("top_k", 40),
+                stop=stop_sequences,
+                echo=False,
+                stream=True,
+                **({"seed": p["seed"]} if p.get("seed") is not None else {}),
+            )
+            for chunk in stream:
+                choices = chunk.get("choices") if isinstance(chunk, dict) else None
+                if not choices:
+                    continue
+                delta = choices[0].get("text", "")
+                if delta:
+                    yield delta
+        except Exception as e:
+            logger.error("Streaming generation failed: %s", e)
+            raise RuntimeError(f"TurboQuantEngine streaming error: {e}") from e
+        finally:
+            # TF-072: close the model's stream iterator whatever
+            # way this generator ends. GeneratorExit is not an
+            # Exception and is not converted above; it still runs
+            # this finally, so a consumer's close() reaches the
+            # model. A stream with no close() (a plain iterator)
+            # needs nothing; a failing close never masks the
+            # stream's own outcome.
+            close = getattr(stream, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except Exception:
+                    logger.debug("llama stream close failed", exc_info=True)
 
     def generate_drafts(
         self,
@@ -318,6 +430,13 @@ class TurboQuantEngine:
                 repeat_penalty=params.repeat_penalty if params else None,
                 top_p=params.top_p if params else None,
                 stop=params.stop if params else [],
+                # TF-036: a seeded draft set stays reproducible
+                # AND varied — draft i carries seed + i.
+                seed=(
+                    (params.seed + i)
+                    if params is not None and params.seed is not None
+                    else None
+                ),
             )
             try:
                 result = self.generate(prompt, draft_params)
@@ -344,6 +463,15 @@ class TurboQuantEngine:
         """
         Estimate token count for a text string.
         Uses llama.cpp tokenizer if loaded, otherwise falls back to rough heuristic.
+
+        Basis (TF-071): the model path returns the llama.cpp
+        tokeniser's count, which by its default includes the
+        BOS special token — so a loaded engine counts "" as 1.
+        The fallback is the TF-065 contract estimate, delegated
+        to ``backend_contract.estimate_tokens`` (its one home;
+        this method's pre-TF-071 private copy of the heuristic
+        counted "" as 1 even with no model loaded, breaching
+        the contract's empty rule — D-TOK-1).
         """
         if self._model is not _NOT_LOADED and self._model is not None:
             try:
@@ -351,8 +479,11 @@ class TurboQuantEngine:
                 return len(tokens)
             except Exception:
                 pass
-        # Heuristic: ~4 chars per token (GPT-like tokenizers)
-        return max(1, len(text) // 4)
+        # The contract estimate (TF-065/TF-071): ~4 chars per
+        # token, script-aware, 0 for empty.
+        from thoughtforge.inference.backend_contract import estimate_tokens
+
+        return estimate_tokens(text)
 
     # ── Properties ─────────────────────────────────────────────────────────────
 
@@ -447,6 +578,7 @@ class TurboQuantEngine:
             "top_p": p.top_p if p.top_p is not None else defaults.top_p,
             "top_k": p.top_k,
             "stop": p.stop,
+            "seed": p.seed,
         }
 
     def _enforce_token_budget(self, requested_tokens: int) -> int:

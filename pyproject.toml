@@ -33,6 +33,7 @@ dependencies = [
     "numpy>=1.26",
     "tqdm>=4.66",
     "pyyaml>=6.0",
+    "requests>=2.31",
     "click>=8.1",
     "rich>=13.0",
     "platformdirs>=4.0",
@@ -41,6 +42,21 @@ dependencies = [
 [project.optional-dependencies]
 inference = [
     "llama-cpp-python>=0.2.50",
+]
+# TF-065 (D-DEP-5): the optional, lazily/guardedly imported
+# packages, declared as extras so they can be installed by
+# name; no code imports any of them at module top level.
+hub = [
+    "huggingface_hub>=0.23",
+    "transformers>=4.40",
+]
+onnx = [
+    "onnxruntime>=1.17",
+    "optimum>=1.20",
+    "transformers>=4.40",
+]
+system = [
+    "psutil>=5.9",
 ]
 quantization = [
     "bitsandbytes>=0.43",

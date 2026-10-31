@@ -107,7 +107,11 @@ _INTENT_TO_CANDIDATE_MODES: dict[str, list[str]] = {
     "technical_spec_request": ["strict_spec", "implementation_friendly"],
     "technical_debugging":    ["implementation_friendly", "strict_spec"],
     "editing_refinement":     ["editorial_sharp", "implementation_friendly"],
-    "brainstorming":          ["brainstorm_distinct", "brainstorm_distinct"],
+    # TF-021 ruling (CORE_LOOP §8-F8): brainstorming's second pass is the
+    # grounded "practical" angle, not a second copy of brainstorm_distinct —
+    # two identical modes bought a second sample, not a second scaffold.
+    # (Naming, its nearest kin, already pairs the two this way.)
+    "brainstorming":          ["brainstorm_distinct", "practical"],
     "naming_or_branding":     ["brainstorm_distinct", "practical"],
     "planning_request":       ["strict_spec", "practical"],
     "emotional_support":      ["empathic", "reflective"],
@@ -119,7 +123,21 @@ _INTENT_TO_CANDIDATE_MODES: dict[str, list[str]] = {
 # ── Fact block assembly ────────────────────────────────────────────────────────
 
 def _build_fact_block(records: list[ActivatedRecord], max_records: int = 8) -> str:
-    """Assemble a compact fact block from top-scored knowledge records."""
+    """Assemble a compact fact block from top-scored knowledge records.
+
+    TF-048 (cite-or-explain I): every line opens with the record's
+    citation marker — ``[<marker>]`` from the record's
+    CitationPayload, which the record carries by construction
+    (knowledge/models.derive_citation). Before this slice the
+    marker was improvised here from raw fields — a QID when one
+    existed, a bare source name otherwise — and a record with
+    neither qid nor label fell through to its bare cue, entering
+    the prompt with NO citation at all. That fall-through is gone:
+    the payload's marker is never empty, so no line can be
+    uncited. The 8-line budget is unchanged (the bundle may hold
+    more; every record still carries its payload, and the lines
+    that enter the prompt are the top-scored ones, as before).
+    """
     if not records:
         return ""
 
@@ -127,23 +145,17 @@ def _build_fact_block(records: list[ActivatedRecord], max_records: int = 8) -> s
     lines: list[str] = []
     for r in top:
         raw: dict[str, Any] = r.raw or {}
-        qid = raw.get("qid", "")
         label = raw.get("label_en") or raw.get("title") or r.record_id
         desc = raw.get("description_en") or raw.get("content", "")
-        source = raw.get("source", r.record_type)
+        marker = r.citation.marker if r.citation is not None else r.record_id
 
-        if qid:
-            line = f"[{qid}] {label}"
-            if desc:
-                short = desc[:120].rsplit(" ", 1)[0]
-                line += f" — {short}"
-        elif label:
-            line = f"[{source}] {label}"
+        if label:
+            line = f"[{marker}] {label}"
             if desc:
                 short = desc[:120].rsplit(" ", 1)[0]
                 line += f" — {short}"
         else:
-            line = r.cue
+            line = f"[{marker}] {r.cue}"
 
         lines.append(line)
 
@@ -193,7 +205,10 @@ class ScaffoldBuilder:
                     avoid.append(a)
 
         depth = _derive_depth(sketch)
-        candidate_modes = list(_INTENT_TO_CANDIDATE_MODES.get(sketch.intent, ["practical", "practical"]))
+        # TF-021: the unknown-intent fallback is a single practical pass —
+        # the old ["practical", "practical"] was the same duplicate-mode
+        # defect as F8. No registry row may repeat a candidate mode.
+        candidate_modes = list(_INTENT_TO_CANDIDATE_MODES.get(sketch.intent, ["practical"]))
         fact_block = _build_fact_block(bundle.activated_records)
 
         scaffold = CognitionScaffold(
@@ -204,7 +219,8 @@ class ScaffoldBuilder:
             depth=depth,
             candidate_modes=candidate_modes,
             fact_block=fact_block,
-            prompt_text="",      # filled in by PromptBuilder
+            # No prompt_text: TF-023 removed the field (CORE_LOOP
+            # §8-F7) — PromptBuilder returns prompts to its callers.
         )
 
         logger.debug(

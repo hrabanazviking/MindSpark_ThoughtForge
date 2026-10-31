@@ -172,7 +172,7 @@ class TestCheckMemoryStore:
 
     def test_valid_yaml_is_ok(self, tmp_path):
         f = tmp_path / "personality_core.yaml"
-        f.write_text("name: Sigrid\nage: 21\n", encoding="utf-8")
+        f.write_text("name: Wrenna\nage: 34\n", encoding="utf-8")
         checker = HealthChecker()
         checker._memory_dir = tmp_path
         result = checker.check_memory_store()

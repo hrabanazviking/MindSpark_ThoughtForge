@@ -19,6 +19,7 @@ from typing import Any
 
 import yaml
 
+from thoughtforge.knowledge.ingestion_contract import record_problems
 from thoughtforge.knowledge.models import (
     ActiveThreadStateRecord,
     EpisodicMemoryRecord,
@@ -30,6 +31,38 @@ from thoughtforge.knowledge.models import (
 from thoughtforge.utils.paths import get_memory_dir
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_record(record: object) -> None:
+    """TF-042: ingestion gate — refuse an invalid record before it
+    reaches a file, naming every problem. Load and rewrite paths
+    deliberately bypass this (legacy tolerance, TF-041 K13).
+
+    TF-062: the gate also runs adversarial screening over the
+    four memory kinds (fact / preference / episode / pattern);
+    a refuse verdict (instruction-shaped text addressed to the
+    model) raises here, before anything is written. The
+    personality core and the thread state are not screened —
+    the core is the operator's own instruction channel
+    (knowledge/adversarial.py, rule trusted_channels_unscreened)."""
+    problems = record_problems(record)
+    if problems:
+        raise ValueError(
+            f"record {getattr(record, 'record_id', '?')} fails the ingestion "
+            f"contract: {'; '.join(problems)}"
+        )
+    from thoughtforge.knowledge.adversarial import (
+        is_screened_kind,
+        refusal_problems,
+    )
+
+    if is_screened_kind(record):
+        screening_problems = refusal_problems(record)
+        if screening_problems:
+            raise ValueError(
+                f"record {getattr(record, 'record_id', '?')} refused: "
+                f"{'; '.join(screening_problems)}"
+            )
 
 
 def _new_id(prefix: str) -> str:
@@ -62,6 +95,7 @@ class MemoryStore:
         return PersonalityCoreRecord.from_dict(data)
 
     def save_personality_core(self, record: PersonalityCoreRecord) -> None:
+        _validate_record(record)
         with self._personality_path.open("w", encoding="utf-8") as f:
             yaml.safe_dump(record.to_dict(), f, allow_unicode=True, sort_keys=False)
         logger.debug("Saved personality core %s", record.record_id)
@@ -89,6 +123,7 @@ class MemoryStore:
         return records
 
     def append_profile_record(self, record: UserPreferenceRecord | UserFactRecord) -> None:
+        _validate_record(record)
         with self._profile_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record.to_dict(), ensure_ascii=False) + "\n")
         logger.debug("Appended %s record %s", record.record_type, record.record_id)
@@ -119,6 +154,7 @@ class MemoryStore:
         return records
 
     def append_episode(self, record: EpisodicMemoryRecord) -> None:
+        _validate_record(record)
         with self._episodic_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record.to_dict(), ensure_ascii=False) + "\n")
         logger.debug("Appended episode %s", record.record_id)
@@ -149,6 +185,7 @@ class MemoryStore:
         return records
 
     def append_pattern(self, record: ResponsePatternRecord) -> None:
+        _validate_record(record)
         with self._patterns_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record.to_dict(), ensure_ascii=False) + "\n")
         logger.debug("Appended response pattern %s", record.record_id)
@@ -174,6 +211,7 @@ class MemoryStore:
             return None
 
     def save_thread_state(self, record: ActiveThreadStateRecord) -> None:
+        _validate_record(record)
         with self._thread_path.open("w", encoding="utf-8") as f:
             json.dump(record.to_dict(), f, ensure_ascii=False, indent=2)
         logger.debug("Saved thread state %s (priority=%.2f)", record.record_id, record.priority)

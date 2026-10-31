@@ -8,6 +8,22 @@ Uses all-MiniLM-L6-v2 by default (fast, <100MB, CPU-friendly).
 Vector similarity is computed via cosine similarity on numpy float32 arrays.
 Optional: if sqlite-vss is installed, uses it for ANN search; otherwise
 falls back to brute-force cosine similarity.
+
+TF-053 (embedding discipline): model names are normalised through
+``etl/embedding_discipline.canonical_model_name`` at every entry
+point below — the registry there holds the per-profile assignment,
+the recorded licence, and the offline-availability proof. The
+scalar ``cosine_similarity`` that used to live here was removed by
+TF-053 (docket D-DEAD-2): it had no caller anywhere, while
+``batch_cosine_similarity`` is the live path.
+
+TF-054 (vector store shape): the builders below gate every
+vector through ``etl/vector_store.validated_blob`` and write on
+connections hardened to ``synchronous = FULL``
+(``harden_write_connection`` — the Samtal lesson), and both
+searches load their rows through ``load_searchable_rows``, so
+one corrupt stored blob is skipped by row instead of poisoning
+the whole search (docket D-VEC-1 / D-VEC-2).
 """
 
 from __future__ import annotations
@@ -20,7 +36,13 @@ from typing import Any
 
 import numpy as np
 
+from thoughtforge.etl.embedding_discipline import canonical_model_name
 from thoughtforge.etl.schema import get_connection
+from thoughtforge.etl.vector_store import (
+    harden_write_connection,
+    load_searchable_rows,
+    validated_blob,
+)
 from thoughtforge.utils.paths import get_knowledge_db_path
 
 logger = logging.getLogger(__name__)
@@ -32,6 +54,7 @@ EMBEDDING_DIM = 384   # all-MiniLM-L6-v2 output dimension
 
 def _get_model(model_name: str = DEFAULT_MODEL) -> Any:
     """Load and cache a SentenceTransformer model."""
+    model_name = canonical_model_name(model_name)
     if model_name not in _MODEL_CACHE:
         try:
             from sentence_transformers import SentenceTransformer
@@ -81,15 +104,6 @@ def from_blob(blob: bytes) -> np.ndarray:
     return np.frombuffer(blob, dtype=np.float32)
 
 
-def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    """Cosine similarity between two L2-normalized vectors (fast path)."""
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
-
-
 def batch_cosine_similarity(query: np.ndarray, matrix: np.ndarray) -> np.ndarray:
     """
     Compute cosine similarity between a query vector and a matrix of vectors.
@@ -118,8 +132,10 @@ def build_entity_embeddings(
     Text used: "label_en: description_en"
     Returns count of embeddings generated.
     """
+    model_name = canonical_model_name(model_name)
     db_path = db_path or get_knowledge_db_path()
     conn = get_connection(db_path)
+    harden_write_connection(conn)
     total = 0
 
     try:
@@ -158,7 +174,7 @@ def build_entity_embeddings(
                 "INSERT OR REPLACE INTO embeddings (qid, text_for_embedding, embedding, model_name) "
                 "VALUES (?, ?, ?, ?)",
                 [
-                    (qids[j], texts[j], to_blob(embeddings[j]), model_name)
+                    (qids[j], texts[j], validated_blob(embeddings[j]), model_name)
                     for j in range(len(batch))
                 ],
             )
@@ -180,8 +196,10 @@ def build_reference_embeddings(
     batch_size: int = 64,
 ) -> int:
     """Generate embeddings for all reference_chunks without one."""
+    model_name = canonical_model_name(model_name)
     db_path = db_path or get_knowledge_db_path()
     conn = get_connection(db_path)
+    harden_write_connection(conn)
     total = 0
 
     try:
@@ -210,7 +228,7 @@ def build_reference_embeddings(
             conn.executemany(
                 "INSERT OR REPLACE INTO reference_embeddings (chunk_id, embedding, model_name) "
                 "VALUES (?, ?, ?)",
-                [(chunk_ids[j], to_blob(embeddings[j]), model_name) for j in range(len(batch))],
+                [(chunk_ids[j], validated_blob(embeddings[j]), model_name) for j in range(len(batch))],
             )
             conn.commit()
             total += len(batch)
@@ -235,6 +253,7 @@ def vector_search_entities(
     Brute-force cosine similarity search over entity embeddings.
     Returns top_k entities sorted by similarity score descending.
     """
+    model_name = canonical_model_name(model_name)
     db_path = db_path or get_knowledge_db_path()
     query_vec = encode_single(query_text, model_name)
 
@@ -252,10 +271,18 @@ def vector_search_entities(
         if not rows:
             return []
 
-        qids = [r["qid"] for r in rows]
-        labels = [r["label_en"] for r in rows]
-        descs = [r["description_en"] for r in rows]
-        matrix = np.stack([from_blob(r["embedding"]) for r in rows])
+        # TF-054: corrupt rows are skipped by row (logged, named);
+        # the good rows are the matrix that gets scored.
+        kept, matrix, _skipped = load_searchable_rows(
+            rows, lambda r: r["qid"], lambda r: r["embedding"],
+            table="embeddings",
+        )
+        if matrix is None:
+            return []
+
+        qids = [r["qid"] for r in kept]
+        labels = [r["label_en"] for r in kept]
+        descs = [r["description_en"] for r in kept]
 
         scores = batch_cosine_similarity(query_vec, matrix)
         top_indices = np.argsort(scores)[::-1][:top_k]
@@ -286,6 +313,7 @@ def vector_search_reference(
     min_score: float = 0.3,
 ) -> list[dict[str, Any]]:
     """Cosine similarity search over built-in reference chunk embeddings."""
+    model_name = canonical_model_name(model_name)
     db_path = db_path or get_knowledge_db_path()
     query_vec = encode_single(query_text, model_name)
 
@@ -303,11 +331,19 @@ def vector_search_reference(
         if not rows:
             return []
 
-        chunk_ids = [r["chunk_id"] for r in rows]
-        files = [r["source_file"] for r in rows]
-        titles = [r["title"] for r in rows]
-        contents = [r["content"] for r in rows]
-        matrix = np.stack([from_blob(r["embedding"]) for r in rows])
+        # TF-054: same loader as the entity search — corrupt
+        # reference rows are skipped by row, never stacked.
+        kept, matrix, _skipped = load_searchable_rows(
+            rows, lambda r: r["chunk_id"], lambda r: r["embedding"],
+            table="reference_embeddings",
+        )
+        if matrix is None:
+            return []
+
+        chunk_ids = [r["chunk_id"] for r in kept]
+        files = [r["source_file"] for r in kept]
+        titles = [r["title"] for r in kept]
+        contents = [r["content"] for r in kept]
 
         scores = batch_cosine_similarity(query_vec, matrix)
         top_indices = np.argsort(scores)[::-1][:top_k]

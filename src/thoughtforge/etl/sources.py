@@ -19,7 +19,7 @@ from typing import Any
 
 from tqdm import tqdm
 
-from thoughtforge.etl.schema import get_connection, initialize_schema
+from thoughtforge.etl.schema import get_connection, initialize_schema, rebuild_fts_indexes
 from thoughtforge.utils.paths import get_knowledge_db_path, get_knowledge_reference_dir
 
 logger = logging.getLogger(__name__)
@@ -443,6 +443,16 @@ class ReferenceDataETL:
 
         finally:
             conn.close()
+
+        # TF-058 (D-REF-1, fixed): reference_chunks is searched
+        # through an external-content FTS5 table, which a plain
+        # INSERT does not populate — only a rebuild does. Before
+        # this call, a library ingested by this build (or by the
+        # forge_memory `reference` command, which never rebuilt
+        # either) was present in the DB but invisible to
+        # KnowledgeForge's SQL search. Rebuild before returning
+        # so an ingested library is a searchable library.
+        rebuild_fts_indexes(self.db_path)
 
         logger.info("Reference ETL complete: %s", stats)
         return stats

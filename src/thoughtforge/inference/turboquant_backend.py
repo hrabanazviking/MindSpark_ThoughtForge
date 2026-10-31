@@ -44,6 +44,65 @@ class TurboQuantBackend(UnifiedBackend):
         except Exception:
             return False
 
+    def generate_stream(self, request: GenerationRequest):
+        """Native streaming (TF-065): delegate to the engine's
+        own streaming generator over the flattened prompt.
+
+        A failure to load the engine yields nothing — the
+        standing UnifiedBackend error behaviour (the response
+        channel for a streamed turn is TF-084's road). A
+        failure mid-stream raises from the engine, exactly as
+        ``TurboQuantEngine.generate_stream`` documents: deltas
+        already yielded stay yielded, the caller decides.
+        """
+        try:
+            engine = self._get_engine()
+        except Exception as exc:
+            logger.error("TurboQuantBackend: failed to load engine: %s", exc)
+            return
+        from thoughtforge.inference.turboquant import GenerationParams
+
+        params = GenerationParams(
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            stop=request.stop or [],
+            seed=request.seed,
+        )
+        yield from engine.generate_stream(_flatten_request(request), params=params)
+
+    def count_tokens(self, text: str) -> int:
+        """TF-065: the engine's count when it is loaded (its
+        model tokeniser), the contract estimate until then."""
+        if not text:
+            return 0  # the contract's empty rule, before the engine's heuristic
+        if self._engine is not None:
+            return self._engine.estimate_tokens(text)
+        from thoughtforge.inference.backend_contract import estimate_tokens
+
+        return estimate_tokens(text)
+
+    def capabilities(self):
+        """TF-065 contract record, read live: local, native
+        streaming through the engine, seed honoured through
+        GenerationParams; token counting is 'model' only
+        while the engine (and its tokeniser) is loaded —
+        'estimate' before that, never claimed early."""
+        from thoughtforge.inference.backend_contract import BackendCapabilities
+
+        loaded = self._engine is not None
+        return BackendCapabilities(
+            name=self.backend_name(),
+            streaming="native",
+            token_counting="model" if loaded else "estimate",
+            seed="honoured",
+            placement="local",
+            model=self.model_path.name,
+            notes=(
+                "token counting is the contract estimate until "
+                "the engine is loaded",
+            ),
+        )
+
     def generate(self, request: GenerationRequest) -> GenerationResponse:
         start = time.monotonic()
         try:
@@ -67,6 +126,7 @@ class TurboQuantBackend(UnifiedBackend):
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 stop=request.stop or [],
+                seed=request.seed,
             )
             result = engine.generate(prompt, params=params)
             return GenerationResponse(

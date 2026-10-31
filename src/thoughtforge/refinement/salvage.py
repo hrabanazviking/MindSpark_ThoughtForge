@@ -22,6 +22,11 @@ import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+# TF-025 (D-DUP-1): _split_sentences' one implementation lives in
+# utils/common.py; this name is its alias (existing tests import it
+# from here).
+from thoughtforge.utils.common import split_sentences as _split_sentences
+
 if TYPE_CHECKING:
     from thoughtforge.cognition.prompt_builder import PromptBuilder
     from thoughtforge.knowledge.models import (
@@ -40,6 +45,12 @@ _CITATION_WEIGHT = 0.55
 _IDEAL_LENGTH_CHARS = 550          # chars at which length_score reaches 1.0
 _MAX_REFINE_PASSES = 2
 _MIN_FRAGMENT_SCORE = 0.54         # from Retrieval_and_Scoring_Spec §30
+# TF-022 ruling on CORE_LOOP §8-F6: this threshold gates salvage's own
+# length+citation score (see _score_fragment below) and decides which
+# fragments are *worth a refine pass*. It is NOT the core's threshold:
+# core._MIN_FRAGMENT_SCORE (0.25) gates the unrelated FragmentScores
+# composite and decides only turn-record provenance. Different
+# metrics, different jobs — the numbers are not a drift to reconcile.
 _MIN_FRAGMENT_WORDS = 4
 _MAX_FRAGMENTS_IN_REFINE = 5
 
@@ -91,6 +102,7 @@ class FragmentSalvage:
         sketch: "InputSketch | None" = None,
         scaffold: "CognitionScaffold | None" = None,
         max_passes: int = _MAX_REFINE_PASSES,
+        generation_seed: int | None = None,
     ) -> SalvageResult:
         """
         Score candidates and attempt fragment-based refinement.
@@ -103,6 +115,9 @@ class FragmentSalvage:
             sketch:         Optional InputSketch for prompt context.
             scaffold:       Optional CognitionScaffold for prompt context.
             max_passes:     Max refinement passes (default 2).
+            generation_seed: TF-036 — per-pass sampling seed base
+                for the refine generations (pass i uses base + i);
+                None = unseeded, the standing behaviour.
 
         Returns:
             SalvageResult with best text, citations, confidence.
@@ -147,6 +162,7 @@ class FragmentSalvage:
                 sketch=sketch,
                 scaffold=scaffold,
                 max_passes=max_passes,
+                generation_seed=generation_seed,
             )
             if result is not None:
                 return result
@@ -251,6 +267,7 @@ class FragmentSalvage:
         sketch: "InputSketch",
         scaffold: "CognitionScaffold",
         max_passes: int,
+        generation_seed: int | None = None,
     ) -> SalvageResult | None:
         """
         Attempt up to max_passes refine generations using salvaged fragments.
@@ -287,7 +304,18 @@ class FragmentSalvage:
                 )
                 result = engine.generate(
                     refine_prompt,
-                    params=GenerationParams(temperature=0.50 - (pass_num - 1) * 0.05),
+                    params=GenerationParams(
+                        temperature=0.50 - (pass_num - 1) * 0.05,
+                        # TF-036: pass i of a seeded compose carries
+                        # generation_seed + i (the core draws one
+                        # seed per compose; None = unseeded, as
+                        # before this slice).
+                        seed=(
+                            generation_seed + (pass_num - 1)
+                            if generation_seed is not None
+                            else None
+                        ),
+                    ),
                 )
                 passes_used = pass_num
 
@@ -366,10 +394,3 @@ class FragmentSalvage:
                 qids.add(qid)
         return qids
 
-
-# ── Text helpers ───────────────────────────────────────────────────────────────
-
-def _split_sentences(text: str) -> list[str]:
-    """Split text into sentences."""
-    parts = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [p.strip() for p in parts if p.strip()]
