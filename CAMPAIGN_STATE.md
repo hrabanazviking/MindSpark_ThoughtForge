@@ -44,7 +44,7 @@ Sparse checkout: src, tests, docs, benchmarks, configs, hardware_profiles, scrip
 
 ## Banked
 - TF-001 filing commit e7d21aa (pushed, filing exception at the time).
-- Per Volmarr's standing go-ahead (2026-10-31), banked slices are now PUSHED to origin yrsa/thoughtforge-road-build after banking green (fetch + remote-diff first, never force-push, ls-remote verified). Latest verified push: 2026-10-31 02:26 EDT, keeper tick 02:02 — remote at b789fc215fb849eb73b953a6e763511c2f13010b == local HEAD (TF-031 + its IN PROGRESS state commit, remote previously at TF-030's push-record commit 9163e69).
+- Per Volmarr's standing go-ahead (2026-10-31), banked slices are now PUSHED to origin yrsa/thoughtforge-road-build after banking green (fetch + remote-diff first, never force-push, ls-remote verified). Latest verified push: 2026-10-31 02:40 EDT, keeper tick 02:22 — remote at fe86f692274d89489d4cffa42adb5efd83c158b4 == local HEAD at banking (TF-032 + its IN PROGRESS state commit + TF-031's push-record commit, remote previously at TF-031's slice commit b789fc2).
 
 ## Bounds
 - No README.md touches. No Docker. Pushes only to origin yrsa/thoughtforge-road-build per the 2026-10-31 go-ahead above (never force). Canon data private — metadata only.
