@@ -208,8 +208,12 @@ WIRING: tuple[dict[str, Any], ...] = (
      "scope": "operator-invoked; fact pruning is never automatic per turn"},
     {"surface": "operator tool",
      "where": "forge_memory.py",
-     "act": "NOT wired here — the memory-store toolset is TF-057's slice",
-     "scope": "named, not built, by TF-045"},
+     "act": "TF-057 landed it: the forge_memory toolset "
+            "(knowledge/forge_toolset.py) — add/inspect/prune/export "
+            "over --memory-dir; prune runs MemoryLifecycle in the "
+            "named mode (optional TF-056 profile caps)",
+     "scope": "operator-invoked over one memory store; fact pruning "
+              "is never automatic per turn"},
 )
 
 

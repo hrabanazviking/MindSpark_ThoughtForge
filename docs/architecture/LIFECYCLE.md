@@ -122,6 +122,12 @@ one archive and one stay.
   lifecycle built with no profile enforces the flat table —
   proven to be desktop_cpu/desktop_gpu's own budget — exactly
   as this doc describes. See `MEMORY_BUDGETS.md`.
+- **TF-057 note (landed since):** the `forge_memory.py` prune
+  command named above now stands — the forge_memory toolset
+  (`knowledge/forge_toolset.py`, CLI commands add / inspect /
+  prune / export over `--memory-dir`) runs this lifecycle in
+  the named mode (optionally under a TF-056 profile's caps)
+  and reports before/after counts. See `FORGE_TOOLSET.md`.
 
 ## 6. Defects found by this slice's probes — all fixed in scope
 
