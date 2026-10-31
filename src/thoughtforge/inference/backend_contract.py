@@ -206,17 +206,20 @@ REQUESTS_CONSUMERS: tuple[str, ...] = (
     "src/thoughtforge/inference/lmstudio_backend.py",
     "src/thoughtforge/inference/model_browser.py",
     "src/thoughtforge/inference/ollama_backend.py",
+    "src/thoughtforge/inference/openai_compatible.py",
 )
 
 DEPENDENCY_RULINGS: tuple[dict[str, Any], ...] = (
     {"package": "requests", "ruling": "core",
      "extra": None,
-     "rule": "top-level unguarded import in the five "
+     "rule": "top-level unguarded import in the six "
              "REQUESTS_CONSUMERS modules -> declared in "
              "[project] dependencies (D-DEP-1 FIXED by "
-             "declaration; the set was four at TF-065 and "
-             "grew to five at TF-074, when the Aesir backend "
-             "joined as an announced consumer)"},
+             "declaration; the set was four at TF-065, "
+             "grew to five at TF-074 when the Aesir backend "
+             "joined as an announced consumer, and to six "
+             "at TF-076 when the OpenAI-compatible backend "
+             "joined the same way)"},
     {"package": "huggingface_hub", "ruling": "optional",
      "extra": "hub",
      "rule": "lazy in-function imports only (hf_backend, "

@@ -166,3 +166,8 @@ the factory source. What is **NOT PROVEN** here:
   (`docs/architecture/AESIR_BACKEND.md`) — conformed
   under this contract as a `UnifiedBackend` outside the
   factory's shipped set, which TF-153 owns admitting.
+  TF-076's generic binding
+  (`docs/architecture/OPENAI_COMPATIBLE_BACKEND.md`)
+  joined the same way at TF-076, as the sixth announced
+  `requests` consumer; the factory's `openai_compatible`
+  seat still returns the LM Studio preset until TF-153.

@@ -11,6 +11,10 @@ import time
 
 import requests
 
+from thoughtforge.inference.openai_compatible import (
+    chat_completion_outcome,
+    normalize_base_url,
+)
 from thoughtforge.inference.unified_backend import (
     GenerationRequest,
     GenerationResponse,
@@ -31,7 +35,10 @@ class LMStudioBackend(UnifiedBackend):
         api_key: str = "lm-studio",
         timeout: int = 120,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        # TF-076 (D-OAI-2): the family's shared normaliser —
+        # a base ending in /v1 names the same server, and
+        # the routes below are built from the root.
+        self.base_url = normalize_base_url(base_url)
         self.model = model
         self.api_key = api_key
         self.timeout = timeout
@@ -68,16 +75,30 @@ class LMStudioBackend(UnifiedBackend):
             resp.raise_for_status()
             data = resp.json()
 
-            choice = data.get("choices", [{}])[0]
-            text: str = choice.get("message", {}).get("content", "")
-            finish_reason: str = choice.get("finish_reason") or "stop"
-            usage = data.get("usage", {})
-            tokens_gen: int = usage.get("completion_tokens", 0)
+            # TF-076 (D-OAI-1 / D-OAI-3): the family's ONE
+            # shared parser judges the body — finish reasons
+            # stay inside the TF-065 vocabulary, content is
+            # text or a named error (never None), no choices
+            # is a named error, and a missing usage block
+            # falls back to the declared contract estimate
+            # instead of a silent 0.
+            outcome = chat_completion_outcome(data)
+            if not outcome["ok"]:
+                return GenerationResponse(
+                    text="",
+                    error=outcome["error"],
+                    finish_reason="error",
+                    backend_used=self.backend_name(),
+                    latency_ms=(time.monotonic() - start) * 1000,
+                )
+            tokens_gen = outcome["completion_tokens"]
+            if tokens_gen is None:
+                tokens_gen = self.count_tokens(outcome["text"])
 
             return GenerationResponse(
-                text=text,
-                tokens_generated=tokens_gen,
-                finish_reason=finish_reason,
+                text=outcome["text"],
+                tokens_generated=int(tokens_gen),
+                finish_reason=outcome["finish_reason"],
                 backend_used=self.backend_name(),
                 latency_ms=(time.monotonic() - start) * 1000,
             )

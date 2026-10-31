@@ -258,7 +258,10 @@ COUNTING_SURFACES: tuple[dict[str, Any], ...] = (
         "basis": "server-model",
         "special_tokens": "server's own",
         "note": "completion tokens only, counted by the "
-                "server's model tokeniser",
+                "server's model tokeniser — when the "
+                "response reports usage; TF-076's shared "
+                "family parser falls back to the contract "
+                "estimate when it does not (D-OAI-3)",
     },
     {
         "surface": "turboquant tokens_generated (completion_tokens)",

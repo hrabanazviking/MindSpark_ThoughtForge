@@ -358,7 +358,9 @@ class TestDependenciesAndFactory:
             "optimum", "psutil"}
         # TF-074 amended this pin in scope: the Aesir backend
         # joined as a fifth announced requests consumer.
-        assert len(REQUESTS_CONSUMERS) == 5
+        # TF-076 amended it again: the OpenAI-compatible
+        # backend joined as the sixth.
+        assert len(REQUESTS_CONSUMERS) == 6
 
     def test_dependency_problems_clean(self):
         assert dependency_problems() == []
