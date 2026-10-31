@@ -262,7 +262,15 @@ class ThoughtForgeCore:
         Args:
             user_text:      Raw user message.
             retrieval_path: Override retrieval path ("sql" | "vector" | "hybrid").
-            num_drafts:     Override draft count (default from hardware profile).
+            num_drafts:     TF-034 (freezing CORE_LOOP §8-F1): cap on
+                            the candidate drafts generated this turn.
+                            The local engine drafts once per candidate
+                            mode (at most 2 by construction), so the
+                            cap selects the first num_drafts modes;
+                            the unified backend drafts exactly once
+                            by construction, so the cap cannot raise
+                            it. None = no cap beyond construction.
+                            Values below 1 raise ValueError.
             interrupt:      TF-027: an InterruptToken that can cut
                             the turn at a cut point (see
                             cognition/interruption.py).
@@ -409,6 +417,14 @@ class ThoughtForgeCore:
         mid-turn (GeneratorExit) records the same cut and the
         exception propagates untouched.
         """
+        # TF-034: num_drafts is a real cap now (it was documented
+        # but dead — CORE_LOOP §8-F1). Below 1 is a caller error,
+        # stated loudly, never a silent knowledge-only turn.
+        if num_drafts is not None and num_drafts < 1:
+            raise ValueError(
+                f"num_drafts must be at least 1 or None (no cap); "
+                f"got {num_drafts!r}"
+            )
         user_text = sanitise_query(user_text)
         turn_id = _new_turn_id()
         turn = RuntimeTurnState(turn_id=turn_id)
@@ -736,6 +752,10 @@ class ThoughtForgeCore:
 
         memory_cues = self._prompt_builder.extract_memory_cues(bundle)
         modes = scaffold.candidate_modes[:2]    # max 2 candidate passes
+        if num_drafts is not None:
+            # TF-034: the caller's draft cap selects the first
+            # num_drafts modes (validated >= 1 in _run_turn).
+            modes = modes[:num_drafts]
         if only_modes is not None:
             modes = [m for m in modes if m in only_modes]
 
@@ -888,6 +908,9 @@ class ThoughtForgeCore:
 
         memory_cues = self._prompt_builder.extract_memory_cues(bundle)
         modes = scaffold.candidate_modes[:2]    # max 2 candidate passes
+        if num_drafts is not None:
+            # TF-034: the same draft cap as the plain path.
+            modes = modes[:num_drafts]
 
         for mode in modes:
             # TF-027 cut point: before each candidate.
