@@ -274,6 +274,38 @@ class ThoughtForgeCore:
             self._last_turn_state, self.latency_budget, total_ms=total_ms
         )
 
+    def last_turn_trace(self) -> dict[str, Any] | None:
+        """TF-038: the last turn's full cognition trace, exported
+        as detached JSON-safe data (cognition/traces.py) — route,
+        retrieval, scaffold, candidates, fragments, failures,
+        final, timings — with this conversation's context (selected
+        profile / strategy / depth / modes, determinism seed,
+        persona id) in its conversation section. None before the
+        first turn. A MINOR addition under TF-034's rules — the
+        frozen v1 tables are untouched; TF-039/TF-192 record the
+        addition when the freeze is next reconciled."""
+        if self._last_turn_state is None:
+            return None
+        from thoughtforge.cognition.traces import export_turn_trace
+
+        conversation = {
+            "profile_id": self._conversation_config.profile_id,
+            "strategy": self._conversation_config.strategy,
+            "depth": self._conversation_config.depth,
+            "candidate_modes": (
+                list(self._conversation_config.candidate_modes)
+                if self._conversation_config.candidate_modes is not None
+                else None
+            ),
+            "determinism_seed": self._determinism.seed,
+            "persona_id": (
+                self._personality.record_id if self._personality else None
+            ),
+        }
+        return export_turn_trace(
+            self._last_turn_state, conversation=conversation
+        )
+
     @property
     def determinism_mode(self) -> DeterminismMode:
         """TF-036: this conversation's determinism selection
