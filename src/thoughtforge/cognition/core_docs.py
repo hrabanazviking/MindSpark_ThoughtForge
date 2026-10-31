@@ -370,6 +370,17 @@ POST_FREEZE_ADDITIONS: tuple[dict[str, Any], ...] = (
             "D-PROF-4 fix); refinement_max_passes() reads it"
         ),
     },
+    {
+        "name": "last_turn_inspector",
+        "kind": "core-method",
+        "added_by": "TF-061",
+        "note": (
+            "the last turn's memory inspector export (knowledge/"
+            "inspector.py): store + knowledge DB holdings, the "
+            "turn's identity, why its retrieval fired, and the "
+            "retained citation check, as one JSON-safe document"
+        ),
+    },
 )
 
 

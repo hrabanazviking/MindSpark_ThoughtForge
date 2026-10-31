@@ -34,6 +34,7 @@ from thoughtforge.knowledge.scoring import (
     MIN_MEMORY_SCORE,
     NEUTRAL_PREFERENCE_RELEVANCE,
     NEUTRAL_TONE_SIMILARITY,
+    RETRIEVAL_WEIGHTS_BY_TYPE,
     SOURCE_RECENCY_PROXIES,
     VECTOR_MIN_SCORE,
     RetrievalDimensions,
@@ -78,6 +79,21 @@ class KnowledgeForge:
         # knowledge/scoring_honesty.weights_for_profile). None =
         # the shipped user_fact table, byte-identical scoring.
         self.retrieval_weights = retrieval_weights
+        # TF-061: the last retrieve() call's retained report
+        # (query / thresholds / fired / rejected-with-reasons),
+        # for the memory inspector (knowledge/inspector.py).
+        self._last_retrieval_report: dict[str, Any] | None = None
+
+    @property
+    def last_retrieval_report(self) -> dict[str, Any] | None:
+        """TF-061: the last retrieve() call's report, detached
+        (a deep copy — mutating it never touches the forge's
+        retained copy). None until the first retrieve()."""
+        import copy
+
+        if self._last_retrieval_report is None:
+            return None
+        return copy.deepcopy(self._last_retrieval_report)
 
     # ── Primary retrieval API ──────────────────────────────────────────────────
 
@@ -129,9 +145,41 @@ class KnowledgeForge:
 
         # Score and rank
         scored = self._score_records(records, query)
-        scored = [r for r in scored if r["_composite_score"] >= min_score]
-        scored.sort(key=lambda x: x["_composite_score"], reverse=True)
-        scored = scored[:top_k]
+        # TF-061: retain the retrieval report BEFORE the filter
+        # and the cut discard their evidence — every rejected
+        # candidate is named with its composite and its reason
+        # (below_min_score / beyond_top_k), so the inspector can
+        # answer "why did X not fire" after the fact.
+        passed = [r for r in scored if r["_composite_score"] >= min_score]
+        passed.sort(key=lambda x: x["_composite_score"], reverse=True)
+        fired = passed[:top_k]
+        rejected: list[dict[str, Any]] = []
+        for r in scored:
+            if r["_composite_score"] < min_score:
+                rid, rtype = self._record_identity(r)
+                rejected.append({
+                    "record_id": rid, "record_type": rtype,
+                    "composite_score": round(r["_composite_score"], 4),
+                    "reason": "below_min_score",
+                })
+        for r in passed[top_k:]:
+            rid, rtype = self._record_identity(r)
+            rejected.append({
+                "record_id": rid, "record_type": rtype,
+                "composite_score": round(r["_composite_score"], 4),
+                "reason": "beyond_top_k",
+            })
+        self._last_retrieval_report = {
+            "query": query,
+            "path": path,
+            "top_k": top_k,
+            "min_score": min_score,
+            "sources": list(sources) if sources is not None else None,
+            "considered": len(scored),
+            "fired": [self._record_identity(r)[0] for r in fired],
+            "rejected": rejected,
+        }
+        scored = fired
 
         bundle = self._build_bundle(scored)
         logger.debug(
@@ -360,9 +408,12 @@ class KnowledgeForge:
         for record in records:
             # Semantic similarity: prefer vector score if available, fall back to FTS
             sim = record.get("similarity", 0.0)
+            semantic_source = "vector_similarity" if sim != 0.0 else "none"
             if sim == 0.0:
                 fts = record.get("fts_score", 0.0)
                 sim = min(fts / FTS_SCORE_DIVISOR, 1.0) if fts > 0 else 0.0
+                if fts > 0:
+                    semantic_source = "fts_proxy"
 
             # Importance proxy: popularity for entities, weight for conceptnet
             importance = min(record.get("popularity_score", 0.0) + record.get("weight", IMPORTANCE_WEIGHT_DEFAULT), 1.0)
@@ -378,6 +429,7 @@ class KnowledgeForge:
 
             source = record.get("source", "wikidata")
             recency = recency_from_timestamps(record)
+            recency_source = "record_timestamp" if recency is not None else "source_proxy"
             if recency is None:
                 recency = SOURCE_RECENCY_PROXIES.get(source, DEFAULT_SOURCE_RECENCY)
 
@@ -391,10 +443,69 @@ class KnowledgeForge:
             record["_composite_score"] = score_retrieval(
                 dims, "user_fact", weights=self.retrieval_weights
             )
+            # TF-061 (D-INSP-1 FIXED): the dimensions are
+            # RETAINED on the record as _explanation beside
+            # the composite — before this slice they were
+            # computed here and discarded, so no consumer
+            # could ever say why a record scored what it
+            # scored. knowledge/inspector.py reads this
+            # retained explanation (and mirrors this
+            # arithmetic for records that predate retention).
+            weights_row = (
+                self.retrieval_weights
+                if self.retrieval_weights is not None
+                else RETRIEVAL_WEIGHTS_BY_TYPE["user_fact"]
+            )
+            dimension_values = {
+                "semantic_similarity": dims.semantic_similarity,
+                "tone_similarity": dims.tone_similarity,
+                "preference_relevance": dims.preference_relevance,
+                "recency": dims.recency,
+                "importance": dims.importance,
+                "thread_boost": dims.thread_boost,
+                "pattern_quality": dims.pattern_quality,
+                "priority": dims.priority,
+            }
+            record["_explanation"] = {
+                "weights_row": (
+                    "custom" if self.retrieval_weights is not None else "user_fact"
+                ),
+                "weights": dict(weights_row),
+                "dimensions": dimension_values,
+                "contributions": {
+                    name: dimension_values[name] * weights_row.get(name, 0.0)
+                    for name in dimension_values
+                },
+                "semantic_source": semantic_source,
+                "recency_source": recency_source,
+                "composite": record["_composite_score"],
+            }
 
         return records
 
     # ── Bundle assembly ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _record_identity(record: dict[str, Any]) -> tuple[str, str]:
+        """A scored record's (record_id, record_type), derived
+        exactly as _build_bundle derives them — TF-061 extracted
+        this so the retained retrieval report names fired and
+        rejected candidates by the same identity the bundle
+        carries."""
+        # TF-048: vector reference results carry no record_type
+        # (their `source` says "reference_chunk") and used to be
+        # labelled "entity" by this default — a chunk is not an
+        # entity, and the citation payload now repeats the type,
+        # so the fallback derives it from the chunk identity.
+        record_type = record.get("record_type") or (
+            "reference_chunk" if record.get("chunk_id") else "entity"
+        )
+        record_id = (
+            record.get("qid")
+            or str(record.get("chunk_id", ""))
+            or record.get("label_en", "")[:16]
+        )
+        return str(record_id), str(record_type)
 
     def _build_bundle(self, scored_records: list[dict[str, Any]]) -> MemoryActivationBundle:
         """Assemble a MemoryActivationBundle from scored result dicts."""
@@ -403,19 +514,7 @@ class KnowledgeForge:
 
         for record in scored_records:
             cue = self._build_cue(record)
-            # TF-048: vector reference results carry no record_type
-            # (their `source` says "reference_chunk") and used to be
-            # labelled "entity" by this default — a chunk is not an
-            # entity, and the citation payload now repeats the type,
-            # so the fallback derives it from the chunk identity.
-            record_type = record.get("record_type") or (
-                "reference_chunk" if record.get("chunk_id") else "entity"
-            )
-            record_id = (
-                record.get("qid")
-                or str(record.get("chunk_id", ""))
-                or record.get("label_en", "")[:16]
-            )
+            record_id, record_type = self._record_identity(record)
             score = record.get("_composite_score", 0.0)
             total_score += score
 

@@ -386,6 +386,46 @@ class ThoughtForgeCore:
             self._last_turn_state, conversation=conversation
         )
 
+    def last_turn_inspector(self) -> dict[str, Any] | None:
+        """TF-061: the last turn's memory inspector export —
+        what this core's store and knowledge DB hold, the
+        turn's trace identity, why its retrieval fired
+        (per-record dimension explanations + the forge's
+        retained rejection report), and the retained
+        per-claim citation check, as one detached JSON-safe
+        document (knowledge/inspector.py). None before the
+        first turn. A MINOR addition under TF-034's rules —
+        recorded in core_docs POST_FREEZE_ADDITIONS and the
+        freeze doc §7 as it landed."""
+        if self._last_turn_state is None:
+            return None
+        from thoughtforge.knowledge.inspector import build_inspector_report
+
+        bundle = self._last_turn_state.memory_bundle
+        # The forge's retained report is passed only when it
+        # demonstrably belongs to this turn's bundle (its fired
+        # ids are the bundle's records, in order). A turn whose
+        # retrieval never reached the forge (DB missing, leg
+        # failed — _retrieve's empty-bundle paths) leaves an
+        # older report behind; pairing it with this turn would
+        # explain the wrong retrieval, so the inspector then
+        # reports rejections as unknown instead.
+        report = self._knowledge.last_retrieval_report
+        if report is not None and bundle is not None:
+            if report.get("fired") != [
+                r.record_id for r in bundle.activated_records
+            ]:
+                report = None
+        return build_inspector_report(
+            store=self._store,
+            db_path=self._knowledge.db_path,
+            trace=self.last_turn_trace(),
+            bundle=bundle,
+            retrieval_report=report,
+            citation_check=self._last_citation_check,
+            weights=self._knowledge.retrieval_weights,
+        )
+
     @property
     def memory_budget(self) -> Any:
         """TF-056: this conversation's memory budget — the

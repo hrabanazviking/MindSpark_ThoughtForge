@@ -10,15 +10,16 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 56 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 13 FIXED
+**Totals: 57 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 14 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
 TF-054 in Part III; D-PER-1 by TF-055 in Part III; D-REF-1
 by TF-058 in Part III; D-FRESH-1 by TF-059 in Part III;
-D-ML-1 by TF-060 in Part III), 2
+D-ML-1 by TF-060 in Part III; D-INSP-1 by TF-061 in
+Part III), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 14 · Part IV 8 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 15 · Part IV 8 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -35,7 +36,10 @@ and fixed in scope. Entry D-FRESH-1 was added by TF-059 in
 Part III under the same rule — found by that slice's probes
 and fixed in scope for timestamp-carrying records. Entry
 D-ML-1 was added by TF-060 in Part III under the same
-rule — found by that slice's probes and fixed in scope.)
+rule — found by that slice's probes and fixed in scope.
+Entry D-INSP-1 was added by TF-061 in Part III under
+the same rule — found by that slice's probes and fixed
+in scope.)
 
 ## The docket
 
@@ -93,6 +97,7 @@ rule — found by that slice's probes and fixed in scope.)
 | D-REF-1 | A library ingested by `ReferenceDataETL.build()` (or the `forge_memory reference` command) was invisible to retrieval: `reference_chunks` is searched through an external-content FTS5 table that a plain INSERT never populates, and neither the build nor the command rebuilt it (only the embeddings step did) — probed by TF-058: after a plain build of the synthetic library (3 files / 6 chunks), `KnowledgeForge.sql_retrieve` returned 0 rows for every query (found by TF-058) | TF-058 | III | **FIXED by TF-058**: `ReferenceDataETL.build()` now calls `rebuild_fts_indexes(self.db_path)` before returning (stats unchanged); proven behaviourally — after a plain build, the forge's SQL pass returns the reference rows and `retrieve(min_score=0)` bundles them, no manual rebuild |
 | D-FRESH-1 | Retrieval recency was time-blind: `KnowledgeForge._score_records` set the recency dimension from `SOURCE_RECENCY_PROXIES`, a per-source constant — probed by TF-059: two records identical except a `created_at` of 2020 vs 2026 scored exactly the same composite (0.57); a record's actual age never entered its score, and the knowledge DB's tables carry no timestamp column at all (found by TF-059) | TF-059 | III | **FIXED by TF-059** for timestamp-carrying records: `_score_records` now takes a record's own timestamp (`updated_at`/`created_at`/`last_used_at`/`timestamp`, via `knowledge/freshness.recency_from_timestamps`) as decayed recency at the default half-life instead of the source proxy; timestamp-less records — every record the shipped DB tables produce today, and TF-043's whole fixture corpus — keep the proxy byte-identically, so the pinned baseline does not move. The stated remainder: the ETL schema carries no date column, so DB recency stays a proxy until an ingestion slice gives it a date to carry (TF-106/TF-111's road) |
 | D-ML-1 | Retrieval term extraction was English-only: `KnowledgeForge._extract_key_terms` (the term source for the forge's ConceptNet/GeoNames legs and for TF-058's + TF-059's personal-store searches) carried an English-only stopword list, dropped every token of length <= 2, and matched with `lower()` — probed by TF-060: the accent-stripped query "guia travesia" retrieved 0 against a store holding "guía la travesía"; "strasse" retrieved 0 against a record tagged "straße" (`lower()` keeps ß; `casefold()` maps it to ss); the two-character spaceless-script word "灯台" extracted zero terms and a spaceless sentence tokenised as one `\w+` token; Spanish/German function words (el, la, die, das, und, está) were kept as key terms (found by TF-060) | TF-060 | III | **FIXED by TF-060**: `knowledge/multilingual.py` — `_extract_key_terms` delegates to `key_terms` (NFC + casefold folding, en/es/de stopwords as one union, length floor 2, spaceless-script character bigrams; the standing English example reproduces the pre-slice terms exactly); TF-059's freshness search and TF-058's reference search match through `match_tokens`/`terms_matching` (exact folded first, diacritic-stripped auxiliary second), and TF-057's toolset text filter compares folded forms. Stored text is never altered — matching keys are derived only, and no translation is performed at retrieval (pinned). The stated remainder: the knowledge DB's FTS5 leg and its `label_en` columns are untouched (the labels table's per-language rows are TF-106/TF-107's ingestion territory), and vector retrieval quality in es/de is NOT PROVEN (TF-053's registered model is English-leaning) |
+| D-INSP-1 | Why a retrieval fired was discarded at scoring time: `KnowledgeForge._score_records` computed the five `RetrievalDimensions` per candidate and retained only `_composite_score` — probed by TF-061: a scored record's raw carried no dimension, semantic-source, or recency-source key, so no consumer could say which dimension drove a score, whether its semantic value was a vector similarity or the FTS proxy, or whether its recency was the record's own timestamp (TF-059) or the per-source proxy; and `retrieve()` filtered/cut candidates in place, so a rejected candidate left no trace anywhere (found by TF-061) | TF-061 | III | **FIXED by TF-061**: `_score_records` retains `_explanation` per record (dimension values + contributions under the effective weights row + semantic/recency sources; the arithmetic itself unmoved — TF-044's census still pins the fusion constants in `_score_records`, and TF-041/TF-059's pinned composites stand), `retrieve()` retains `last_retrieval_report` (considered count, fired ids, every rejected candidate named with its composite + reason `below_min_score`/`beyond_top_k`), and `knowledge/inspector.py` builds the per-turn export from the retained data (its recomputation mirror is pinned against the retained explanation). The stated remainder: a bundle with no retained forge report (hand-built, or a personal-store search's) reports its rejections as unknown, never as none — stated in the export |
 | D-REC-1 | TASK_PHASE1 and TASK_PHASE2 docs are absent from the tree (git ls-tree, TF-003) — a gap in the record, not in the software; their work exists as code | None — TF-015 verdict: no reconstruction commissioned (inventing them retroactively would falsify the record); TF-182 notes the gap for new readers | X | **CLOSED-BY-VERDICT** |
 | D-REL-1 | BP Phase 6's release claims are NOT PROVEN from the tree: no v1.0 GitHub release, HF model cards, or public demo is evidenced (TF-003) | TF-185 (release shaping) | X | OPEN |
 | D-DOC-1 | BUILD_PLAN_v1's spec pointers drift: of its 14 named spec files, 8 match exactly, 2 differ by case, 4 stand under drifted names — all subjects present, the plan's filenames unreliable (TF-015). No elder spec is renamed by the verdict | TF-182 (developer docs carry the correct pointers) | X | OPEN |

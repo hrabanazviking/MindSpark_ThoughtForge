@@ -169,6 +169,7 @@ here and as data (`POST_FREEZE_ADDITIONS` in
 | `last_writeback_outcome` | core property | TF-047 |
 | `last_citation_check` | core property (the per-claim cite-or-explain check of the last composed turn; recorded by TF-049 as it landed) | TF-049 |
 | `memory_budget` | core property (the selected profile's memory budget; recorded by TF-056 as it landed) | TF-056 |
+| `last_turn_inspector` | core method (the last turn's memory inspector export; recorded by TF-061 as it landed) | TF-061 |
 
 The frozen tables and `API_VERSION` (1.0.0) are **not** changed
 by the recording: folding these additions into the tables with

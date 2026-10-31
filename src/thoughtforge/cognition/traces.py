@@ -18,8 +18,10 @@ one named format (``TRACE_FORMAT``) with named sections
     does not carry it;
   * ``route`` — the input sketch the router produced;
   * ``retrieval`` — the memory bundle: which records fired, with
-    scores and cues (TF-061 owns asking the *store* why; this is
-    what the turn itself holds);
+    scores and cues, and (TF-061, TF-048's assignment landed)
+    each record's citation payload; asking the *store* why a
+    record fired is TF-061's inspector data
+    (``knowledge/inspector.py``), which consumes this trace;
   * ``scaffold`` — goal / tone / focus / avoid / depth / modes /
     fact_block, exactly as built;
   * ``candidates`` — every candidate with its full scores,
@@ -201,6 +203,17 @@ def _retrieval_section(turn: RuntimeTurnState) -> dict[str, Any] | None:
                 "record_type": rec.record_type,
                 "score": rec.score,
                 "cue": rec.cue,
+                # TF-061 (TF-048's assignment): the record's
+                # citation payload rides the trace — before
+                # this, an inspector reading the trace could
+                # not say what marker a retrieved item was
+                # citable by, though the record carried its
+                # payload by construction.
+                "citation": (
+                    _json_safe(rec.citation.to_dict())
+                    if getattr(rec, "citation", None) is not None
+                    else None
+                ),
                 "raw": _json_safe(rec.raw),
             }
             for rec in bundle.activated_records

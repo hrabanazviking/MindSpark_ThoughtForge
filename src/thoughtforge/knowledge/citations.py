@@ -55,9 +55,12 @@ markers — the citation-carrying channel is the fact block
 ("Knowledge context"), present in candidate and strategy
 prompts; the repair prompt carries no knowledge context by
 TF-023's stated narrowing. The trace export (TF-038) does not
-carry the payload yet — TF-061 owns inspector data. Whether a
-generated answer actually *uses* the citations is TF-049
-(enforcement side), not this slice.
+carry the payload yet — TF-061 owns inspector data.
+(TF-061, landed: the trace's retrieval entries now carry
+each record's payload, and ``knowledge/inspector.py``
+surfaces it per turn.) Whether a generated answer
+actually *uses* the citations is TF-049 (enforcement
+side), not this slice.
 
 ``CITATION_FORMATS`` states the marker shape per retrieval kind
 as data, and ``citation_problems()`` re-proves the whole leg

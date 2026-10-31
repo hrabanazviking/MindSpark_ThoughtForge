@@ -108,7 +108,9 @@ TF-061's inspector).
   The repair prompt carries no knowledge context at all,
   by TF-023's stated narrowing.
 - The turn trace (TF-038) does not export the payload
-  yet — TF-061 owns inspector data.
+  yet — TF-061 owns inspector data. *(TF-061, landed:
+  trace retrieval entries carry the payload, and the
+  inspector export surfaces it per turn.)*
 - Whether a generated answer actually cites what it was
   shown is **TF-049** (enforcement side, with TF-093).
   This slice guarantees the citations were *in the
