@@ -470,12 +470,20 @@ class KnowledgeForge:
 
     @staticmethod
     def _extract_key_terms(query: str, max_terms: int = 5) -> list[str]:
-        """Extract key noun-like terms from a query for exact-match lookups."""
-        clean = re.sub(r'[^\w\s]', ' ', query.lower())
-        stopwords = {"the", "a", "an", "is", "are", "was", "were", "be", "been",
-                     "being", "have", "has", "had", "do", "does", "did", "will",
-                     "would", "could", "should", "may", "might", "to", "of",
-                     "and", "or", "but", "in", "on", "at", "by", "for", "with",
-                     "about", "what", "who", "how", "when", "where", "why"}
-        terms = [w for w in clean.split() if w not in stopwords and len(w) > 2]
-        return terms[:max_terms]
+        """Extract key noun-like terms from a query for exact-match lookups.
+
+        TF-060 (D-ML-1): delegates to
+        ``knowledge/multilingual.key_terms`` — folded
+        (NFC + casefold, so ß reads as ss), stopwords for
+        English + Spanish + German as one union, a
+        two-character floor (a complete spaceless-script
+        word survives), and character bigrams for
+        spaceless-script tokens. Before TF-060 this was
+        an English-only, ``lower()``-based rule that
+        dropped every <= 2-char token and kept Spanish /
+        German function words as terms. Standing English
+        behaviour is preserved (multilingual's checker
+        pins an English example against the old rule)."""
+        from thoughtforge.knowledge.multilingual import key_terms
+
+        return key_terms(query, max_terms=max_terms)

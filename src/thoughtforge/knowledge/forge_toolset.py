@@ -128,6 +128,7 @@ from pathlib import Path
 from typing import Any
 
 from thoughtforge.knowledge.ingestion_contract import MEMORY_PROVENANCE
+from thoughtforge.knowledge.multilingual import fold_text
 from thoughtforge.knowledge.models import (
     EpisodicMemoryRecord,
     ResponsePatternRecord,
@@ -392,7 +393,9 @@ def inspect_records(
         if status is not None and record.status != status:
             continue
         summary = getattr(record, "summary", "")
-        if text is not None and text.lower() not in summary.lower():
+        # TF-060: the text filter compares folded forms
+        # (NFC + casefold), so "STRASSE" finds "straße".
+        if text is not None and fold_text(text) not in fold_text(summary):
             continue
         out.append({
             "record_id": record.record_id, "kind": rkind,

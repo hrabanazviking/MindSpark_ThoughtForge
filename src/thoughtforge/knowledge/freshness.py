@@ -546,19 +546,28 @@ def search_store(
         return MemoryActivationBundle(
             activated_records=[], total_retrieved=0,
             retrieval_confidence=0.0), report
-    wanted = set(terms)
+    # TF-060: matching is multilingual — folded tokens
+    # (casefold, spaceless-script bigrams) with the
+    # diacritic-stripped form as the auxiliary match, so
+    # an accent-stripped query still finds the accented
+    # record here. English behaviour is unchanged (the
+    # folded form of an English token is its lowercase).
+    from thoughtforge.knowledge.multilingual import (
+        match_tokens,
+        terms_matching,
+    )
+
     relevance: dict[str, float] = {}
     candidates: list[Any] = []
     for record in _store_records(store):
         report["considered"] += 1
-        haystack = set(re.findall(
-            r"\w+",
+        haystack = match_tokens(
             f"{_get(record, 'summary', '')} "
-            f"{' '.join(_get(record, 'tags', []) or [])}".lower()))
-        matched = wanted & haystack
+            f"{' '.join(_get(record, 'tags', []) or [])}")
+        matched = terms_matching(terms, haystack)
         if matched:
             relevance[str(_get(record, "record_id", ""))] = \
-                len(matched) / len(wanted)
+                len(matched) / len(terms)
             candidates.append(record)
     report["matched"] = len(candidates)
     ranked = rank_records(candidates, relevance, now=now)

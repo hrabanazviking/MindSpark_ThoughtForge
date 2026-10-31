@@ -414,7 +414,7 @@ class ReferenceLibrary:
 
         Score = the share of the query's distinct key terms
         present in the chunk's title + content + tags
-        (tokenised whole-word, lowercased). Only chunks
+        (tokenised whole-word, folded — TF-060). Only chunks
         matching at least one term are returned, best first,
         ties by (source_file, chunk_index); the bundle's
         bookkeeping matches the forge's (total == records,
@@ -426,14 +426,24 @@ class ReferenceLibrary:
             return MemoryActivationBundle(
                 activated_records=[], total_retrieved=0,
                 retrieval_confidence=0.0)
-        wanted = set(terms)
+        # TF-060: matching is multilingual — folded tokens
+        # (casefold, spaceless-script bigrams) with the
+        # diacritic-stripped form auxiliary, as in the
+        # personal-store searches. English scores are
+        # unchanged (a folded English token is its
+        # lowercase, and 1-of-2 still scores exactly 0.5).
+        from thoughtforge.knowledge.multilingual import (
+            match_tokens,
+            terms_matching,
+        )
+
         scored: list[tuple[float, ReferenceChunk]] = []
         for chunk in self.chunks():
-            haystack = set(re.findall(
-                r"\w+", f"{chunk.title} {chunk.content} {chunk.tags}".lower()))
-            matched = wanted & haystack
+            haystack = match_tokens(
+                f"{chunk.title} {chunk.content} {chunk.tags}")
+            matched = terms_matching(terms, haystack)
             if matched:
-                scored.append((len(matched) / len(wanted), chunk))
+                scored.append((len(matched) / len(terms), chunk))
         scored.sort(key=lambda item: (
             -item[0], item[1].source_file, item[1].chunk_index))
         activated: list[ActivatedRecord] = []
