@@ -26,9 +26,15 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from thoughtforge.cognition.history_discipline import CORE_HISTORY_MAX_CHARS
+from thoughtforge.cognition.interruption import (
+    InterruptToken,
+    TurnInterrupted,
+    check_interrupt,
+    mark_interrupted,
+)
 from thoughtforge.cognition.prompt_builder import PromptBuilder
 from thoughtforge.cognition.streaming import StreamEvent, chunk_words
-from thoughtforge.cognition.turn_state import advance_phase
+from thoughtforge.cognition.turn_state import advance_phase, phase_index
 from thoughtforge.cognition.router import InputRouter
 from thoughtforge.cognition.scaffold import ScaffoldBuilder
 from thoughtforge.knowledge.forge import KnowledgeForge
@@ -149,6 +155,7 @@ class ThoughtForgeCore:
         retrieval_path: str | None = None,
         num_drafts: int | None = None,
         history: "Any | None" = None,
+        interrupt: InterruptToken | None = None,
     ) -> FinalResponseRecord:
         """
         Full memory-enforced cognition pipeline for one user turn.
@@ -157,11 +164,23 @@ class ThoughtForgeCore:
             user_text:      Raw user message.
             retrieval_path: Override retrieval path ("sql" | "vector" | "hybrid").
             num_drafts:     Override draft count (default from hardware profile).
+            interrupt:      TF-027: an InterruptToken that can cut
+                            the turn at a cut point (see
+                            cognition/interruption.py).
 
         Returns:
             FinalResponseRecord — always returns, never raises on content failure.
+
+        Raises:
+            TurnInterrupted: the interrupt token fired; the turn
+                stands cut and coherent on last_turn_state and can
+                be finished with resume_turn(). A cut is NOT a
+                content failure, so it is not swallowed into a
+                fabricated answer.
         """
-        for _ in self._run_turn(user_text, retrieval_path, num_drafts, history, stream=False):
+        for _ in self._run_turn(
+            user_text, retrieval_path, num_drafts, history, stream=False, interrupt=interrupt,
+        ):
             pass
         turn = self._last_turn_state
         assert turn is not None and turn.final_response is not None
@@ -173,6 +192,7 @@ class ThoughtForgeCore:
         retrieval_path: str | None = None,
         num_drafts: int | None = None,
         history: "Any | None" = None,
+        interrupt: InterruptToken | None = None,
     ) -> Iterator[StreamEvent]:
         """
         TF-026: one full turn, delivered as a stream of events.
@@ -185,8 +205,90 @@ class ThoughtForgeCore:
         terminal ``final`` event (see cognition/streaming.py for
         the honesty contract). The finished turn is retained on
         last_turn_state exactly as think() retains it.
+
+        TF-027: pass ``interrupt`` to allow the turn to be cut —
+        the stream then ends with a terminal ``interrupted`` event
+        instead of ``final``, and the turn can be finished with
+        resume_turn(). Closing this stream mid-turn also cuts the
+        turn (recorded on the retained state).
         """
-        yield from self._run_turn(user_text, retrieval_path, num_drafts, history, stream=True)
+        yield from self._run_turn(
+            user_text, retrieval_path, num_drafts, history, stream=True, interrupt=interrupt,
+        )
+
+    def resume_turn(
+        self,
+        interrupt: InterruptToken | None = None,
+    ) -> FinalResponseRecord:
+        """
+        TF-027: finish the retained cut turn — the SAME turn.
+
+        The interrupted turn on last_turn_state is taken up from
+        its phase: retained sketch / bundle / scaffold are reused
+        (no re-routing, no re-retrieval), generation runs only for
+        the scaffold modes that produced no candidate before the
+        cut, fragment scoring and the composed final are built
+        from the full candidate set, and the turn completes
+        through the normal quality gate with its original turn_id.
+
+        Raises:
+            ValueError: there is no interrupted turn to resume, or
+                the turn was cut before its scaffold existed (only
+                possible when a stream consumer closed before
+                generation started) — start a new turn instead.
+            TurnInterrupted: the new interrupt token fired during
+                the resume; the turn stands cut again, coherently.
+        """
+        turn = self._last_turn_state
+        if turn is None or not turn.interrupted:
+            raise ValueError("no interrupted turn to resume")
+        if phase_index(turn.phase) < phase_index("scaffolded"):
+            raise ValueError(
+                "turn was cut before its scaffold existed — nothing to "
+                "resume from; start a new turn"
+            )
+        assert turn.input_sketch is not None and turn.scaffold is not None
+        assert turn.memory_bundle is not None
+        turn.resume_count += 1
+        turn.interrupted = False
+        turn.interrupt_reason = ""
+        turn.interrupted_phase = ""
+
+        t_start = time.perf_counter()
+        try:
+            check_interrupt(turn, interrupt)
+            if phase_index(turn.phase) < phase_index("generated"):
+                t_gen = time.perf_counter()
+                try:
+                    # Only the modes that produced no candidate before
+                    # the cut are generated; modes already on the turn
+                    # are kept, never regenerated (_generate_candidates
+                    # routes engine / unified backend as in think()).
+                    done_modes = {c.mode for c in turn.candidates}
+                    missing = [
+                        m for m in turn.scaffold.candidate_modes[:2]
+                        if m not in done_modes
+                    ]
+                    self._generate_candidates(
+                        turn.input_sketch, turn.scaffold, turn.memory_bundle,
+                        None, interrupt=interrupt, sink=turn.candidates,
+                        only_modes=missing, turn=turn,
+                    )
+                finally:
+                    turn.generation_ms = int((time.perf_counter() - t_gen) * 1000)
+                turn.fragments = self._score_and_extract_fragments(
+                    turn.candidates, turn.input_sketch, turn.scaffold,
+                )
+                advance_phase(turn, "generated")
+            check_interrupt(turn, interrupt)
+            final = self._finish_turn(turn)
+        except TurnInterrupted as exc:
+            mark_interrupted(turn, exc.reason)
+            raise
+        self._perf.record(
+            "think.resume", (time.perf_counter() - t_start) * 1000,
+        )
+        return final
 
     def _run_turn(
         self,
@@ -196,67 +298,151 @@ class ThoughtForgeCore:
         history: "Any | None",
         *,
         stream: bool,
+        interrupt: InterruptToken | None = None,
     ) -> Iterator[StreamEvent]:
         """The one turn pipeline; think() exhausts it silently,
-        think_stream() yields its events (stream=True only)."""
+        think_stream() yields its events (stream=True only).
+
+        TF-027: ``interrupt`` is checked at the cut points named in
+        cognition/interruption.py. A cut raises TurnInterrupted out
+        of think(); a streamed turn instead yields one terminal
+        ``interrupted`` event. A consumer closing the stream
+        mid-turn (GeneratorExit) records the same cut and the
+        exception propagates untouched.
+        """
         user_text = sanitise_query(user_text)
         turn_id = _new_turn_id()
         turn = RuntimeTurnState(turn_id=turn_id)
         self._last_turn_state = turn
-        if stream:
-            yield StreamEvent(kind="turn_started", turn_id=turn_id)
         t_start = time.perf_counter()
+        try:
+            if stream:
+                yield StreamEvent(kind="turn_started", turn_id=turn_id)
 
-        logger.info("think() turn=%s text=%r", turn_id, user_text[:80])
+            logger.info("think() turn=%s text=%r", turn_id, user_text[:80])
 
-        # ── Step 1: Route input ────────────────────────────────────────────────
-        thread_state = self._store.load_thread_state()
-        sketch = self._router.route(user_text, thread_state=thread_state)
-        if retrieval_path:
-            sketch.retrieval_path = retrieval_path
-        turn.input_sketch = sketch
-        advance_phase(turn, "routed")
+            # ── Step 1: Route input ────────────────────────────────────────────
+            thread_state = self._store.load_thread_state()
+            sketch = self._router.route(user_text, thread_state=thread_state)
+            if retrieval_path:
+                sketch.retrieval_path = retrieval_path
+            turn.input_sketch = sketch
+            advance_phase(turn, "routed")
 
-        # ── Step 2: Retrieve knowledge ─────────────────────────────────────────
-        t_ret = time.perf_counter()
-        bundle = self._retrieve(sketch)
-        turn.memory_bundle = bundle
-        turn.retrieval_ms = int((time.perf_counter() - t_ret) * 1000)
-        advance_phase(turn, "retrieved")
-        logger.debug("Retrieved %d records in %dms", bundle.total_retrieved, turn.retrieval_ms)
+            # ── Step 2: Retrieve knowledge ─────────────────────────────────────
+            t_ret = time.perf_counter()
+            bundle = self._retrieve(sketch)
+            turn.memory_bundle = bundle
+            turn.retrieval_ms = int((time.perf_counter() - t_ret) * 1000)
+            advance_phase(turn, "retrieved")
+            logger.debug("Retrieved %d records in %dms", bundle.total_retrieved, turn.retrieval_ms)
 
-        # ── Step 3: Build scaffold ─────────────────────────────────────────────
-        scaffold = self._scaffold_builder.build(sketch, bundle, self._personality)
-        # Inject chat history context into the fact_block when provided
-        if history is not None:
-            history_context = history.to_prompt_context(max_chars=CORE_HISTORY_MAX_CHARS)
-            if history_context:
-                if scaffold.fact_block:
-                    scaffold.fact_block = (
-                        f"Conversation history:\n{history_context}\n\n"
-                        f"Knowledge:\n{scaffold.fact_block}"
+            # ── Step 3: Build scaffold ─────────────────────────────────────────
+            scaffold = self._scaffold_builder.build(sketch, bundle, self._personality)
+            # Inject chat history context into the fact_block when provided
+            if history is not None:
+                history_context = history.to_prompt_context(max_chars=CORE_HISTORY_MAX_CHARS)
+                if history_context:
+                    if scaffold.fact_block:
+                        scaffold.fact_block = (
+                            f"Conversation history:\n{history_context}\n\n"
+                            f"Knowledge:\n{scaffold.fact_block}"
+                        )
+                    else:
+                        scaffold.fact_block = f"Conversation history:\n{history_context}"
+            turn.scaffold = scaffold
+            advance_phase(turn, "scaffolded")
+
+            # ── TF-027 cut point: after scaffold, before generation ──────────
+            # A token fired during routing / retrieval / scaffold is
+            # honoured here — stages are atomic between cut points.
+            check_interrupt(turn, interrupt)
+
+            # ── Step 4–6: Generate + score fragments ───────────────────────────
+            # The sink IS turn.candidates from the start: a cut inside
+            # generation leaves exactly the completed candidates on
+            # the turn; a candidate in flight is never appended.
+            t_gen = time.perf_counter()
+            try:
+                if stream:
+                    yield from self._generate_candidates_streaming(
+                        turn, sketch, scaffold, bundle, num_drafts,
+                        interrupt=interrupt, sink=turn.candidates,
                     )
                 else:
-                    scaffold.fact_block = f"Conversation history:\n{history_context}"
-        turn.scaffold = scaffold
-        advance_phase(turn, "scaffolded")
+                    self._generate_candidates(
+                        sketch, scaffold, bundle, num_drafts,
+                        interrupt=interrupt, sink=turn.candidates, turn=turn,
+                    )
+            finally:
+                # TF-027: the partial leg's time is measured too —
+                # a cut turn's generation_ms is real, not a default.
+                turn.generation_ms = int((time.perf_counter() - t_gen) * 1000)
+            candidates = turn.candidates
 
-        # ── Step 4–6: Generate, score, salvage ────────────────────────────────
-        t_gen = time.perf_counter()
-        if stream:
-            candidates = yield from self._generate_candidates_streaming(
-                turn_id, sketch, scaffold, bundle, num_drafts,
+            fragments = self._score_and_extract_fragments(candidates, sketch, scaffold)
+            turn.fragments = fragments
+            advance_phase(turn, "generated")
+
+            # ── TF-027 cut point: after generation, before compose ───────────
+            check_interrupt(turn, interrupt)
+
+            # ── Steps 7–8: Compose + quality gate + completion ────────────────
+            final = self._finish_turn(turn)
+
+            total_ms = (time.perf_counter() - t_start) * 1000
+            logger.info(
+                "think() done turn=%s | score=%.3f tier=%s | tokens=%d | %dms total",
+                turn_id,
+                final.scores.composite,
+                final.scores.quality_tier,
+                final.token_count,
+                int(total_ms),
             )
-        else:
-            candidates = self._generate_candidates(sketch, scaffold, bundle, num_drafts)
-        turn.candidates = candidates
 
-        fragments = self._score_and_extract_fragments(candidates, sketch, scaffold)
-        turn.fragments = fragments
-        turn.generation_ms = int((time.perf_counter() - t_gen) * 1000)
-        advance_phase(turn, "generated")
+            # Record performance metrics
+            self._perf.record("think.total", total_ms)
+            self._perf.record("think.retrieval", turn.retrieval_ms)
+            self._perf.record("think.generation", turn.generation_ms)
+            self._perf.record("think.salvage", turn.salvage_ms)
 
-        # ── Step 7: Refine or fallback to knowledge-only summary ───────────────
+            if stream:
+                yield StreamEvent(kind="final", turn_id=turn_id, text=final.text, final=final)
+        except TurnInterrupted as exc:
+            mark_interrupted(turn, exc.reason)
+            logger.info(
+                "think() turn=%s interrupted at phase=%s: %s",
+                turn_id, turn.phase, exc.reason or "no reason given",
+            )
+            if stream:
+                yield StreamEvent(
+                    kind="interrupted", turn_id=turn_id, text=exc.reason,
+                )
+                return
+            raise
+        except GeneratorExit:
+            # TF-027: the stream consumer cut the turn by closing
+            # it. Record the cut on the retained state, then let
+            # GeneratorExit propagate untouched — a closing
+            # generator must never yield again. A consumer closing
+            # AFTER the final event changes nothing: that turn
+            # already completed, and completion is not rewritten.
+            if not turn.is_complete:
+                mark_interrupted(turn, "consumer closed the stream")
+            raise
+
+    def _finish_turn(self, turn: RuntimeTurnState) -> FinalResponseRecord:
+        """Steps 7–8 of the turn pipeline, shared by _run_turn and
+        TF-027's resume_turn: compose (or the knowledge-only
+        fallback), the quality-gate repair branch, and completion
+        bookkeeping. Expects turn.phase == "generated" (candidate
+        and fragment stages finished) and fills final_response.
+        """
+        sketch = turn.input_sketch
+        bundle = turn.memory_bundle
+        candidates = turn.candidates
+        assert sketch is not None and bundle is not None
+
         # TF-025: salvage_ms is MEASURED around the compose step
         # (salvage + enforcement). On the knowledge-only path no
         # salvage runs, so it stays exactly 0 — "did not run", never
@@ -266,10 +452,10 @@ class ThoughtForgeCore:
             final = self._compose_final(turn)
             turn.salvage_ms = int((time.perf_counter() - t_salvage) * 1000)
         else:
-            final = self._knowledge_only_response(turn_id, sketch, bundle)
+            final = self._knowledge_only_response(turn.turn_id, sketch, bundle)
         advance_phase(turn, "composed")
 
-        # ── Step 8: Quality gate → repair if needed ────────────────────────────
+        # Quality gate → repair if needed.
         if final.scores.composite < _QUALITY_REPAIR_THRESHOLD and candidates:
             logger.debug(
                 "Quality below threshold (%.3f < %.3f) — attempting repair",
@@ -284,25 +470,7 @@ class ThoughtForgeCore:
         turn.total_tokens_used = final.token_count
         turn.completed_at = _now_iso()
         advance_phase(turn, "completed")
-
-        total_ms = (time.perf_counter() - t_start) * 1000
-        logger.info(
-            "think() done turn=%s | score=%.3f tier=%s | tokens=%d | %dms total",
-            turn_id,
-            final.scores.composite,
-            final.scores.quality_tier,
-            final.token_count,
-            int(total_ms),
-        )
-
-        # Record performance metrics
-        self._perf.record("think.total", total_ms)
-        self._perf.record("think.retrieval", turn.retrieval_ms)
-        self._perf.record("think.generation", turn.generation_ms)
-        self._perf.record("think.salvage", turn.salvage_ms)
-
-        if stream:
-            yield StreamEvent(kind="final", turn_id=turn_id, text=final.text, final=final)
+        return final
 
     def load_model(self, model_path: str | Path | None = None) -> None:
         """Explicitly load the inference model. Called automatically on first think() if not done."""
@@ -343,27 +511,58 @@ class ThoughtForgeCore:
         scaffold: CognitionScaffold,
         bundle: MemoryActivationBundle,
         num_drafts: int | None,
+        *,
+        interrupt: InterruptToken | None = None,
+        sink: list[CandidateRecord] | None = None,
+        only_modes: list[str] | None = None,
+        turn: RuntimeTurnState | None = None,
     ) -> list[CandidateRecord]:
-        """Generate candidate responses via TurboQuantEngine or UnifiedBackend. Returns [] if no model."""
+        """Generate candidate responses via TurboQuantEngine or UnifiedBackend. Returns [] if no model.
+
+        TF-027: completed candidates are appended to ``sink`` (the
+        list returned either way), the interrupt token is checked
+        before each mode (raising TurnInterrupted, which needs the
+        turn via ``turn``), and ``only_modes`` restricts generation
+        to the named modes — resume_turn's way of generating only
+        what a cut turn is missing.
+        """
+        candidates: list[CandidateRecord] = sink if sink is not None else []
+
+        def _check() -> None:
+            if interrupt is not None:
+                assert turn is not None
+                check_interrupt(turn, interrupt)
+
+        if only_modes is not None and not only_modes and candidates:
+            return candidates   # resume: nothing missing
+
         if self._engine is None and self._model_path is not None:
             try:
                 self.load_model()
             except Exception as e:
                 logger.warning("Failed to load model: %s — running knowledge-only", e)
-                return []
+                return candidates
 
         # Route through UnifiedBackend when no local engine is loaded
         if self._engine is None and self._unified_backend is not None:
-            return self._generate_via_unified_backend(sketch, scaffold, bundle)
+            _check()
+            produced = self._generate_via_unified_backend(
+                sketch, scaffold, bundle, only_modes=only_modes,
+            )
+            candidates.extend(produced)
+            return candidates
 
         if self._engine is None:
-            return []
+            return candidates
 
         memory_cues = self._prompt_builder.extract_memory_cues(bundle)
-        candidates: list[CandidateRecord] = []
         modes = scaffold.candidate_modes[:2]    # max 2 candidate passes
+        if only_modes is not None:
+            modes = [m for m in modes if m in only_modes]
 
         for mode in modes:
+            # TF-027 cut point: before each candidate.
+            _check()
             prompt = self._prompt_builder.build_candidate_prompt(
                 sketch=sketch,
                 scaffold=scaffold,
@@ -386,6 +585,8 @@ class ThoughtForgeCore:
                     token_estimate=result.tokens_generated,
                     scores=_score_candidate(result.text, sketch, scaffold),
                 ))
+            except TurnInterrupted:
+                raise
             except Exception as e:
                 logger.warning("Candidate generation failed (mode=%s): %s", mode, e)
 
@@ -396,12 +597,16 @@ class ThoughtForgeCore:
         sketch: InputSketch,
         scaffold: CognitionScaffold,
         bundle: MemoryActivationBundle,
+        *,
+        only_modes: list[str] | None = None,
     ) -> list[CandidateRecord]:
         """Generate a single candidate via the UnifiedBackend (Ollama, LM Studio, HF, etc.)."""
         from thoughtforge.inference.unified_backend import GenerationRequest
 
         memory_cues = self._prompt_builder.extract_memory_cues(bundle)
         mode = scaffold.candidate_modes[0] if scaffold.candidate_modes else "practical"
+        if only_modes is not None and mode not in only_modes:
+            return []   # TF-027 resume: this mode's candidate already exists
         prompt = self._prompt_builder.build_candidate_prompt(
             sketch=sketch,
             scaffold=scaffold,
@@ -434,11 +639,14 @@ class ThoughtForgeCore:
 
     def _generate_candidates_streaming(
         self,
-        turn_id: str,
+        turn: RuntimeTurnState,
         sketch: InputSketch,
         scaffold: CognitionScaffold,
         bundle: MemoryActivationBundle,
         num_drafts: int | None,
+        *,
+        interrupt: InterruptToken | None = None,
+        sink: list[CandidateRecord] | None = None,
     ) -> Iterator[StreamEvent]:
         """Streamed twin of _generate_candidates: same prompts, same
         modes, same per-mode failure handling — plus events.
@@ -447,26 +655,37 @@ class ThoughtForgeCore:
         yield-from value). Mirrors _generate_candidates' routing:
         local engine when loaded/loadable, else the unified backend,
         else no candidates (the turn degrades to knowledge-only).
+
+        TF-027: completed candidates are appended to ``sink`` as
+        they finish, and the interrupt token is checked before each
+        candidate and before each chunk is delivered (a fired token
+        raises TurnInterrupted — the in-flight candidate's parts
+        are discarded whole, never appended).
         """
+        turn_id = turn.turn_id
+        candidates: list[CandidateRecord] = sink if sink is not None else []
         if self._engine is None and self._model_path is not None:
             try:
                 self.load_model()
             except Exception as e:
                 logger.warning("Failed to load model: %s — running knowledge-only", e)
-                return []
+                return candidates
 
         if self._engine is None and self._unified_backend is not None:
-            candidates = yield from self._stream_via_unified_backend(turn_id, sketch, scaffold, bundle)
+            yield from self._stream_via_unified_backend(
+                turn, sketch, scaffold, bundle, interrupt=interrupt, sink=candidates,
+            )
             return candidates
 
         if self._engine is None:
-            return []
+            return candidates
 
         memory_cues = self._prompt_builder.extract_memory_cues(bundle)
-        candidates: list[CandidateRecord] = []
         modes = scaffold.candidate_modes[:2]    # max 2 candidate passes
 
         for mode in modes:
+            # TF-027 cut point: before each candidate.
+            check_interrupt(turn, interrupt)
             prompt = self._prompt_builder.build_candidate_prompt(
                 sketch=sketch,
                 scaffold=scaffold,
@@ -482,6 +701,10 @@ class ThoughtForgeCore:
                 if callable(native_stream):
                     parts: list[str] = []
                     for delta in native_stream(prompt, params=params):
+                        # TF-027 cut point: before each chunk is
+                        # delivered. A cut here discards `parts`
+                        # whole — the partial candidate never lands.
+                        check_interrupt(turn, interrupt)
                         parts.append(delta)
                         yield StreamEvent(
                             kind="chunk", turn_id=turn_id, mode=mode,
@@ -496,6 +719,7 @@ class ThoughtForgeCore:
                     text = result.text
                     token_estimate = result.tokens_generated
                     for chunk in chunk_words(text):
+                        check_interrupt(turn, interrupt)
                         yield StreamEvent(
                             kind="chunk", turn_id=turn_id, mode=mode,
                             candidate_id=cid, text=chunk, native=False,
@@ -511,6 +735,8 @@ class ThoughtForgeCore:
                     kind="candidate_end", turn_id=turn_id, mode=mode,
                     candidate_id=cid, text=text,
                 )
+            except TurnInterrupted:
+                raise
             except Exception as e:
                 # A partial stream is discarded whole: a candidate
                 # is its completed text or it is not a candidate.
@@ -524,15 +750,24 @@ class ThoughtForgeCore:
 
     def _stream_via_unified_backend(
         self,
-        turn_id: str,
+        turn: RuntimeTurnState,
         sketch: InputSketch,
         scaffold: CognitionScaffold,
         bundle: MemoryActivationBundle,
+        *,
+        interrupt: InterruptToken | None = None,
+        sink: list[CandidateRecord] | None = None,
     ) -> Iterator[StreamEvent]:
         """Streamed twin of _generate_via_unified_backend (one
-        candidate, first scaffold mode, max_tokens 512 as there)."""
+        candidate, first scaffold mode, max_tokens 512 as there).
+
+        TF-027: the token is checked before each chunk is delivered
+        and the completed candidate lands in ``sink``.
+        """
         from thoughtforge.inference.unified_backend import GenerationRequest, UnifiedBackend
 
+        turn_id = turn.turn_id
+        candidates: list[CandidateRecord] = sink if sink is not None else []
         memory_cues = self._prompt_builder.extract_memory_cues(bundle)
         mode = scaffold.candidate_modes[0] if scaffold.candidate_modes else "practical"
         prompt = self._prompt_builder.build_candidate_prompt(
@@ -556,6 +791,8 @@ class ThoughtForgeCore:
             native = type(backend).generate_stream is not UnifiedBackend.generate_stream
             parts: list[str] = []
             for chunk in backend.generate_stream(req):
+                # TF-027 cut point: before each chunk is delivered.
+                check_interrupt(turn, interrupt)
                 parts.append(chunk)
                 if native:
                     yield StreamEvent(
@@ -564,6 +801,7 @@ class ThoughtForgeCore:
                     )
                 else:
                     for piece in chunk_words(chunk):
+                        check_interrupt(turn, interrupt)
                         yield StreamEvent(
                             kind="chunk", turn_id=turn_id, mode=mode,
                             candidate_id=cid, text=piece, native=False,
@@ -577,7 +815,7 @@ class ThoughtForgeCore:
                     kind="candidate_error", turn_id=turn_id, mode=mode,
                     candidate_id=cid, text="backend returned no text (error or empty)",
                 )
-                return []
+                return candidates
             candidate = CandidateRecord(
                 candidate_id=cid,
                 mode=mode,
@@ -585,18 +823,21 @@ class ThoughtForgeCore:
                 token_estimate=len(text.split()),
                 scores=_score_candidate(text, sketch, scaffold),
             )
+            candidates.append(candidate)
             yield StreamEvent(
                 kind="candidate_end", turn_id=turn_id, mode=mode,
                 candidate_id=cid, text=text,
             )
-            return [candidate]
+            return candidates
+        except TurnInterrupted:
+            raise
         except Exception as e:
             logger.warning("UnifiedBackend streamed generate failed: %s", e)
             yield StreamEvent(
                 kind="candidate_error", turn_id=turn_id, mode=mode,
                 candidate_id=cid, text=str(e),
             )
-            return []
+            return candidates
 
     def _score_and_extract_fragments(
         self,

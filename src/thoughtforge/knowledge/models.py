@@ -458,6 +458,15 @@ class RuntimeTurnState:
     ``repair_attempted`` records the quality-gate repair branch;
     ``salvage_ms`` is the measured compose (salvage + enforcement)
     time — exactly 0 when no candidates existed and no salvage ran.
+
+    TF-027: ``interrupted`` / ``interrupt_reason`` /
+    ``interrupted_phase`` record a cut (see
+    ``cognition.interruption``): while a turn is cut,
+    ``interrupted`` is True, the other two describe that cut, and
+    ``final_response`` / ``completed_at`` stay empty.
+    ``resume_count`` counts the times a cut turn was taken up
+    again; the cut fields are cleared when a resume begins, so
+    they always describe the *current* cut, never a stale one.
     """
 
     turn_id: str
@@ -476,8 +485,17 @@ class RuntimeTurnState:
     salvage_ms: int = 0
     phase: str = "created"
     repair_attempted: bool = False
+    interrupted: bool = False
+    interrupt_reason: str = ""
+    interrupted_phase: str = ""
+    resume_count: int = 0
 
     @property
     def is_complete(self) -> bool:
         """True once the turn has reached the completed phase."""
         return self.phase == "completed" and bool(self.completed_at)
+
+    @property
+    def is_interrupted(self) -> bool:
+        """TF-027: True while the turn stands cut, awaiting resume."""
+        return self.interrupted and not self.is_complete

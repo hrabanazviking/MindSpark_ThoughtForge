@@ -104,7 +104,9 @@ reported `tokens_generated`.
 ## 5. Deliberately not here
 
 - **Interruption & resume of a stream** — TF-027's slice; the
-  event contract here is what it will cut into.
+  event contract here is what it cuts into. LANDED in TF-027:
+  see `INTERRUPTION_AND_RESUME.md` (the one contract change
+  there is the added terminal event kind `interrupted`).
 - **Streaming across the Part IX bindings** — TF-164 composes
   TF-026 with TF-072 there.
 - **True token streaming inside the HTTP backends** (Ollama /

@@ -47,8 +47,10 @@ post-stream, nothing in between pretending*:
 
 Event order for one turn is fixed: ``turn_started`` first, then
 per-candidate groups in scaffold mode order, then exactly one
-terminal ``final``. ``chunk_words`` is the one fallback chunker:
-deterministic, word-preserving, shared by every non-native path.
+terminal event — ``final``, or TF-027's ``interrupted`` when the
+turn is cut (see ``cognition/interruption.py``). ``chunk_words``
+is the one fallback chunker: deterministic, word-preserving,
+shared by every non-native path.
 """
 
 from __future__ import annotations
@@ -65,6 +67,10 @@ EVENT_KINDS: tuple[str, ...] = (
     "candidate_end",
     "candidate_error",
     "final",
+    # TF-027: a cut turn's terminal event, INSTEAD of "final" —
+    # the event order law is otherwise unchanged (turn_started
+    # first, per-candidate groups, exactly one terminal event).
+    "interrupted",
 )
 
 #: Fallback chunk size, in words, for completed-text sources.
@@ -79,7 +85,10 @@ class StreamEvent:
     candidate's full assembled text on ``candidate_end``, the
     error message on ``candidate_error``, and the final answer
     text on ``final`` (whose ``final`` field carries the record
-    itself). ``native`` is meaningful on ``chunk`` events only.
+    itself). On a TF-027 ``interrupted`` event, ``text`` carries
+    the interrupt reason and ``final`` stays None — a cut turn
+    has no final record to carry. ``native`` is meaningful on
+    ``chunk`` events only.
     """
 
     kind: str

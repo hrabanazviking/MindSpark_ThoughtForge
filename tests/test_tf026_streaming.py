@@ -119,9 +119,13 @@ class _FlakyStreamEngine:
 
 class TestEventContract:
     def test_event_kinds_are_the_six(self) -> None:
+        # TF-027 extended the contract with ONE kind: "interrupted",
+        # the terminal event of a cut turn (it replaces "final" for
+        # that turn; the original six and their order are unchanged).
         assert EVENT_KINDS == (
             "turn_started", "candidate_start", "chunk",
             "candidate_end", "candidate_error", "final",
+            "interrupted",
         )
 
     def test_event_defaults(self) -> None:
