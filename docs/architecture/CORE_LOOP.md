@@ -117,6 +117,10 @@ deterministic. `route(raw_text, thread_state)` returns an
 A caller-supplied `retrieval_path` argument to `think()` overwrites
 `sketch.retrieval_path` after routing.
 
+The router's full decision table — scoring, tie-breaking, every
+intent/tone/mode/retrieval/urgency row, and the TF-020 dead-pattern
+fix — is `docs/architecture/ROUTER_DECISION_TABLE.md`.
+
 Measured live this slice (router alone): “fix this traceback error,
 it crashes” → `technical_debugging / neutral / structured_technical /
 hybrid / 0.45`; “what is a ferry?” → `factual_query / sql / 0.30`;
