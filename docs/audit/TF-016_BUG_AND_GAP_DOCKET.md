@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 82 entries — 44 OPEN, 1 OPEN-ENVIRONMENT, 35 FIXED
+**Totals: 84 entries — 45 OPEN, 1 OPEN-ENVIRONMENT, 36 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -22,9 +22,9 @@ D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
 Part IV; D-QUANT-1 by TF-068 in Part IV; D-ONNX-1 by
 TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
 TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
-D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV), 2
+D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 32 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 34 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -162,7 +162,26 @@ the same slice's on-device rows discharge the Pi
 shares of D-COLD-1 and D-BATCH-1 at fixture grade
 (cold-start medians and the batch panel executed
 on the Pi), their live-model shares standing as
-filed.)
+filed.) Entries D-GPU-1 and D-GPU-2 were added by
+TF-083 in Part IV under the same rule — measured by
+that slice's GPU-optional probes on two hosts (this
+GPU-less VM and the laptop line, purplelongship):
+D-GPU-1 found by those probes (the resolved
+n_gpu_layers ladder, derived from a profile's
+declared VRAM, was merged over the selected
+backend's own kwargs, so server_gpu on the GPU-less
+VM selected the cpu backend and still carried -1
+into its model-load kwargs — CPU in name, GPU in
+fact) and fixed in scope in build_llama_kwargs (a
+backend declaring no offload is clamped to 0; the
+engine's load log reports the effective count);
+D-GPU-2 measured by the same probes (both vulkan
+probers accept libvulkan.so.1's presence as a
+working GPU backend — on this VM the library
+exists, vulkaninfo and any GPU device do not, yet
+vulkan reports available and desktop_gpu selects
+it) and assigned to TF-086's truth table v2, whose
+per-profile verdicts own the line.
 
 ## The docket
 
@@ -229,6 +248,8 @@ filed.)
 | D-BATCH-1 | Batch & concurrency per profile had never been measured or filed as shapes: no batch entry exists on the TF-065 backend contract (`UnifiedBackend` serves one request per call; the inference tree's one true batch is `onnx_export`'s tokenisation loop, an embedding-export step); the one multi-generation, `TurboQuantEngine.generate_drafts`, is a sequential `for` loop in an engine that imports no threading and holds no lock, so concurrent calls on one engine were unguarded and unproven; TF-035 proved concurrent isolation on two cores but expressly deferred concurrent timing to TF-081; and no measurement anywhere said what a batch costs on any profile (measured by TF-081's greps + source pins + panel) | TF-081 | IV | **FIXED by TF-081** at fixture grade: `inference/batch_concurrency.py` files the seven concurrency shapes as data (contract single-request-only / drafts sequential loop / one core serialised by TF-035's turn lock / parallel cores parallel-isolated / Aesir serialised server-side / HTTP backends stateless per call on the client / ONNX tokenisation batched-not-generation), each judged live against the tree by the checker (contract method list, drafts loop source, turn lock, Aesir's one-resident rule, per-call session-free HTTP legs, the ONNX batch), and measures one comparable panel on every profile (4 synthetic prompts, scripted 50 ms generation delay, an instrumented in-flight witness, medians of 3): parallel cores overlap fully (max in flight 4 of 4 on all six; speedups 2.375-5.353x), one shared core never overlaps (max in flight 1; wall ratio to sequential 0.975-1.071 — TF-035's lock re-proven at batch scale), and drafts through the real engine never overlap (max in flight 1; server_gpu's 5 drafts 458.807 ms, pi_zero's 1 draft 65.773 ms). A live model's concurrent throughput, a real server's concurrency and real-hardware panels are NOT PROVEN (no GGUF in-tree, llama_cpp absent, no live servers on this VM) — TF-082 (real Pi) / TF-175 (laptop line) own those roads and TF-086's truth table must carry the line |
 | D-BATCH-2 | No shipped profile declares any concurrency, batch, or thread parameter: checker-pinned over all six profile JSONs (no concurrency/batch/thread key anywhere), the engine's `n_threads` defaults to None (auto) on every profile, and `draft_count` (pi_zero 1, phone_low 2, pi_5/desktop_cpu/desktop_gpu 3, server_gpu 5) is the only per-profile number shaping multi-generation — so a deployment's concurrency has no declared per-profile shape to bind to (found by TF-081) | TF-153 (service shape decides a deployment's concurrency, per profile) + TF-086 (truth table v2 carries the per-profile concurrency shape) | IV | OPEN — filed by TF-081; the panel in `inference/batch_concurrency.py` is the measured evidence those slices rule from |
 | D-DET-1 | The hardware detector computed `is_mobile` before RAM was detected: `HardwareDetector.detect()` set `snap.is_mobile = self._detect_mobile(snap)` while `snap.ram_gb` was still the dataclass default 0.0, so the mobile rule's `ram_gb < 4.0` clause fired on every ARM machine regardless of its real RAM — measured on a real Raspberry Pi 5 (16 GB) by TF-082's on-device probe, which returned `is_mobile: true` alongside `ram_gb: 15.83`. Profile selection survived only because `ProfileSelector._select_id` checks `is_raspberry_pi` before the mobile branch; a non-Pi ARM Linux machine would have taken the `(is_arm and not is_mobile)` branch as false and been misrouted to `phone_low`. Invisible on x86_64 (is_arm false short-circuits the clause), which is why no VM-side audit saw it (found by TF-082) | TF-082 | IV | **FIXED by TF-082**: `detect()` in `inference/profiles.py` now detects RAM before the mobile check (an ordering change; no rule or threshold changed). `inference/pi_profile.py` files the on-device measurement as evidence (the filed record keeps `is_mobile_as_measured: true` — the defect's proof is never edited away), its checker pins the source order in `detect()` and the Pi-before-mobile order in `_select_id`, and its live checker proves the behaviour both ways: a 16 GB ARM snapshot is not mobile and selects pi_5 (Pi or not), a 2 GB ARM snapshot is still mobile. The same slice's on-device rows also discharge the real-Pi shares of D-COLD-1 and D-BATCH-1 at fixture grade (cold-start medians pi_5 TTFT 7.043 ms / pi_zero 4.667 ms; batch panel parallel max in flight 4/4, serialised legs at 1) — live-model generation on the Pi stays NOT PROVEN (llama_cpp absent there, no binary wheel served; TF-174 owns the road) and Pi Zero hardware stays NOT PROVEN (none in the house), as TF-082's doc states |
+| D-GPU-1 | The model-load kwargs contradicted the selected backend: `resolve_generation_params` derives `n_gpu_layers` from the profile's *declared* VRAM (server_gpu -1, desktop_gpu 40) and `build_llama_kwargs` merged that count over the selected backend's own kwargs — measured by TF-083 on a GPU-less VM: server_gpu's declared path selected the cpu backend and the built kwargs still carried -1 (desktop_gpu with cpu selected would have carried 40), so a profile that fell back to CPU was CPU in name and GPU in fact at the one place a profile meets a model (whether a CPU-only llama.cpp build would error or ignore the count is NOT PROVEN — llama_cpp absent on both hosts measured) | TF-083 | IV | **FIXED by TF-083**: `build_llama_kwargs` clamps the count to 0 for any backend whose own declared kwargs carry `n_gpu_layers == 0` (cpu; directml, a build property not a kwarg); GPU-capable backends keep the caller's count exactly (checker + test pinned, incl. cuda + 32 → 32), and `TurboQuantEngine._load_llama`'s log reports the effective count from the built kwargs. The ladder's resolver-only existence (D-PROF-2's sub-item) stays TF-086's share, as filed |
+| D-GPU-2 | The vulkan probes overstate their truth: `backends._probe_vulkan` and `profiles._check_vulkan` both accept the mere presence of `libvulkan.so.1` as a working GPU backend — measured by TF-083 on this VM: the library exists (/usr/lib/x86_64-linux-gnu/libvulkan.so.1), `vulkaninfo` is not installed, and no GPU device exists (detector vram 0.0, gpu_name None), yet vulkan reports available in both probers and desktop_gpu's as-declared engine load selects it on this host. A library is not a device; not a *requirement* (cpu stands behind it in the profile's fallback order and D-GPU-1's clamp bounds a no-offload backend), but the probe's grade is a library's, not a device's | TF-086 (truth table v2) | IV | OPEN |
 | D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN — **narrowed by TF-078** (model_browser share): the catalogue data is no longer test-only — `CURATED_MODELS` is read live by production modules TF-066 (`turboquant_map`), TF-067 (`quant_quality`), TF-069 (`profile_runner`) and TF-078 (`model_cards` builds the in-repo cards on it). The class's behaviour surface (`list_curated` / `download` / `detect_existing_ggufs`) still has no production caller — no tool or engine path instantiates `ModelBrowser` — and wiring a downloader is an install-surface act, reassigned to TF-179 (user docs I: install + first model). The db_integrity (TF-167), subset (TF-110) and onnx_export (TF-070) shares stand as filed |
 | D-DUP-1 | Three copied private helpers, drift-prone: `_now_iso` ×3 (one byte-identical pair), `_split_sentences` ×2, `_build_messages` ×2 (TF-011) | TF-025-era hygiene (one shared utils home) | II | **FIXED by TF-025**: implementations now live once in `utils/common.py` (`now_iso` / `split_sentences` / `build_messages`); old private names are aliases, identity-pinned by tests/test_tf025_turn_state.py |
 | D-DUP-2 | `MindSpark_ThoughtForge/` shadow directory holds md5-identical copies of root RULES.AI.md / PHILOSOPHY.md — copies that can silently diverge (TF-011; its README was not read or touched, per law) | TF-182 (Part X docs verdict) | X | OPEN |
