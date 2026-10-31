@@ -541,6 +541,7 @@ def search_store(
         "matched": 0,
         "stale_excluded": [],
         "include_stale": include_stale,
+        "screened_out": [],
     }
     if not terms or top_k <= 0:
         return MemoryActivationBundle(
@@ -557,10 +558,23 @@ def search_store(
         terms_matching,
     )
 
+    # TF-062: retrieval screening — a record whose content
+    # screens non-pass is excluded before ranking and named
+    # in screened_out (see knowledge/adversarial.py).
+    from thoughtforge.knowledge.adversarial import screen_record
+
     relevance: dict[str, float] = {}
     candidates: list[Any] = []
     for record in _store_records(store):
         report["considered"] += 1
+        screening = screen_record(record)
+        if not screening.passed:
+            report["screened_out"].append({
+                "record_id": screening.record_id,
+                "verdict": screening.verdict,
+                "classes": screening.classes,
+            })
+            continue
         haystack = match_tokens(
             f"{_get(record, 'summary', '')} "
             f"{' '.join(_get(record, 'tags', []) or [])}")

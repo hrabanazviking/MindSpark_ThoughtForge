@@ -327,6 +327,20 @@ def verify_bundle(bundle: Any) -> list[str]:
         record_id = entry.get("record_id")
         for problem in record_problems(entry):
             problems.append(f"{section_name} {record_id or '?'}: {problem}")
+        # TF-062: a refuse-verdict record (instruction-shaped
+        # text) bars the bundle here, before anything lands —
+        # the import stays refused-entire, never half-landed
+        # on a poisoned record (the landing gate would raise
+        # mid-import otherwise). Quarantine verdicts do not
+        # bar a bundle; retrieval screening governs them.
+        if section_name in ("profile_records", "episodes", "patterns"):
+            from thoughtforge.knowledge.adversarial import (
+                refusal_problems,
+            )
+
+            for problem in refusal_problems(entry):
+                problems.append(
+                    f"{section_name} {record_id or '?'}: {problem}")
         if isinstance(record_id, str) and record_id:
             if record_id in seen:
                 problems.append(

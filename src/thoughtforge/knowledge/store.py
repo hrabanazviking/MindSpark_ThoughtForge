@@ -36,13 +36,33 @@ logger = logging.getLogger(__name__)
 def _validate_record(record: object) -> None:
     """TF-042: ingestion gate — refuse an invalid record before it
     reaches a file, naming every problem. Load and rewrite paths
-    deliberately bypass this (legacy tolerance, TF-041 K13)."""
+    deliberately bypass this (legacy tolerance, TF-041 K13).
+
+    TF-062: the gate also runs adversarial screening over the
+    four memory kinds (fact / preference / episode / pattern);
+    a refuse verdict (instruction-shaped text addressed to the
+    model) raises here, before anything is written. The
+    personality core and the thread state are not screened —
+    the core is the operator's own instruction channel
+    (knowledge/adversarial.py, rule trusted_channels_unscreened)."""
     problems = record_problems(record)
     if problems:
         raise ValueError(
             f"record {getattr(record, 'record_id', '?')} fails the ingestion "
             f"contract: {'; '.join(problems)}"
         )
+    from thoughtforge.knowledge.adversarial import (
+        is_screened_kind,
+        refusal_problems,
+    )
+
+    if is_screened_kind(record):
+        screening_problems = refusal_problems(record)
+        if screening_problems:
+            raise ValueError(
+                f"record {getattr(record, 'record_id', '?')} refused: "
+                f"{'; '.join(screening_problems)}"
+            )
 
 
 def _new_id(prefix: str) -> str:

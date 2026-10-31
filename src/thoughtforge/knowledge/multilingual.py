@@ -562,14 +562,29 @@ def search_store(
         "considered": 0,
         "matched": 0,
         "query_language": detect_language(query).language,
+        "screened_out": [],
     }
     if not terms or top_k <= 0:
         return MemoryActivationBundle(
             activated_records=[], total_retrieved=0,
             retrieval_confidence=0.0), report
+    # TF-062: retrieval screening — a record whose content
+    # screens non-pass (poisoned / injection-shaped, e.g.
+    # planted directly in the store file past the landing
+    # gate) is excluded here and named in screened_out.
+    from thoughtforge.knowledge.adversarial import screen_record
+
     scored: list[tuple[float, Any, list[str]]] = []
     for record in _store_records(store):
         report["considered"] += 1
+        screening = screen_record(record)
+        if not screening.passed:
+            report["screened_out"].append({
+                "record_id": screening.record_id,
+                "verdict": screening.verdict,
+                "classes": screening.classes,
+            })
+            continue
         matched = matched_terms_for_text(terms, record_text(record))
         if matched:
             scored.append((len(matched) / len(terms), record, matched))
