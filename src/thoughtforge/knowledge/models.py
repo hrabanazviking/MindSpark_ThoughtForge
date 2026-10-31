@@ -291,7 +291,12 @@ class CognitionScaffold:
     depth: str = "medium"                                  # light | medium | expert
     candidate_modes: list[str] = field(default_factory=list)
     fact_block: str = ""                                   # injected retrieval context
-    prompt_text: str = ""                                  # fully assembled prompt
+    # TF-023 (CORE_LOOP §8-F7 closed): there is deliberately NO
+    # prompt_text field. A turn builds many prompts (up to 2 candidate
+    # passes, refine passes, a repair pass) and PromptBuilder returns
+    # each prompt string to its caller; a single scaffold field could
+    # only ever hold one of them and mislead. Prompt export, if a
+    # consumer needs it, is TF-038's trace surface, not this object.
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()

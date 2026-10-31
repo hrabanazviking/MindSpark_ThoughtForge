@@ -38,7 +38,7 @@ modes (§3). Costs are in §4.
 | `depth` | str | ScaffoldBuilder | `light` / `medium` / `expert` (rule per row, §2) |
 | `candidate_modes` | list[str] | ScaffoldBuilder | The generation passes, in order (§3) |
 | `fact_block` | str | ScaffoldBuilder (+ core) | Top-8 retrieved records, 1 line each; core may prepend chat history (CORE_LOOP §4) |
-| `prompt_text` | str | **nobody** | Always `""` — CORE_LOOP §8-F7; TF-023 owns the ruling |
+| `prompt_text` | — | — | **Field removed by TF-023** (CORE_LOOP §8-F7 closed): a turn builds many prompts, PromptBuilder returns each to its caller, and no single field can honestly hold "the" prompt — see PROMPT_BUILDER_CONTRACT §7 |
 
 Two modifiers ride on top of every row below and are not part of
 the row itself: the **user-tone overlay** (frustrated → +patient,

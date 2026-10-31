@@ -60,8 +60,11 @@ def test_shape_is_cognition_scaffold_fields_in_order():
     assert scaffold_shape() == expected
     assert scaffold_shape() == (
         "goal", "tone", "focus", "avoid", "depth",
-        "candidate_modes", "fact_block", "prompt_text",
+        "candidate_modes", "fact_block",
     )
+    # TF-023 removed "prompt_text" (CORE_LOOP §8-F7): a turn builds
+    # many prompts and the builder returns each to its caller; no
+    # single scaffold field can honestly hold "the" prompt.
 
 
 # ── Coverage ──────────────────────────────────────────────────────────────────
@@ -220,8 +223,12 @@ def test_base_costs_stay_inside_the_small_model_band():
     # The catalogue's measured claim: on the canonical sketch every
     # base candidate prompt is a lean 45–60 word-tokens. A scaffold
     # growing past that band must update the catalogue deliberately.
+    # TF-023 widened the ceiling 65 → 70 deliberately: candidate
+    # prompts now carry the scaffold's FULL avoid list (intent extras
+    # included) instead of its first 3 entries — measured range at
+    # TF-023 is 45–66 words (see PROMPT_BUILDER_CONTRACT §6).
     for cost in measure_prompt_costs():
-        assert 40 <= cost.word_tokens <= 65
+        assert 40 <= cost.word_tokens <= 70
 
 
 # ── The catalogue doc ─────────────────────────────────────────────────────────

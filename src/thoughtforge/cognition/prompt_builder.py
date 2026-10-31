@@ -8,6 +8,14 @@ Follows the Prompt_Templates_Spec exactly:
 
 Token discipline: prompts are narrow, labeled, and lean.
 Each builder method returns a plain string ready for TurboQuantEngine.generate().
+
+The assembly contract — section order, caps, fallbacks, and the
+TF-023 rulings — is specified in docs/architecture/PROMPT_BUILDER_CONTRACT.md
+and pinned by golden tests (tests/test_tf023_prompt_builder_contract.py).
+Builders return prompt strings to their callers and never write a
+prompt back onto the scaffold (CORE_LOOP §8-F7, closed in TF-023:
+``CognitionScaffold.prompt_text`` was removed — a turn builds many
+prompts, so no single field can honestly hold "the" prompt).
 """
 
 from __future__ import annotations
@@ -85,9 +93,18 @@ class PromptBuilder:
         output_shape = _MODE_TO_OUTPUT_SHAPE.get(sketch.response_mode, "2-4 sentences")
         length_hint = _DEPTH_TO_LENGTH_HINT.get(scaffold.depth, "")
 
-        tone_str = ", ".join(scaffold.tone[:3]) if scaffold.tone else "direct, natural"
-        focus_str = ", ".join(scaffold.focus[:3]) if scaffold.focus else "clarity"
-        avoid_str = ", ".join(scaffold.avoid[:3]) if scaffold.avoid else "filler"
+        # TF-023: scaffold steering is never truncated in a generation
+        # prompt. The old [:3] caps silently dropped everything past
+        # the scaffold's first three entries — for `avoid` that meant
+        # the intent extras and the personality core's avoids (the
+        # persona's only prompt channel) NEVER reached the model, and
+        # for `tone` the user-tone overlay (the 4th entry) never did.
+        # The lists are bounded at construction (tone ≤ 4 by the
+        # scaffold builder's merge cap, focus ≤ 3 by its tables), so
+        # the whole list is the contract.
+        tone_str = ", ".join(scaffold.tone) if scaffold.tone else "direct, natural"
+        focus_str = ", ".join(scaffold.focus) if scaffold.focus else "clarity"
+        avoid_str = ", ".join(scaffold.avoid) if scaffold.avoid else "filler"
 
         cue_lines = "\n".join(f"- {c}" for c in memory_cues[:3]) if memory_cues else "- none"
 
@@ -155,9 +172,11 @@ class PromptBuilder:
         output_shape = _MODE_TO_OUTPUT_SHAPE.get(sketch.response_mode, "2-4 sentences")
         length_hint = _DEPTH_TO_LENGTH_HINT.get(scaffold.depth, "")
 
-        tone_str = ", ".join(scaffold.tone[:3]) if scaffold.tone else "direct, natural"
-        focus_str = ", ".join(scaffold.focus[:3]) if scaffold.focus else "clarity"
-        avoid_str = ", ".join(scaffold.avoid[:3]) if scaffold.avoid else "filler"
+        # TF-023: full scaffold steering, as in build_candidate_prompt
+        # (the old [:3] caps silently dropped intent/persona steering).
+        tone_str = ", ".join(scaffold.tone) if scaffold.tone else "direct, natural"
+        focus_str = ", ".join(scaffold.focus) if scaffold.focus else "clarity"
+        avoid_str = ", ".join(scaffold.avoid) if scaffold.avoid else "filler"
 
         cue_lines = "\n".join(f"- {c}" for c in memory_cues[:3]) if memory_cues else "- none"
 
@@ -219,8 +238,11 @@ class PromptBuilder:
         fragment_lines = "\n".join(f"- {f.text.strip()}" for f in kept if f.text.strip())
 
         output_shape = _MODE_TO_OUTPUT_SHAPE.get(sketch.response_mode, "2-4 sentences")
-        tone_str = ", ".join(scaffold.tone[:2]) if scaffold.tone else "direct, natural"
-        avoid_str = ", ".join(scaffold.avoid[:3]) if scaffold.avoid else "filler, repetition"
+        # TF-023: full tone/avoid, as in build_candidate_prompt — a
+        # refine prompt that carries an Avoid line carries the whole
+        # list (the old [:2]/[:3] caps dropped intent/persona steering).
+        tone_str = ", ".join(scaffold.tone) if scaffold.tone else "direct, natural"
+        avoid_str = ", ".join(scaffold.avoid) if scaffold.avoid else "filler, repetition"
 
         prompt = (
             f"Using these useful fragments:\n{fragment_lines}\n\n"
@@ -256,6 +278,13 @@ class PromptBuilder:
             Prompt string.
         """
         output_shape = _MODE_TO_OUTPUT_SHAPE.get(sketch.response_mode, "2-4 sentences")
+        # TF-023 contract: the repair prompt is the deliberately
+        # narrowed last-resort prompt — tone is capped at its first
+        # 2 entries and cues at 2 BY SPECIFICATION (see
+        # PROMPT_BUILDER_CONTRACT §5), and it carries no focus/avoid/
+        # fact sections at all, only its fixed "Avoid generic
+        # wording" directive. This is a stated narrowing, not the
+        # silent truncation TF-023 removed from the other builders.
         tone_str = ", ".join(scaffold.tone[:2]) if scaffold.tone else "direct"
         cue_lines = "\n".join(f"- {c}" for c in memory_cues[:2]) if memory_cues else "- none"
 

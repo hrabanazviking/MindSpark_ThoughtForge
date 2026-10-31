@@ -211,7 +211,8 @@ class ScaffoldBuilder:
             depth=depth,
             candidate_modes=candidate_modes,
             fact_block=fact_block,
-            prompt_text="",      # filled in by PromptBuilder
+            # No prompt_text: TF-023 removed the field (CORE_LOOP
+            # §8-F7) — PromptBuilder returns prompts to its callers.
         )
 
         logger.debug(
