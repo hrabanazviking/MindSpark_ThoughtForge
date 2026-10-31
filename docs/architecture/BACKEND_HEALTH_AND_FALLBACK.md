@@ -82,6 +82,12 @@ The two server-shaped gaps — health that cannot see
 whether the *configured model* is there — are filed as
 **D-HEALTH-2**, owned by TF-077, whose routing table is
 the first consumer that needs per-model health.
+*(TF-077 update: D-HEALTH-2 is FIXED at routing grade —
+ollama / lmstudio / aesir gained tri-state
+`model_listed()` and the router consumes every family's
+per-model surface; this doc's health semantics stand
+unchanged, server-level as filed. See
+`docs/architecture/LOCAL_FIRST_ROUTING.md`.)*
 
 ## Defects found and fixed in scope
 

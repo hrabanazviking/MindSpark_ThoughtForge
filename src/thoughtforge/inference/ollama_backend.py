@@ -107,6 +107,30 @@ class OllamaBackend(UnifiedBackend):
             model=self.model,
         )
 
+    def model_listed(self) -> bool | None:
+        """TF-077 (D-HEALTH-2): is the configured model in
+        the server's /api/tags list? Tri-state, mirroring
+        TF-076's surface: None when the server could not
+        be asked — unknown, never dressed as absent (the
+        older list_local_models() returns [] for both).
+        Ollama names carry tags; a configured name without
+        one matches the server's implied ':latest'."""
+        try:
+            resp = requests.get(f"{self.base_url}/api/tags", timeout=10)
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            names = [m.get("name") for m in data.get("models", [])
+                     if isinstance(m, dict)]
+            if self.model in names:
+                return True
+            if ":" not in self.model \
+                    and f"{self.model}:latest" in names:
+                return True
+            return False
+        except Exception:  # noqa: BLE001 — unknown, stated
+            return None
+
     def list_local_models(self) -> list[str]:
         try:
             resp = requests.get(f"{self.base_url}/api/tags", timeout=10)

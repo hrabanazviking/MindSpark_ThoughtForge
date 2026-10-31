@@ -141,6 +141,31 @@ class LMStudioBackend(UnifiedBackend):
             model=self.model,
         )
 
+    def model_listed(self) -> bool | None:
+        """TF-077 (D-HEALTH-2): is the configured model in
+        the server's /v1/models list? Tri-state, mirroring
+        TF-076's surface: None when no model is configured
+        or the server could not be asked — unknown, never
+        dressed as absent (list_models() returns [] for
+        both)."""
+        if not self.model:
+            return None
+        try:
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            resp = requests.get(
+                f"{self.base_url}/v1/models",
+                headers=headers,
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            ids = [m.get("id") for m in data.get("data", [])
+                   if isinstance(m, dict)]
+            return self.model in ids
+        except Exception:  # noqa: BLE001 — unknown, stated
+            return None
+
     def list_models(self) -> list[str]:
         try:
             headers = {"Authorization": f"Bearer {self.api_key}"}
