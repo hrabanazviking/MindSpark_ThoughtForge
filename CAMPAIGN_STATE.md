@@ -35,9 +35,10 @@ Sparse checkout: src, tests, docs, benchmarks, configs, hardware_profiles, scrip
 - TF-025 DONE — docs/architecture/TURN_STATE.md + src/thoughtforge/cognition/turn_state.py: RuntimeTurnState is now phased (PHASE_ORDER 7 phases: created→routed→retrieved→scaffolded→generated→composed→completed; advance_phase forward-only, equal=no-op, backward/unknown raises), gains repair_attempted + is_complete; think() advances per step, RETAINS the finished state on core.last_turn_state (was built and discarded → CORE_LOOP F3 turn-state half CLOSED; trace export stays TF-038), MEASURES salvage_ms around compose (was never assigned; knowledge-only = exactly 0, ruled "did not run" not "unmeasured") + records think.salvage perf sample; _compose_final/_repair take the turn state instead of 6/5-arg ad-hoc bundles. D-DUP-1 FIXED (flipped in TF-016 with evidence; 42 OPEN remain): utils/common.py is the one home for now_iso/split_sentences/build_messages — the ×3/×2/×2 private copies in models/chat_history/core/salvage/ollama/lmstudio are now aliases, identity-pinned (`is`, not just behaviour). WritebackRecord dict lists deliberately left dict-typed for TF-042/TF-047 (recorded in TURN_STATE §7). 23 new tests. Suite at banking: 843 collected / 841 passed / 1 skipped / 1 known env failure (D-ENV-1) — TF-014 zero line +23 exactly.
 - Next: TF-026 Part II (streaming turns: cognition works on streamed generation, scaffold applied pre/post stream honestly), in roadmap order.
 
-## Banked (local commits, not pushed — pushes await Volmarr's word beyond the filing)
-- TF-001 filing commit e7d21aa (this one was pushed, filing exception)
+## Banked
+- TF-001 filing commit e7d21aa (pushed, filing exception at the time).
+- Per Volmarr's standing go-ahead (2026-10-31), banked slices are now PUSHED to origin yrsa/thoughtforge-road-build after banking green (fetch + remote-diff first, never force-push, ls-remote verified). Latest verified push: 2026-10-31 01:0x EDT, keeper tick 00:52 — remote at 73621b08abd3a4dc90d0c7cac8cdb4fc94ce2fd0 == local HEAD (TF-025 + its state commit; the push also carried the TF-024 commits, remote previously at TF-023's state commit 612fff3).
 
 ## Bounds
-- No README.md touches. No Docker. No pushes beyond the roadmap filing. Canon data private — metadata only.
+- No README.md touches. No Docker. Pushes only to origin yrsa/thoughtforge-road-build per the 2026-10-31 go-ahead above (never force). Canon data private — metadata only.
 - Banking is local per slice; full suite green before banking (baseline exception documented in TF-004: one environment failure, pre-existing on the untouched base tree).
