@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 86 entries — 44 OPEN, 1 OPEN-ENVIRONMENT, 38 FIXED
+**Totals: 87 entries — 45 OPEN, 1 OPEN-ENVIRONMENT, 38 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -25,7 +25,7 @@ TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
 D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV; D-HON-1 by TF-084 in Part IV; D-GUIDE-1 by TF-085 in Part IV), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 35 · Part V 2 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 35 · Part V 3 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -223,6 +223,24 @@ D-ONNX-2 ruled (pi_zero's flag is false, v2 is the
 correction of record) with its JSON correction moved
 to TF-185.
 
+Entry D-SALV-1 was added by TF-087 in Part V
+under the same rule — that slice's live probes
+of `refinement/salvage.py` measured that the
+roadmap's named rescue strategies do not exist
+there: a truncated draft, a broken JSON-shaped
+draft, a 20x repeated-sentence loop and a lone
+rambling draft are each returned byte-identical
+by the best-draft path, and no language-drift
+check exists in the module at all (the five real
+strategies — scoring/selection, fragment
+extraction, refine passes, best-draft and empty
+fallbacks — are catalogued in
+docs/architecture/SALVAGE_MAPPED.md). Assigned
+to the Part V slices that build each rescue:
+TF-089 (rambling compression), TF-090
+(truncation repair + format rescue), TF-091
+(repetition/loop cut), TF-092 (language drift).
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -312,6 +330,7 @@ to TF-185.
 | D-DOC-1 | BUILD_PLAN_v1's spec pointers drift: of its 14 named spec files, 8 match exactly, 2 differ by case, 4 stand under drifted names — all subjects present, the plan's filenames unreliable (TF-015). No elder spec is renamed by the verdict | TF-182 (developer docs carry the correct pointers) | X | OPEN |
 | D-HON-1 | The streamed unified-backend path loses the backend's error string: `UnifiedBackend.generate_stream`'s default yields nothing at all when the response carries an error, so a streamed turn can only record "backend returned no text (error or empty)" while the plain path records `resp.error` exactly (found by TF-031's tests, 2026-10-31). The failure is stated either way (TF-031); only the detail is thinner on the stream | TF-084 (inference traces join cognition traces — the stream contract's error channel is inference-side) | IV | **FIXED by TF-084**: the yield-nothing contract itself is unchanged (TF-026/TF-065's pins stand), but the default stream now stashes the response it obtained on `backend.last_stream_response` and `TurboQuantBackend`'s load-failure stream leg stashes likewise; the core's streamed path reads the stash (or a FallbackBackend's `last_report`) so the streamed failure record and the TF-084 joined trace carry the exact error string, exactly as the plain path does — pinned by tests/test_tf084_joined_trace.py (a stated backend failure plain vs streamed carrying the same exact error). The generic no-text detail now stands only for a genuinely detail-less empty |
 | D-TRACE-1 | The joined trace does not individually record the refine passes `FragmentSalvage` makes through the engine inside its own `forge()`: the core hands the engine over and cannot see the passes' per-call sizes or latencies, and an aggregate invented from the salvage result would be fabrication — so a turn whose final came through refine passes carries those passes unrecorded, stated in `inference/joined_trace.py`'s TRACE_RULES (`salvage_refine_passes_are_a_named_gap`), never silently (found/named by TF-084) | TF-097 (Part V's rescue-record slice, which the roadmap already ties to TF-084) | V | OPEN — filed by TF-084; the joined trace's rules are the measured evidence that slice records from |
+| D-SALV-1 | The roadmap's named rescue strategies do not exist in `refinement/salvage.py`: no truncation repair, no rambling compression, no format rescue, no repetition/loop cut, no language-drift rescue — probed live by TF-087, a truncated draft, a broken JSON-shaped draft, a 20x loop and a lone rambling draft are each returned byte-identical by the best-draft path, and no language check exists in the module (the five real strategies are catalogued in docs/architecture/SALVAGE_MAPPED.md) | TF-089 (rambling) + TF-090 (truncation, format) + TF-091 (loops) + TF-092 (drift) | V | OPEN — filed by TF-087; each owner slice flips its share with fixtures from TF-087's BROKEN_FIXTURES |
 | D-GUIDE-1 | The backend docs estate had no index and no new-backend recipe: nine backend architecture docs stood uncatalogued, the only procedure named anywhere was TF-153's admission ownership (the gate, not the road), and docs/index.md + docs/api.md contain no mention of "backend" at all — a reader through the front door never learns the TF-065 contract exists (found by TF-085) | TF-085 | IV | **FIXED by TF-085 at guide grade**: `inference/backend_guide.py` files BACKEND_DOCS (9 docs, judged live) + RECIPE_STEPS (14 steps covering every CONTRACT_DUTIES duty plus dependencies/conformance/admission/docs) + GuideExampleBackend (conformed by TF-065's own checker, admitted nowhere — TF-153 owns admission), and docs/architecture/BACKEND_GUIDE.md is the index the estate lacked (the checker verifies it lists every doc + step). Remainder stated: docs/index.md + docs/api.md reconciliation is TF-182's; README wiring is forbidden by standing law; a live third-party backend built from the guide is NOT PROVEN (TF-086/TF-153 own the road) |
 
 ## Notes the table cannot hold
