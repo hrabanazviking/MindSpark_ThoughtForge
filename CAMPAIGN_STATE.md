@@ -6,12 +6,14 @@ Working branch: yrsa/thoughtforge-road-build (own sparse/blob-filtered clone at 
 Sparse checkout: src, tests, docs, benchmarks, configs, hardware_profiles, scripts, .github, MindSpark_ThoughtForge, research_data/src (data/ canon excluded from checkout)
 
 ## Status
-- Last updated: 2026-10-30 22:15 EDT (approx, during keeper tick)
+- Last updated: 2026-10-30 22:20 EDT (approx, during keeper tick)
 - TF-001 DONE — clone, branch, roadmap filed under docs/ and PUSHED (filing only): commit e7d21aa85f34355c3771e3db036d76bc269e6d50, verified via `git ls-remote` matching local HEAD.
 - TF-002 DONE — module census: docs/audit/TF-002_MODULE_CENSUS.md (44 src files, 399,944 bytes; gaps: knowledge/forge, etl sources/wikidata/embeddings, utils paths/logging_setup lack direct test imports → TF-016 docket).
 - TF-004 baseline measured early (runner): 620 collected, 618 passed, 1 skipped, 1 failed — the failure is ENVIRONMENT (missing `sentence-transformers` package on this VM; health-check test test_yaml_present). Full write-up lands as TF-004.
-- IN PROGRESS: TF-003 plan-vs-tree matrix.
-- Next after TF-003/TF-004: TF-005 entry points, TF-006 research wing census, in roadmap order.
+- TF-003 DONE — plan-vs-tree matrix: docs/audit/TF-003_PLAN_VS_TREE_MATRIX.md (all BP phases DONE-in-fact or PARTIAL; plan status lines stale in every row; TASK_PHASE1/2 docs absent from tree).
+- Discovered-defect fix (manual-only workflows law): .github/workflows/ci.yml converted from push/PR auto-triggers to workflow_dispatch only — banked locally in its own commit, not pushed.
+- IN PROGRESS: TF-004 baseline write-up (numbers already measured).
+- Next: TF-005 entry points, TF-006 research wing census, in roadmap order.
 
 ## Banked (local commits, not pushed — pushes await Volmarr's word beyond the filing)
 - TF-001 filing commit e7d21aa (this one was pushed, filing exception)
