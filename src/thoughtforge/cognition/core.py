@@ -25,6 +25,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from thoughtforge.cognition.history_discipline import CORE_HISTORY_MAX_CHARS
 from thoughtforge.cognition.prompt_builder import PromptBuilder
 from thoughtforge.cognition.router import InputRouter
 from thoughtforge.cognition.scaffold import ScaffoldBuilder
@@ -172,7 +173,7 @@ class ThoughtForgeCore:
         scaffold = self._scaffold_builder.build(sketch, bundle, self._personality)
         # Inject chat history context into the fact_block when provided
         if history is not None:
-            history_context = history.to_prompt_context(max_chars=1500)
+            history_context = history.to_prompt_context(max_chars=CORE_HISTORY_MAX_CHARS)
             if history_context:
                 if scaffold.fact_block:
                     scaffold.fact_block = (
