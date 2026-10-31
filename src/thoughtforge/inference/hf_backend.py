@@ -69,9 +69,11 @@ class HuggingFaceBackend(UnifiedBackend):
         """TF-065 contract record: a REMOTE backend (the one
         shipped backend that is not local-first), simulated
         streaming, estimate token counting — its
-        tokens_generated is a word-split approximation and
-        is now declared as such — seed honoured on both the
-        client and raw-request legs."""
+        tokens_generated is the contract estimate, the same
+        basis as its count_tokens (TF-071; pre-TF-071 it was
+        a word-split count under a token name — D-TOK-3) —
+        seed honoured on both the client and raw-request
+        legs."""
         from thoughtforge.inference.backend_contract import BackendCapabilities
 
         return BackendCapabilities(
@@ -81,8 +83,9 @@ class HuggingFaceBackend(UnifiedBackend):
             seed="honoured",
             placement="remote",
             model=self.model,
-            notes=("tokens_generated is a word-split approximation, "
-                   "not a model token count",),
+            notes=("tokens_generated is the contract estimate, "
+                   "the same basis as count_tokens — not a "
+                   "model token count",),
         )
 
     # ── Private helpers ────────────────────────────────────────────────────────
@@ -113,7 +116,7 @@ class HuggingFaceBackend(UnifiedBackend):
             text: str = result if isinstance(result, str) else str(result)
             return GenerationResponse(
                 text=text,
-                tokens_generated=len(text.split()),  # approximate; client doesn't always return counts
+                tokens_generated=self.count_tokens(text),  # TF-071: contract estimate; the client doesn't always return counts
                 finish_reason="stop",
                 backend_used=self.backend_name(),
                 latency_ms=(time.monotonic() - start) * 1000,
@@ -169,7 +172,7 @@ class HuggingFaceBackend(UnifiedBackend):
 
             return GenerationResponse(
                 text=text,
-                tokens_generated=len(text.split()),
+                tokens_generated=self.count_tokens(text),  # TF-071: contract estimate, as the client leg
                 finish_reason="stop",
                 backend_used=self.backend_name(),
                 latency_ms=(time.monotonic() - start) * 1000,

@@ -195,7 +195,10 @@ class TestShippedRecords:
         caps = HuggingFaceBackend(model="m3").capabilities()
         assert caps.placement == "remote"
         assert caps.token_counting == "estimate"
-        assert any("word-split" in note for note in caps.notes)
+        # TF-071 amended this pin in scope (D-TOK-3): the note
+        # no longer declares a word-split approximation —
+        # tokens_generated now IS the contract estimate.
+        assert any("contract estimate" in note for note in caps.notes)
 
     def test_turboquant_record_before_load(self):
         caps = TurboQuantBackend(

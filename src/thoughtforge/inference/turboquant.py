@@ -440,6 +440,15 @@ class TurboQuantEngine:
         """
         Estimate token count for a text string.
         Uses llama.cpp tokenizer if loaded, otherwise falls back to rough heuristic.
+
+        Basis (TF-071): the model path returns the llama.cpp
+        tokeniser's count, which by its default includes the
+        BOS special token — so a loaded engine counts "" as 1.
+        The fallback is the TF-065 contract estimate, delegated
+        to ``backend_contract.estimate_tokens`` (its one home;
+        this method's pre-TF-071 private copy of the heuristic
+        counted "" as 1 even with no model loaded, breaching
+        the contract's empty rule — D-TOK-1).
         """
         if self._model is not _NOT_LOADED and self._model is not None:
             try:
@@ -447,8 +456,11 @@ class TurboQuantEngine:
                 return len(tokens)
             except Exception:
                 pass
-        # Heuristic: ~4 chars per token (GPT-like tokenizers)
-        return max(1, len(text) // 4)
+        # The contract estimate (TF-065/TF-071): ~4 chars per
+        # token, script-aware, 0 for empty.
+        from thoughtforge.inference.backend_contract import estimate_tokens
+
+        return estimate_tokens(text)
 
     # ── Properties ─────────────────────────────────────────────────────────────
 

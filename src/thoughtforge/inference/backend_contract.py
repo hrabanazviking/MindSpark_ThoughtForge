@@ -48,7 +48,11 @@ This module is the contract, as data + checkers:
   generate path).
 - ``estimate_tokens`` — the contract estimate: the tree's
   standing ~4-chars-per-token heuristic (the same one
-  ``TurboQuantEngine.estimate_tokens`` falls back to), named
+  ``TurboQuantEngine.estimate_tokens`` falls back to — by
+  delegation since TF-071, which also made the estimate
+  script-aware: CJK/kana/Hangul characters count one token
+  each, after a real BPE tokeniser measured the flat
+  heuristic 0.88-relative-error wrong on CJK text), named
   as an estimate wherever it is used.
 - Dependency rulings (``DEPENDENCY_RULINGS``): ``requests``
   is DECLARED as a core dependency (the backends import it
@@ -237,16 +241,47 @@ OPTIONAL_PACKAGES = tuple(
 )
 
 
+#: Character ranges whose scripts tokenise at roughly one
+#: token per character in real BPE / SentencePiece vocabularies
+#: (CJK ideographs, kana, Hangul syllables, CJK compat
+#: ideographs). TF-071 measured the pre-fix estimate — a flat
+#: ``len // 4`` over all characters — against a real BPE
+#: tokeniser: Latin prose landed within ~25%, but an 11-char
+#: CJK sentence counted 2 against the tokeniser's 16 (a 0.88
+#: relative error), because the heuristic silently assumed a
+#: Latin-script character density. The estimate is therefore
+#: script-aware: script-dense characters count 1 token each,
+#: the rest keep the ~4-chars-per-token heuristic. Latin-only
+#: text is counted exactly as before TF-071.
+SCRIPT_TOKEN_RANGES: tuple[tuple[int, int], ...] = (
+    (0x3040, 0x30FF),   # Hiragana + Katakana
+    (0x3400, 0x4DBF),   # CJK Unified Ideographs Extension A
+    (0x4E00, 0x9FFF),   # CJK Unified Ideographs
+    (0xAC00, 0xD7AF),   # Hangul Syllables
+    (0xF900, 0xFAFF),   # CJK Compatibility Ideographs
+)
+
+
+def _is_script_char(ch: str) -> bool:
+    code = ord(ch)
+    return any(lo <= code <= hi for lo, hi in SCRIPT_TOKEN_RANGES)
+
+
 def estimate_tokens(text: str) -> int:
-    """The contract estimate: ~4 chars per token, 0 for empty.
+    """The contract estimate: ~4 chars per token (one token
+    per script-dense character — TF-071), 0 for empty.
 
     The same heuristic ``TurboQuantEngine.estimate_tokens``
-    falls back to when no model is loaded. It is an estimate
-    wherever it is used and is never reported as a model count.
+    falls back to when no model is loaded (the engine now
+    delegates here, so the heuristic has exactly one home).
+    It is an estimate wherever it is used and is never
+    reported as a model count.
     """
     if not text:
         return 0
-    return max(1, len(text) // 4)
+    script_chars = sum(1 for ch in text if _is_script_char(ch))
+    rest = len(text) - script_chars
+    return max(1, script_chars + rest // 4)
 
 
 @dataclass(frozen=True)
@@ -508,6 +543,7 @@ __all__ = [
     "STREAMING_MODES",
     "TOKEN_COUNTING_MODES",
     "BackendCapabilities",
+    "SCRIPT_TOKEN_RANGES",
     "backend_contract_problems",
     "capabilities_problems",
     "default_capabilities",
