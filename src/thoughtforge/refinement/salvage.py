@@ -27,6 +27,13 @@ from typing import TYPE_CHECKING, Any
 # from here).
 from thoughtforge.utils.common import split_sentences as _split_sentences
 
+# TF-088 (D-SALV-2): the refine adoption rule's safety guard —
+# a pass is adopted only when it introduces no new checkable
+# content (numbers, citations, named entities, polarity,
+# displaced time markers) against the source pool. The line
+# is specified in refinement/salvage_safety.py.
+from thoughtforge.refinement.salvage_safety import fabrication_problems
+
 if TYPE_CHECKING:
     from thoughtforge.cognition.prompt_builder import PromptBuilder
     from thoughtforge.knowledge.models import (
@@ -328,7 +335,21 @@ class FragmentSalvage:
                     pass_num, scored_refined, current_best_score,
                 )
 
-                if scored_refined > current_best_score:
+                # TF-088 (D-SALV-2): safety gate BEFORE the
+                # score gate — a fabricated pass is never
+                # adopted, however well it scores; the attempt
+                # still counts in passes_used (TF-087 naming).
+                safety_problems = fabrication_problems(
+                    [current_best_text, *fragments,
+                     *(rec.cue for rec in
+                       bundle.activated_records)],
+                    refined_text, retrieved_qids)
+                if safety_problems:
+                    logger.warning(
+                        "FragmentSalvage refine pass %d rejected "
+                        "as fabrication: %s",
+                        pass_num, safety_problems)
+                elif scored_refined > current_best_score:
                     current_best_text = refined_text
                     current_best_score = scored_refined
                     # Update fragments for next pass from the refined text
