@@ -10,12 +10,25 @@ On hard failure: appends a forge note to the response text (soft degradation —
 never silently returns garbage; always annotates what went wrong).
 
 On pass: returns the response unchanged with enforcement_passed=True.
+
+TF-049 (cite-or-explain II): when the caller also passes the
+retrieved bundle's ``records``, the citation check gains the
+per-claim leg (refinement/citation_enforcement.py): every
+claim in the answer that matches a stored fact must cite
+that record's TF-048 marker inside the claim itself, and a
+citation no retrieved record owns (a foreign marker) fails
+too. The result then carries the CitationCheck as
+``claim_check``. Without ``records`` the check above is the
+whole citation rule, byte-identical to before — the legacy
+any-QID floor is not relaxed in either mode (TF-093 owns
+reconciling the two rules under one policy surface).
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 _QID_RE = re.compile(r'\bQ\d{3,}\b')
 
@@ -40,6 +53,9 @@ class EnforcementResult:
     citation_check: bool = True
     length_check: bool = True
     genericness_check: bool = True
+    # TF-049: the per-claim CitationCheck, when the gate was
+    # given the bundle's records; None on the legacy path.
+    claim_check: Any = None
 
     @property
     def status(self) -> str:
@@ -59,6 +75,7 @@ class EnforcementGate:
         text: str,
         citations: list[str],
         retrieved_qids: set[str],
+        records: list | None = None,
     ) -> EnforcementResult:
         """
         Validate the final response text.
@@ -68,6 +85,12 @@ class EnforcementGate:
             citations:      QIDs already extracted from the text.
             retrieved_qids: Set of QIDs present in the retrieved knowledge bundle.
                             If empty, citation enforcement is skipped.
+            records:        TF-049 — the bundle's activated records,
+                            when the caller has them. Given, the
+                            per-claim cite-or-explain check runs and
+                            its verdict is ANDed into the citation
+                            check; the CitationCheck rides the
+                            result as ``claim_check``.
 
         Returns:
             EnforcementResult with passed flag, notes, and (possibly annotated) text.
@@ -77,6 +100,7 @@ class EnforcementGate:
         citation_ok = True
         length_ok = True
         generic_ok = True
+        claim_check = None
 
         # ── Length check ───────────────────────────────────────────────────────
         word_count = len(text.split())
@@ -87,12 +111,37 @@ class EnforcementGate:
 
         # ── Citation check ─────────────────────────────────────────────────────
         # Only enforced when knowledge records with QIDs were actually retrieved
+        citation_failed = False
         if retrieved_qids:
             cited_in_text = set(_QID_RE.findall(text))
             if not (cited_in_text & retrieved_qids):
                 citation_ok = False
+                citation_failed = True
                 notes.append("no retrieved QIDs cited in response")
-                output_text += _FORGE_NOTE_NO_CITATIONS
+
+        # ── TF-049: per-claim cite-or-explain ──────────────────────────────────
+        if records is not None:
+            from thoughtforge.refinement.citation_enforcement import (
+                check_citations,
+            )
+
+            claim_check = check_citations(text, list(records))
+            if claim_check.uncited_markers:
+                citation_ok = False
+                citation_failed = True
+                notes.append(
+                    "uncited claim(s) matching stored facts: "
+                    + ", ".join(claim_check.uncited_markers)
+                )
+            if claim_check.foreign_markers:
+                citation_ok = False
+                citation_failed = True
+                notes.append(
+                    "citation(s) not among the retrieved records: "
+                    + ", ".join(claim_check.foreign_markers)
+                )
+        if citation_failed:
+            output_text += _FORGE_NOTE_NO_CITATIONS
 
         # ── Genericness check ──────────────────────────────────────────────────
         lower = text.lower()
@@ -107,6 +156,7 @@ class EnforcementGate:
             passed=passed,
             notes="; ".join(notes) if notes else "",
             text=output_text,
+            claim_check=claim_check,
             citation_check=citation_ok,
             length_check=length_ok,
             genericness_check=generic_ok,

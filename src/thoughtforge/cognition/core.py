@@ -89,6 +89,11 @@ from thoughtforge.knowledge.models import (
 from thoughtforge.knowledge.lifecycle import MemoryLifecycle
 from thoughtforge.knowledge.store import MemoryStore
 from thoughtforge.knowledge.writeback import WritebackOutcome, apply_writeback
+from thoughtforge.refinement.citation_enforcement import (
+    CitationCheck,
+    check_citations,
+    cited_markers_in,
+)
 from thoughtforge.refinement.enforcement import EnforcementGate
 from thoughtforge.refinement.salvage import FragmentSalvage
 from thoughtforge.utils.config import load_config
@@ -185,6 +190,12 @@ class ThoughtForgeCore:
         # until a turn actually carries a writeback — a turn with
         # no writeback writes nothing and reports nothing.
         self._last_writeback_outcome: Any = None
+        # TF-049: the most recent composed turn's per-claim
+        # citation check (refinement/citation_enforcement.py),
+        # retained like the writeback outcome. None until a turn
+        # with candidates composes — the knowledge-only path
+        # presents records directly and runs no claim check.
+        self._last_citation_check: Any = None
         self._router = InputRouter()
         self._scaffold_builder = ScaffoldBuilder()
         self._prompt_builder = PromptBuilder()
@@ -253,6 +264,13 @@ class ThoughtForgeCore:
         the first think()). The same object think() built — retained,
         not copied; callers must treat it as read-only."""
         return self._last_turn_state
+
+    @property
+    def last_citation_check(self) -> CitationCheck | None:
+        """TF-049: the per-claim cite-or-explain check of the
+        last composed turn (None until a turn with candidates
+        composes — a knowledge-only turn runs no claim check)."""
+        return self._last_citation_check
 
     @property
     def last_writeback_outcome(self) -> WritebackOutcome | None:
@@ -1400,13 +1418,18 @@ class ThoughtForgeCore:
             generation_seed=self._next_generation_seed(),
         )
 
-        # Run EnforcementGate
+        # Run EnforcementGate — TF-049: with the bundle's
+        # records, so the per-claim cite-or-explain check runs
+        # alongside the legacy any-QID floor; the check is
+        # retained on the core for inspectors (TF-061's data).
         retrieved_qids = EnforcementGate.extract_qids_from_bundle(bundle.activated_records)
         enforcement = self._enforcement.check(
             text=salvage_result.text,
             citations=salvage_result.citations,
             retrieved_qids=retrieved_qids,
+            records=bundle.activated_records,
         )
+        self._last_citation_check = enforcement.claim_check
 
         final_text = enforcement.text     # may have forge note appended on fail
         scores = _score_final(final_text, sketch, scaffold)
@@ -1660,21 +1683,28 @@ _QID_RE = re.compile(r'\bQ\d{3,}\b')
 
 
 def _extract_citations(text: str, bundle: MemoryActivationBundle) -> list[str]:
-    """Extract QID citations mentioned in the text."""
-    qids_in_text = set(_QID_RE.findall(text))
-    valid_qids = {
-        r.raw.get("qid", "")
-        for r in bundle.activated_records
-        if r.raw.get("qid")
+    """Extract citation markers mentioned in the text.
+
+    TF-049: every retrieved kind's TF-048 marker counts, not
+    only QIDs — a cited reference chunk, place, or edge is a
+    citation. For entities the marker IS the QID, so the
+    pre-TF-049 behaviour for Wikidata records is unchanged.
+    """
+    from thoughtforge.knowledge.citations import citation_for_record
+
+    valid_markers = {
+        citation_for_record(r).marker for r in bundle.activated_records
     }
-    cited = list(qids_in_text & valid_qids)
-    return cited
+    return list(cited_markers_in(text) & valid_markers)
 
 
 def _check_citation_gate(text: str, bundle: MemoryActivationBundle) -> bool:
     """
-    Minimal citation enforcement: pass if KB was empty (nothing to cite)
-    or if at least one QID from the retrieved bundle appears in the text.
+    Citation enforcement for the repair path: the legacy
+    any-QID floor (pass if the KB held no Wikidata records,
+    else at least one retrieved QID must appear) AND TF-049's
+    per-claim cite-or-explain check — the same checker the
+    EnforcementGate runs in _compose_final, not a second logic.
     """
     if not bundle.activated_records:
         return True
@@ -1683,9 +1713,9 @@ def _check_citation_gate(text: str, bundle: MemoryActivationBundle) -> bool:
         for r in bundle.activated_records
         if r.raw.get("qid")
     }
-    if not valid_qids:
-        return True     # No Wikidata records — citation gate passes
-    return bool(set(_QID_RE.findall(text)) & valid_qids)
+    if valid_qids and not (set(_QID_RE.findall(text)) & valid_qids):
+        return False
+    return check_citations(text, bundle.activated_records).passed
 
 
 # ── Text helpers ───────────────────────────────────────────────────────────────

@@ -340,6 +340,17 @@ POST_FREEZE_ADDITIONS: tuple[dict[str, Any], ...] = (
         "note": "the last writeback outcome this core applied (None until one is)",
     },
     {
+        "name": "last_citation_check",
+        "kind": "core-property",
+        "added_by": "TF-049",
+        "note": (
+            "the last composed turn's per-claim cite-or-explain "
+            "check (refinement/citation_enforcement.py), retained "
+            "from the EnforcementGate result in _compose_final; "
+            "None until a turn with candidates composes"
+        ),
+    },
+    {
         "name": "ConversationConfig.max_refinement_passes",
         "kind": "record-field",
         "added_by": "TF-037",
