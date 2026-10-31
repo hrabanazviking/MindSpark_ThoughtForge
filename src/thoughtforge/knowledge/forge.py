@@ -88,6 +88,8 @@ class KnowledgeForge:
         top_k: int = 10,
         min_score: float = MIN_MEMORY_SCORE,
         sources: list[str] | None = None,  # None = all; ["wikidata", "conceptnet", ...]
+        sql_max_results: int | None = None,
+        vector_top_k: int | None = None,
     ) -> MemoryActivationBundle:
         """
         Main retrieval entry point. Returns a MemoryActivationBundle with
@@ -99,15 +101,27 @@ class KnowledgeForge:
             top_k:      Max records to return in the bundle
             min_score:  Minimum composite score threshold
             sources:    Optional list of source filters
+            sql_max_results:  TF-056 optional cap on the SQL leg's
+                        candidate count (a hardware profile's
+                        retrieval budget, knowledge/memory_budgets.py).
+                        None keeps the standing 2 × top_k scaling.
+            vector_top_k:     TF-056 optional cap on the vector leg.
+                        None keeps the standing top_k.
         """
         records: list[dict[str, Any]] = []
 
         if path in ("sql", "hybrid"):
-            sql_results = self.sql_retrieve(query, top_k=top_k * 2, sources=sources)
+            sql_limit = top_k * 2
+            if sql_max_results is not None:
+                sql_limit = min(sql_limit, sql_max_results)
+            sql_results = self.sql_retrieve(query, top_k=sql_limit, sources=sources)
             records.extend(sql_results)
 
         if path in ("vector", "hybrid"):
-            vec_results = self.vector_retrieve(query, top_k=top_k, sources=sources)
+            vec_limit = top_k
+            if vector_top_k is not None:
+                vec_limit = min(vec_limit, vector_top_k)
+            vec_results = self.vector_retrieve(query, top_k=vec_limit, sources=sources)
             for r in vec_results:
                 # Avoid duplicates from SQL pass
                 if not any(x.get("qid") == r.get("qid") for x in records):

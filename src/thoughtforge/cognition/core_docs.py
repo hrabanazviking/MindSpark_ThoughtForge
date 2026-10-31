@@ -351,6 +351,17 @@ POST_FREEZE_ADDITIONS: tuple[dict[str, Any], ...] = (
         ),
     },
     {
+        "name": "memory_budget",
+        "kind": "core-property",
+        "added_by": "TF-056",
+        "note": (
+            "the selected profile's memory budget (knowledge/"
+            "memory_budgets.py), resolved live; None when no "
+            "profile was selected — the flat default caps and "
+            "retrieval request then apply, as before TF-056"
+        ),
+    },
+    {
         "name": "ConversationConfig.max_refinement_passes",
         "kind": "record-field",
         "added_by": "TF-037",

@@ -184,7 +184,10 @@ class ThoughtForgeCore:
         # operator surface for a full prune pass. Fact pruning is
         # NEVER automatic per turn — retirement of facts is an
         # operator's act, not a side effect of chatting.
-        self._lifecycle = MemoryLifecycle(store=self._store)
+        self._lifecycle = MemoryLifecycle(
+            store=self._store,
+            profile_id=self._conversation_config.profile_id,
+        )
         # TF-047: the most recent writeback outcome (knowledge/
         # writeback.py), retained like the last turn state. None
         # until a turn actually carries a writeback — a turn with
@@ -383,6 +386,27 @@ class ThoughtForgeCore:
             self._last_turn_state, conversation=conversation
         )
 
+    @property
+    def memory_budget(self) -> Any:
+        """TF-056: this conversation's memory budget — the
+        selected profile's (TF-032), resolved live from its
+        shipped JSON (knowledge/memory_budgets.py), or None
+        when no profile was selected, in which case the
+        lifecycle's flat default caps (the desktop budget) and
+        the standing flat retrieval request apply, exactly as
+        before this slice. The budget caps this core's store
+        eviction (its lifecycle is built on the same profile)
+        and its per-turn retrieval cost (see _retrieve). A
+        MINOR addition under TF-034's rules — the frozen v1
+        tables are untouched; recorded in POST_FREEZE_ADDITIONS.
+        """
+        profile_id = self._conversation_config.profile_id
+        if profile_id is None:
+            return None
+        from thoughtforge.knowledge.memory_budgets import budget_for_profile
+
+        return budget_for_profile(profile_id)
+
     def prune_memory(self, mode: str = "routine") -> dict[str, int]:
         """TF-045: run one memory-lifecycle prune pass over this
         core's store and return its counts ({archived, deleted,
@@ -397,6 +421,10 @@ class ThoughtForgeCore:
         A MINOR addition under TF-034's rules — the frozen v1
         tables are untouched; TF-039's additions record (extended
         by TF-045) / TF-192 carry it into the next reconciliation.
+        TF-056: the pass enforces the selected profile's memory
+        budget caps (this core's lifecycle is built on that
+        profile); with no profile selected the flat default caps
+        apply, as before.
         """
         return self._lifecycle.prune(mode)  # type: ignore[arg-type]
 
@@ -945,10 +973,28 @@ class ThoughtForgeCore:
             return MemoryActivationBundle()
 
         try:
+            # TF-056: a selected profile caps this retrieval
+            # through its memory budget's plan (knowledge/
+            # memory_budgets.py) — bundle, sql and vector legs
+            # all bounded by the profile's stated cost. No
+            # profile selected: the standing flat request,
+            # byte-identical to the pre-TF-056 call.
+            profile_id = self._conversation_config.profile_id
+            if profile_id is None:
+                return self._knowledge.retrieve(
+                    query=sketch.raw_text,
+                    path=sketch.retrieval_path,
+                    top_k=10,
+                )
+            from thoughtforge.knowledge.memory_budgets import retrieval_plan
+
+            plan = retrieval_plan(profile_id, requested_top_k=10)
             return self._knowledge.retrieve(
                 query=sketch.raw_text,
                 path=sketch.retrieval_path,
-                top_k=10,
+                top_k=plan.bundle_top_k,
+                sql_max_results=plan.sql_max_results,
+                vector_top_k=plan.vector_top_k,
             )
         except Exception as e:
             logger.warning("Knowledge retrieval failed: %s — using empty bundle", e)

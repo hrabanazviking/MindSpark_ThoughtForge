@@ -113,6 +113,15 @@ one archive and one stay.
 - Named, not built here: a `forge_memory.py` prune command is
   TF-057's (the memory-store toolset slice); budget-driven
   eviction is TF-056's.
+- **TF-056 note (landed since):** budget-driven eviction now
+  stands — `MemoryLifecycle` accepts a `profile_id` and enforces
+  that profile's per-kind caps (resolved live from its shipped
+  JSON by `knowledge/memory_budgets.py`) in place of the flat
+  table; the threshold tables above stay flat across profiles
+  by design (budgets cap counts, modes rule retirement), and a
+  lifecycle built with no profile enforces the flat table —
+  proven to be desktop_cpu/desktop_gpu's own budget — exactly
+  as this doc describes. See `MEMORY_BUDGETS.md`.
 
 ## 6. Defects found by this slice's probes — all fixed in scope
 

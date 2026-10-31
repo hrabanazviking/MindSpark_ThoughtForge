@@ -130,8 +130,27 @@ class MemoryLifecycle:
     All state changes are persisted via MemoryStore.
     """
 
-    def __init__(self, store: MemoryStore | None = None) -> None:
+    def __init__(
+        self,
+        store: MemoryStore | None = None,
+        profile_id: str | None = None,
+    ) -> None:
         self.store = store or MemoryStore()
+        # TF-056: the caps in force. No profile keeps the flat
+        # STORE_CAPS byte-identically (they are desktop_cpu /
+        # desktop_gpu's budget, stated in knowledge/
+        # memory_budgets.py); a profile resolves its caps live
+        # from its shipped JSON. An unknown profile raises
+        # ValueError here, at construction, naming the valid ids.
+        self.profile_id = profile_id
+        if profile_id is None:
+            self.caps: dict[str, dict[str, int]] = {
+                k: dict(v) for k, v in STORE_CAPS.items()
+            }
+        else:
+            from thoughtforge.knowledge.memory_budgets import budget_for_profile
+
+            self.caps = budget_for_profile(profile_id).caps_for_lifecycle()
 
     # ── Public pruning API ─────────────────────────────────────────────────────
 
@@ -302,8 +321,8 @@ class MemoryLifecycle:
         prefs = [r for r in live if r.record_type == "user_preference"]
         facts = [r for r in live if r.record_type == "user_fact"]
 
-        deleted += self._enforce_cap(prefs, STORE_CAPS["user_preference"]["hard"], records)
-        deleted += self._enforce_cap(facts, STORE_CAPS["user_fact"]["hard"], records)
+        deleted += self._enforce_cap(prefs, self.caps["user_preference"]["hard"], records)
+        deleted += self._enforce_cap(facts, self.caps["user_fact"]["hard"], records)
 
         self.store.rewrite_profile_store(records)
         return {"archived": archived, "deleted": deleted, "deduplicated": deduped}
@@ -329,7 +348,7 @@ class MemoryLifecycle:
                 archived += 1
 
         live = [ep for ep in episodes if ep.status not in ("archived", "deleted")]
-        deleted += self._enforce_cap(live, STORE_CAPS["episode"]["hard"], episodes)
+        deleted += self._enforce_cap(live, self.caps["episode"]["hard"], episodes)
 
         self.store.rewrite_episodic_store(episodes)
         return {"archived": archived, "deleted": deleted, "deduplicated": 0}
@@ -355,7 +374,7 @@ class MemoryLifecycle:
                 archived += 1
 
         live = [p for p in patterns if p.status not in ("archived", "deleted")]
-        deleted += self._enforce_cap(live, STORE_CAPS["response_pattern"]["hard"], patterns)
+        deleted += self._enforce_cap(live, self.caps["response_pattern"]["hard"], patterns)
 
         self.store.rewrite_patterns_store(patterns)
         return {"archived": archived, "deleted": deleted, "deduplicated": 0}
@@ -365,10 +384,10 @@ class MemoryLifecycle:
         if thread is None:
             return
         # Enforce open_loops hard cap
-        if len(thread.open_loops) > STORE_CAPS["open_loops"]["hard"]:
-            thread.open_loops = thread.open_loops[:STORE_CAPS["open_loops"]["soft"]]
+        if len(thread.open_loops) > self.caps["open_loops"]["hard"]:
+            thread.open_loops = thread.open_loops[:self.caps["open_loops"]["soft"]]
             self.store.save_thread_state(thread)
-            logger.debug("Trimmed open_loops to soft cap %d", STORE_CAPS["open_loops"]["soft"])
+            logger.debug("Trimmed open_loops to soft cap %d", self.caps["open_loops"]["soft"])
 
     def _enforce_cap(
         self,
