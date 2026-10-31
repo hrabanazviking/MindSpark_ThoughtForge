@@ -33,6 +33,11 @@ from thoughtforge.cognition.error_honesty import (
     generation_failures,
     turn_failures,
 )
+from thoughtforge.cognition.config_surface import (
+    ConversationConfig,
+    apply_conversation_config,
+    resolve_conversation_config,
+)
 from thoughtforge.cognition.history_discipline import CORE_HISTORY_MAX_CHARS
 from thoughtforge.cognition.interruption import (
     InterruptToken,
@@ -111,6 +116,11 @@ class ThoughtForgeCore:
         backend: Any = None,
     ) -> None:
         self._config = config or load_config()
+        # TF-032: the cognition config surface — this conversation's
+        # selections resolved from the config dict (live keys only;
+        # cognition/config_surface.py). An invalid selection raises
+        # ValueError here, at construction, never a silent default.
+        self._conversation_config = resolve_conversation_config(self._config)
         self._model_path = Path(model_path) if model_path else None
         self._unified_backend = backend   # UnifiedBackend instance or None
 
@@ -172,6 +182,26 @@ class ThoughtForgeCore:
         the first think()). The same object think() built — retained,
         not copied; callers must treat it as read-only."""
         return self._last_turn_state
+
+    @property
+    def conversation_config(self) -> ConversationConfig:
+        """TF-032: this conversation's resolved cognition selections
+        (profile / strategy / depth / candidate modes). Frozen at
+        construction from the config dict."""
+        return self._conversation_config
+
+    @property
+    def selected_strategy(self) -> Any:
+        """TF-032: the TF-022 strategy this conversation selected,
+        or None. Selection only — the core loop does not execute
+        strategies (TF-022's ruling stands)."""
+        if self._conversation_config.strategy is None:
+            return None
+        from thoughtforge.cognition.scaffold_strategies import (
+            strategy_registry,
+        )
+
+        return strategy_registry()[self._conversation_config.strategy]
 
     @property
     def persona_expectation(self) -> PersonaExpectation | None:
@@ -376,6 +406,12 @@ class ThoughtForgeCore:
 
             # ── Step 3: Build scaffold ─────────────────────────────────────────
             scaffold = self._scaffold_builder.build(sketch, bundle, self._personality)
+            # TF-032: this conversation's scaffold selections (depth /
+            # candidate modes, when configured) replace the builder's
+            # derived values. Unselected = the builder's scaffold
+            # stands byte-identical. Applied once here; a resumed turn
+            # reuses its retained scaffold and is not re-applied.
+            apply_conversation_config(scaffold, self._conversation_config)
             # Inject chat history context into the fact_block when provided
             if history is not None:
                 history_context = history.to_prompt_context(max_chars=CORE_HISTORY_MAX_CHARS)
@@ -743,7 +779,9 @@ class ThoughtForgeCore:
             req = GenerationRequest(
                 prompt=prompt,
                 temperature=_mode_temperature(mode),
-                max_tokens=512,
+                # TF-032: the selected profile's cap, or the standing
+                # 512 when no profile was selected.
+                max_tokens=self._conversation_config.generation_max_tokens(),
             )
             resp = self._unified_backend.generate(req)
             if resp.error:
@@ -910,7 +948,7 @@ class ThoughtForgeCore:
         sink: list[CandidateRecord] | None = None,
     ) -> Iterator[StreamEvent]:
         """Streamed twin of _generate_via_unified_backend (one
-        candidate, first scaffold mode, max_tokens 512 as there).
+        candidate, first scaffold mode, same max_tokens as there).
 
         TF-027: the token is checked before each chunk is delivered
         and the completed candidate lands in ``sink``.
@@ -933,7 +971,9 @@ class ThoughtForgeCore:
             req = GenerationRequest(
                 prompt=prompt,
                 temperature=_mode_temperature(mode),
-                max_tokens=512,
+                # TF-032: as the plain path — the selected profile's
+                # cap, or the standing 512.
+                max_tokens=self._conversation_config.generation_max_tokens(),
             )
             backend = self._unified_backend
             # Native only when the backend class overrides the
