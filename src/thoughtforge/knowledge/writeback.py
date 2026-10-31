@@ -50,6 +50,18 @@ This module is the leg, and its gates, in the order they fire:
      through ``MemoryStore``; a ``ValueError`` there is caught
      and recorded as a refusal, never raised into a turn.
 
+**Contradictions (TF-050).** Fact and preference writes
+additionally pass through ``knowledge/contradictions.py``
+before they land: the constructed record is assessed against
+the stored records of its own kind, every conflict found is
+surfaced on the outcome (``WritebackOutcome.contradictions``),
+a conflict the stored record wins refuses the entry with the
+conflict named, a conflict the new record wins archives the
+stored record, a close conflict downgrades both, and an exact
+duplicate reinforces the stored record instead of appending
+a copy. Nothing is ever silently overwritten. Episodes and
+patterns are not claims and are not assessed.
+
 **Provenance (the TF-042 gap, closed).** The four writeback
 record kinds now carry a ``source`` field (models.py; legacy
 records load with ``""``). Every record this leg writes is
@@ -107,6 +119,11 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Any
 
+from thoughtforge.knowledge.contradictions import (
+    ContradictionReport,
+    apply_contradiction_resolution,
+    assess_contradiction,
+)
 from thoughtforge.knowledge.ingestion_contract import (
     FACT_KINDS,
     MEMORY_PROVENANCE,
@@ -197,6 +214,11 @@ class WritebackOutcome:
     gate_reason: str = ""
     applied: list[dict[str, Any]] = field(default_factory=list)
     refused: list[dict[str, Any]] = field(default_factory=list)
+    # TF-050: every contradiction a fact/preference write met,
+    # as ConflictRecord dicts — surfaced on every resolution
+    # branch (superseded, stood, preserved, refused), never
+    # only on the losing one.
+    contradictions: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def applied_ids(self) -> list[str]:
@@ -294,6 +316,43 @@ def _apply(outcome: WritebackOutcome, kind: str, record_id: str, score: float | 
     outcome.applied.append({"kind": kind, "record_id": record_id, "score": score})
 
 
+def _land_record(
+    store: MemoryStore,
+    record: UserFactRecord | UserPreferenceRecord,
+    outcome: WritebackOutcome,
+    kind: str,
+    score: float | None,
+) -> None:
+    """TF-050: land one fact/preference record through
+    contradiction handling. The record is assessed against the
+    stored records of its kind; every conflict is surfaced on
+    the outcome; a conflict the stored record wins refuses the
+    entry with the conflict named; otherwise the stated
+    resolution is applied (supersede / preserve-both /
+    duplicate-reinforce / plain append) and the standing
+    record's id is the applied id."""
+    report: ContradictionReport = assess_contradiction(
+        record, store.load_profile_records()
+    )
+    outcome.contradictions.extend(c.to_dict() for c in report.conflicts)
+    if report.blocked:
+        reasons = [
+            f"contradiction: stored record {c.stored_record_id} stands — "
+            f"{c.slot} is {c.stored_value!r}, not {c.new_value!r} "
+            f"(conflict score {c.score}, margin {c.margin})"
+            for c in report.conflicts
+            if c.resolution == "stored_stands"
+        ]
+        _refuse(outcome, kind, record.summary[:60], reasons)
+        return
+    try:
+        standing_id = apply_contradiction_resolution(store, record, report)
+    except ValueError as exc:
+        _refuse(outcome, kind, record.summary[:60], [str(exc)])
+        return
+    _apply(outcome, kind, standing_id, score)
+
+
 # ── The new-record legs ──────────────────────────────────────────────────────
 
 
@@ -318,12 +377,7 @@ def _write_fact(
         confidence=float(entry.get("confidence", 0.6)),
         source=str(entry["source"]),
     )
-    try:
-        store.append_profile_record(record)
-    except ValueError as exc:
-        _refuse(outcome, "user_fact", record.summary[:60], [str(exc)])
-        return
-    _apply(outcome, "user_fact", record.record_id, None)
+    _land_record(store, record, outcome, "user_fact", None)
 
 
 def _write_preference(
@@ -358,12 +412,7 @@ def _write_preference(
     if problems:
         _refuse(outcome, "user_preference", record.summary[:60], problems)
         return
-    try:
-        store.append_profile_record(record)
-    except ValueError as exc:
-        _refuse(outcome, "user_preference", record.summary[:60], [str(exc)])
-        return
-    _apply(outcome, "user_preference", record.record_id, score)
+    _land_record(store, record, outcome, "user_preference", score)
 
 
 def _write_episode(
@@ -646,8 +695,14 @@ def writeback_problems() -> list[str]:
     """
     from thoughtforge.cognition import core as core_module
     from thoughtforge.knowledge import scoring as scoring_module
+    from thoughtforge.knowledge.contradictions import contradiction_problems
 
     problems: list[str] = []
+
+    # TF-050: the contradiction leg this module routes through
+    # still checks out against the live tree.
+    if contradiction_problems():
+        problems.append("TF-050 contradiction handling no longer checks out (contradiction_problems)")
 
     # The gates are the named constants, not copies.
     expected = {
