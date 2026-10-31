@@ -140,11 +140,12 @@ thresholds per record kind, hard store caps enforced by
 lowest survival score, dedupe of profile records by
 category+tags keeping the higher confidence, reinforcement
 (+0.05 confidence / +0.03 importance / +0.02 quality per
-unit signal, capped at 1.0), and thread cooling. **It is
-mapped, not wired**: nothing in the live engine calls it
-(D-ORPHAN-1) — no fact ages at runtime until TF-045 wires
-it. This map pins that fact so the wiring, when it lands,
-must update the record.
+unit signal, capped at 1.0), and thread cooling. **TF-045
+note:** it was mapped-not-wired when this map was written
+(D-ORPHAN-1); TF-045 has since wired it (per-turn thread
+cooling in the core + `prune_memory`, K10 below) and stated
+its rules in `docs/architecture/LIFECYCLE.md`. The map's
+K10 checker now pins the wiring's presence instead.
 
 ## 6. F2 FIXED: the retrieval gate reads the configured path
 
@@ -187,7 +188,9 @@ K11–K16 are exercised behaviourally in the tests:
 - **K8** persisted defaults + the closed 7/5 vocabularies,
   as §4.
 - **K9** the retrieval gate reads the configured path (§6).
-- **K10** lifecycle unwired (D-ORPHAN-1), owned by TF-045.
+- **K10** lifecycle wired by TF-045 (D-ORPHAN-1 fixed):
+  per-turn thread cooling + the explicit `prune_memory`
+  surface; fact pruning never automatic per turn.
 - **K11** bundle contract: total == len(records),
   confidence == mean(score), scores descending, all ≥
   min_score (rounding aside), ≤ top_k, cues ≤ 18 words.
@@ -241,6 +244,8 @@ precision for the paths that can run).
   provenance, confidence) is TF-042, next in roadmap order.
 - **No lifecycle wiring** — TF-045 owns connecting
   MemoryLifecycle to the engine (D-ORPHAN-1 stays open).
+  *(TF-045 update: landed — see the §5 note and K10 above;
+  D-ORPHAN-1 is FIXED in TF-016's docket.)*
 - **No new core surface.** The F2 fix changes one gate
   expression inside `_retrieve`; the TF-034 frozen API is
   untouched (`verify_api_surface() == []` stands).

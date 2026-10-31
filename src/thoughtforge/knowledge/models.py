@@ -181,6 +181,7 @@ class ResponsePatternRecord:
     pattern_shape: list[str] = field(default_factory=list)  # e.g. ["acknowledge", "explain", "example"]
     quality: float = 0.6
     times_successful: int = 0
+    times_reinforced: int = 0
     times_retrieved: int = 0
     importance: float = 0.5
     confidence: float = 0.6

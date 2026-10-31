@@ -10,8 +10,9 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 47 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 2 FIXED
-(D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II), 1
+**Totals: 47 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 3 FIXED
+(D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
+by TF-045 in Part III), 1
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
 Part II 7 · Part III 5 · Part IV 8 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
@@ -53,7 +54,7 @@ nothing found stays unnumbered.)
 | D-DEAD-1 | `utils/validators.py`: 5 of its 6 public functions are never called anywhere (`sanitise_system_prompt`, `validate_config`, `validate_model_path`, `validate_api_key`, `validate_jsonl_line`) — a validation layer that guards nothing (TF-011) | Wire-or-retire verdict per function: TF-032 (config surface) / TF-094 (policy configuration) | II | OPEN — **TF-032's share ruled**: `validate_config` is NOT wired into the cognition config surface — it requires the user_config `backend` key (it validates a backend dict, the wrong shape for a cognition config; the surface validates its own selections itself). Its wire-or-retire verdict, and the other four functions', belong to TF-094 / TF-065 |
 | D-DEAD-2 | Scalar `cosine_similarity` (etl/embeddings.py:84) is dead while its batch sibling is live (TF-011) | TF-053 (embedding discipline) | III | OPEN |
 | D-DEAD-3 | `utils/paths.py:get_embeddings_dir` has never been called (TF-011) | TF-053 / TF-110 era | III | OPEN |
-| D-ORPHAN-1 | `knowledge/lifecycle.py` is test-only: MemoryLifecycle is never wired into the live engine — no fact ever ages, decays, or is pruned at runtime (TF-011) | TF-045 (lifecycle wiring) | III | OPEN |
+| D-ORPHAN-1 | `knowledge/lifecycle.py` is test-only: MemoryLifecycle is never wired into the live engine — no fact ever ages, decays, or is pruned at runtime (TF-011) | TF-045 (lifecycle wiring) | III | **FIXED by TF-045**: the core now holds a MemoryLifecycle over its own store — `_finish_turn` cools the active thread state once per completed turn (thread aging at runtime, cleared when stale) and `ThoughtForgeCore.prune_memory(mode)` runs an explicit prune pass; fact pruning is deliberately never automatic per turn (retirement is an operator's act). TF-041's K10 checker was flipped to pin the wiring's presence. Two further defects found by TF-045's probes and fixed in the same slice: hard-cap enforcement deleted PROTECTED records (the cap path ignored retention_class — a protected record was cap-deleted in the probe), now guarded (protection outranks the cap); and `MemoryLifecycle.reinforce` crashed on response patterns (`ResponsePatternRecord` had no `times_reinforced` field — every other record type carries one, and TF-042's counter vocabulary already named it), field added with default 0 |
 | D-ORPHAN-2 | `utils/retry.py` is test-only: CircuitBreaker/retry protect no production backend call (TF-011) | TF-073 (backend health & fallback) | IV | OPEN |
 | D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN |
 | D-DUP-1 | Three copied private helpers, drift-prone: `_now_iso` ×3 (one byte-identical pair), `_split_sentences` ×2, `_build_messages` ×2 (TF-011) | TF-025-era hygiene (one shared utils home) | II | **FIXED by TF-025**: implementations now live once in `utils/common.py` (`now_iso` / `split_sentences` / `build_messages`); old private names are aliases, identity-pinned by tests/test_tf025_turn_state.py |

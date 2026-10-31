@@ -86,6 +86,7 @@ from thoughtforge.knowledge.models import (
     MemoryActivationBundle,
     RuntimeTurnState,
 )
+from thoughtforge.knowledge.lifecycle import MemoryLifecycle
 from thoughtforge.knowledge.store import MemoryStore
 from thoughtforge.refinement.enforcement import EnforcementGate
 from thoughtforge.refinement.salvage import FragmentSalvage
@@ -169,6 +170,15 @@ class ThoughtForgeCore:
             db_path=db_path or get_knowledge_db_path(),
         )
         self._store = MemoryStore(memory_dir=memory_dir or get_memory_dir())
+        # TF-045: the memory lifecycle, wired into the live engine
+        # over this core's own store (was test-only — TF-011's
+        # D-ORPHAN-1: no fact ever aged at runtime). Two surfaces:
+        # the active thread state is cooled once per completed turn
+        # in _finish_turn, and prune_memory() below is the explicit
+        # operator surface for a full prune pass. Fact pruning is
+        # NEVER automatic per turn — retirement of facts is an
+        # operator's act, not a side effect of chatting.
+        self._lifecycle = MemoryLifecycle(store=self._store)
         self._router = InputRouter()
         self._scaffold_builder = ScaffoldBuilder()
         self._prompt_builder = PromptBuilder()
@@ -321,6 +331,23 @@ class ThoughtForgeCore:
         return export_turn_trace(
             self._last_turn_state, conversation=conversation
         )
+
+    def prune_memory(self, mode: str = "routine") -> dict[str, int]:
+        """TF-045: run one memory-lifecycle prune pass over this
+        core's store and return its counts ({archived, deleted,
+        deduplicated}) — the live engine's surface for the lifecycle
+        that was test-only until this slice (D-ORPHAN-1). ``mode``
+        is one of light / routine / heavy / emergency (the
+        lifecycle's own threshold tables rule what each retires;
+        knowledge/lifecycle_rules.py states their edges). Pruning
+        is explicit: the core never prunes facts on its own — the
+        only automatic lifecycle act is per-turn thread cooling in
+        _finish_turn, and the thread state is ephemeral by design.
+        A MINOR addition under TF-034's rules — the frozen v1
+        tables are untouched; TF-039's additions record (extended
+        by TF-045) / TF-192 carry it into the next reconciliation.
+        """
+        return self._lifecycle.prune(mode)  # type: ignore[arg-type]
 
     @property
     def determinism_mode(self) -> DeterminismMode:
@@ -782,6 +809,17 @@ class ThoughtForgeCore:
         turn.total_tokens_used = final.token_count
         turn.completed_at = _now_iso()
         advance_phase(turn, "completed")
+        # TF-045: one turn of lifecycle cooling for the active
+        # thread state — the runtime aging the lifecycle module was
+        # built for (D-ORPHAN-1). cool_thread() is a no-op when no
+        # thread state exists; when the cooled state goes stale it
+        # is cleared by the lifecycle itself. A lifecycle failure
+        # must never kill a completed turn, so it is logged at
+        # warning (visible, never silent) and the final stands.
+        try:
+            self._lifecycle.cool_thread()
+        except Exception as exc:  # noqa: BLE001 — turn must survive
+            logger.warning("TF-045 thread cooling failed: %s", exc)
         return final
 
     def load_model(self, model_path: str | Path | None = None) -> None:

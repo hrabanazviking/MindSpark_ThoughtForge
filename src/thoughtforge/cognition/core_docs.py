@@ -312,6 +312,16 @@ POST_FREEZE_ADDITIONS: tuple[dict[str, Any], ...] = (
         "note": "the turn-trace format, exporter, and checker",
     },
     {
+        "name": "prune_memory",
+        "kind": "core-method",
+        "added_by": "TF-045",
+        "note": (
+            "one explicit memory-lifecycle prune pass over the "
+            "core's store (the D-ORPHAN-1 wiring); per-turn thread "
+            "cooling rides _finish_turn, not the public surface"
+        ),
+    },
+    {
         "name": "ConversationConfig.max_refinement_passes",
         "kind": "record-field",
         "added_by": "TF-037",

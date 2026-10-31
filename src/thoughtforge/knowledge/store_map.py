@@ -34,11 +34,16 @@ pattern TF-039 set for the core docs):
 
 Two honesty records this map carries, not hides:
 
-  * **Lifecycle is mapped, not wired.** ``MemoryLifecycle``
-    (prune / reinforce / cool) is invoked by nothing in the
-    live engine (TF-011's D-ORPHAN-1); TF-045 owns wiring it.
-    ``store_map_problems`` pins that fact — if TF-045 wires it
-    without updating this map, the checker names the staleness.
+  * **Lifecycle wiring (TF-045).** ``MemoryLifecycle`` was
+    mapped-but-unwired at TF-041 (TF-011's D-ORPHAN-1); TF-045
+    wired it into the core: the active thread state is cooled
+    once per completed turn (``_finish_turn``) and
+    ``ThoughtForgeCore.prune_memory`` runs an explicit prune
+    pass over the core's store. Fact pruning is never automatic
+    per turn. ``store_map_problems`` (K10) now pins the wiring's
+    presence — if it is removed, the checker names the loss.
+    The lifecycle's own rules and edges are stated in
+    ``knowledge/lifecycle_rules.py`` (TF-045).
   * **Forge scoring is a proxy, recorded as such.** The forge
     scores every candidate with the ``user_fact`` weight row
     whatever its real type, tone/preference as neutral 0.5,
@@ -241,7 +246,7 @@ INVARIANTS: tuple[dict[str, Any], ...] = (
     {"id": "K9", "check": "problems",
      "statement": "the core's retrieval gate reads the CONFIGURED db path (self._knowledge.db_path), never the default path (CORE_LOOP F2, fixed by TF-041)"},
     {"id": "K10", "check": "problems",
-     "statement": "MemoryLifecycle is not wired into the core (D-ORPHAN-1) — mapped, owned by TF-045; the map must be updated when that changes"},
+     "statement": "MemoryLifecycle IS wired into the core by TF-045 (D-ORPHAN-1 fixed): _finish_turn cools the thread state once per completed turn and prune_memory runs an explicit prune pass; fact pruning is never automatic per turn"},
     {"id": "K11", "check": "tested",
      "statement": "a bundle honours its contract: total == len(records), confidence == mean(score), scores sorted descending, every score >= min_score (rounding aside), at most top_k records, every cue <= 18 words"},
     {"id": "K12", "check": "tested",
@@ -490,12 +495,26 @@ def store_map_problems() -> list[str]:
     if "self._knowledge.db_path" not in retrieve_src:
         problems.append("K9: _retrieve does not gate on self._knowledge.db_path")
 
-    # K10 — lifecycle stays unwired until TF-045 says otherwise.
+    # K10 — lifecycle wiring, as TF-045 landed it. The core must
+    # hold a MemoryLifecycle over its store, cool the thread in
+    # _finish_turn, and expose prune_memory; losing any leg is a
+    # named regression of the D-ORPHAN-1 fix.
     core_src = inspect.getsource(core_module)
-    if "MemoryLifecycle" in core_src or "lifecycle" in core_src:
+    if "MemoryLifecycle" not in core_src:
         problems.append(
-            "K10: the core now references the lifecycle — TF-045 "
-            "wired it; update this map's honesty record with evidence"
+            "K10: the core no longer references MemoryLifecycle — "
+            "the TF-045 wiring (D-ORPHAN-1 fix) has regressed"
+        )
+    finish_src = inspect.getsource(core_module.ThoughtForgeCore._finish_turn)
+    if "cool_thread" not in finish_src:
+        problems.append(
+            "K10: _finish_turn no longer cools the thread state — "
+            "the TF-045 per-turn aging has regressed"
+        )
+    if not callable(getattr(core_module.ThoughtForgeCore, "prune_memory", None)):
+        problems.append(
+            "K10: ThoughtForgeCore.prune_memory is gone — the "
+            "TF-045 explicit prune surface has regressed"
         )
 
     # Retrieval map defaults still match the forge's signature.

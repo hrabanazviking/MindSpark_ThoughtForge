@@ -62,6 +62,13 @@ STORE_CAPS: dict[str, dict[str, int]] = {
 }
 
 
+# TF-045: the assumed age of a record whose timestamp cannot be
+# parsed — named so the lifecycle-rules census can pin it. Thirty
+# days is deliberately mid-life: an unreadable timestamp is neither
+# treated as brand new (immortal) nor as ancient (instantly pruned).
+AGE_PARSE_DEFAULT_DAYS: float = 30.0
+
+
 def _age_days(timestamp_iso: str) -> float:
     """Return age in days from an ISO 8601 UTC timestamp to now."""
     try:
@@ -69,7 +76,7 @@ def _age_days(timestamp_iso: str) -> float:
         now = datetime.now(timezone.utc)
         return max(0.0, (now - ts).total_seconds() / 86400.0)
     except (ValueError, AttributeError):
-        return 30.0  # default age on parse failure
+        return AGE_PARSE_DEFAULT_DAYS  # default age on parse failure
 
 
 def _build_prune_components(
@@ -132,7 +139,17 @@ class MemoryLifecycle:
         """
         Run a pruning pass in the given mode.
         Returns counts: {archived: N, deleted: N, deduplicated: N}.
+
+        TF-045: an unknown mode is refused up front with a
+        ValueError naming the valid modes — previously it fell
+        through to a bare KeyError from the threshold tables,
+        mid-pass, after earlier stores had already been rewritten.
         """
+        if mode not in ARCHIVE_THRESHOLDS:
+            raise ValueError(
+                f"unknown prune mode {mode!r}: "
+                f"valid modes are {sorted(ARCHIVE_THRESHOLDS)}"
+            )
         logger.info("Starting %s prune pass", mode)
         counts: dict[str, int] = {"archived": 0, "deleted": 0, "deduplicated": 0}
 
@@ -359,12 +376,27 @@ class MemoryLifecycle:
         hard_cap: int,
         all_records: list[Any],
     ) -> int:
-        """Mark lowest-survival-score records as deleted until under hard cap."""
+        """Mark lowest-survival-score records as deleted until under hard cap.
+
+        TF-045 fix: protected records are NEVER cap-deleted. Before
+        this fix the cap path ignored retention_class entirely —
+        a protected record with the lowest survival score was
+        deleted by an ordinary light prune once the store exceeded
+        its hard cap (probed: 257 preferences, the protected one
+        ancient and zero-scored, came back deleted), contradicting
+        the store map's K15 invariant that pruning never touches a
+        protected record in any mode. Protected records still COUNT
+        toward the live total; if the unprotected candidates run
+        out first, the cap simply stays exceeded by the protected
+        surplus — protection outranks the cap.
+        """
         if len(live_records) <= hard_cap:
             return 0
 
         scored = []
         for r in live_records:
+            if getattr(r, "retention_class", "standard") == "protected":
+                continue
             age = _age_days(getattr(r, "last_used_at", ""))
             sc = _build_survival_components(r, age)
             survival = compute_survival_score(sc)
