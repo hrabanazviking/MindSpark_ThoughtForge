@@ -1,10 +1,12 @@
 """TF-066 — TurboQuant mapped.
 
 Pins: the engine quantises nothing (no quantisation function
-by AST, llama kwargs exactly the five non-quant keys, the
-profile's resolved quantization read nowhere in the engine —
-D-QUANT-1 measured, not asserted); the duties table (does /
-does-not-do); the quant vocabulary consumed live from
+by AST, llama kwargs exactly the five non-quant keys; the
+profile's resolved quantization was read nowhere in the
+engine at TF-066's banking — D-QUANT-1, measured then and
+FIXED by TF-068, whose load-time policy check the duties
+table now records); the duties table (does / does-not-do);
+the quant vocabulary consumed live from
 QUANT_SUFFIXES plus the browser-only iq2_xs (D-QUANT-2: the
 suffix map's first consumer); filename inference across every
 catalogue entry (dot forms resolve, the two Phi-3 generic
@@ -44,9 +46,10 @@ def test_engine_duties_split():
     assert does == {
         "load_gguf", "profile_resolution", "backend_selection",
         "token_budget", "generate_stream_drafts", "token_estimation",
+        "enforce_profile_quant",  # TF-068: the load-time policy check
     }
     assert does_not == {
-        "quantise_weights", "inspect_loaded_quant", "enforce_profile_quant",
+        "quantise_weights", "inspect_loaded_quant",
     }
 
 

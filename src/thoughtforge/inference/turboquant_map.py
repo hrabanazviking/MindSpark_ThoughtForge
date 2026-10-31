@@ -29,9 +29,12 @@ live against the sources, in the campaign's standing shape:
   nowhere*: **D-QUANT-2, FIXED here** by making this map its
   live consumer), the hardware profiles' ``model.quantization``
   recommendation (resolved into
-  ``ResolvedGenerationParams.quantization`` and then *never
-  read by the engine* — **D-QUANT-1, OPEN, owned by TF-068**,
-  whose selection policy is where enforcement belongs), and
+  ``ResolvedGenerationParams.quantization`` and then, at
+  TF-066's banking, *never read by the engine* —
+  **D-QUANT-1, FIXED by TF-068**: the engine now checks the
+  loaded file's filename-provable quant against TF-068's
+  per-profile policy default at load time and records +
+  announces the verdict; see ``quant_policy.py``), and
   ``model_browser.CURATED_MODELS`` (a download catalogue whose
   entries carry a declared quant each).
 - **The only in-tree code that performs a quantisation** is
@@ -93,11 +96,14 @@ ENGINE_DUTIES: tuple[dict, ...] = (
      "what": "quantises weights — NO code path exists; the GGUF arrives quantised",
      "anchor": "absent from turboquant.py (AST-pinned)"},
     {"id": "inspect_loaded_quant", "does": False,
-     "what": "reads the loaded file's quant type — never parsed, never checked",
+     "what": "reads the loaded file's quant type from its header/contents — never; "
+             "TF-068's check reads the filename only",
      "anchor": "absent from turboquant.py (source-pinned)"},
-    {"id": "enforce_profile_quant", "does": False,
-     "what": "enforces the profile's recommended quant — resolved, never read (D-QUANT-1)",
-     "anchor": "profiles.resolve_generation_params -> read nowhere in turboquant.py"},
+    {"id": "enforce_profile_quant", "does": True,
+     "what": "checks the loaded file's filename-provable quant against the "
+             "profile's TF-068 policy default at load; mismatch recorded + "
+             "announced, unprovable recorded as unprovable (D-QUANT-1, FIXED by TF-068)",
+     "anchor": "turboquant.load -> quant_policy.check_quant_for_profile"},
 )
 
 # ── The quant vocabulary ────────────────────────────────────────────────────
@@ -254,8 +260,9 @@ def turboquant_map_problems() -> list[str]:
     fn_names = [n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
     if any("quantiz" in name or "dequant" in name for name in fn_names):
         problems.append("engine grew a quantisation function — map is stale")
-    if ".quantization" in source:
-        problems.append("engine now reads .quantization — D-QUANT-1/map stale")
+    if "check_quant_for_profile" not in source:
+        problems.append("engine no longer runs TF-068's quant policy check "
+                        "— D-QUANT-1/map stale")
 
     kwargs = build_llama_kwargs(
         BackendInfo(name="cpu", available=True, priority=100,

@@ -34,6 +34,7 @@ from thoughtforge.inference.profiles import (
     ResolvedGenerationParams,
     resolve_generation_params,
 )
+from thoughtforge.inference.quant_policy import QuantVerdict, check_quant_for_profile
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,7 @@ class TurboQuantEngine:
         self._verbose = verbose
 
         self._model: Any = _NOT_LOADED
+        self.quant_verdict: QuantVerdict | None = None
         self._profile_match: ProfileMatch | None = None
         self._params: ResolvedGenerationParams | None = None
         self._backend: BackendInfo | None = None
@@ -158,6 +160,37 @@ class TurboQuantEngine:
             self._profile_match.profile_id,
             self._profile_match.reason,
         )
+
+        # TF-068 (D-QUANT-1): the profile's quant is policy, not a
+        # suggestion nobody reads. Check the loaded file's
+        # filename-provable quant against the profile's policy
+        # default and record the verdict; a mismatch is announced,
+        # never silently passed (and never a hard refusal — the
+        # operator may load another quant deliberately, but not
+        # unknowingly). A filename proving no quant is recorded
+        # as unprovable, never rounded up.
+        self.quant_verdict = check_quant_for_profile(
+            self._profile_match.profile_id,
+            self.model_path.name if self.model_path else None,
+        )
+        if self.quant_verdict.status == "mismatch":
+            logger.warning(
+                "Quant policy mismatch: profile %s defaults to %s but "
+                "the loaded file %s proves %s — loading as instructed, "
+                "mismatch recorded (TF-068 quant policy)",
+                self.quant_verdict.profile_id,
+                self.quant_verdict.expected,
+                self.model_path.name if self.model_path else "",
+                self.quant_verdict.found,
+            )
+        elif self.quant_verdict.status == "unprovable":
+            logger.info(
+                "Quant policy: %s proves no quant for profile %s "
+                "(%s) — recorded as unprovable, not a mismatch",
+                self.model_path.name if self.model_path else "",
+                self.quant_verdict.profile_id,
+                self.quant_verdict.gap,
+            )
 
         # Resolve backend
         self._backend = select_backend(

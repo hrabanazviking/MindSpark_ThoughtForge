@@ -27,15 +27,23 @@ documents the method from the code, files it as data in
 And what it does **not** do, each pinned by test:
 
 - **Quantise weights** — no code path exists (AST-pinned).
-- **Inspect the loaded file's quant type** — the engine never
-  parses the filename, reads a GGUF header, or otherwise learns
-  whether it loaded Q2_K or fp16.
-- **Enforce the profile's recommended quant** — the profile's
-  `model.quantization` is resolved into
-  `ResolvedGenerationParams.quantization` and then read
-  *nowhere* in the engine (**D-QUANT-1**, OPEN — TF-068's
-  selection policy is where a choice, and any enforcement,
-  belongs; measured this slice by source pin).
+- **Inspect the loaded file's quant type from the file
+  itself** — the engine never reads a GGUF header or otherwise
+  learns the quant from the file's contents. (TF-068's policy
+  check reads the *filename* only.)
+
+And one row that has since moved to the does column:
+
+- **Enforce the profile's recommended quant** — at TF-066's
+  banking the profile's `model.quantization`, resolved into
+  `ResolvedGenerationParams.quantization`, was read *nowhere*
+  in the engine (**D-QUANT-1**, measured this slice by source
+  pin). **FIXED by TF-068**: `TurboQuantEngine.load` now runs
+  `quant_policy.check_quant_for_profile` — the loaded file's
+  filename-provable quant is checked against the profile's
+  policy default, the verdict is recorded on the engine, and
+  a mismatch is announced, never silently passed (announcement,
+  not refusal). See `QUANT_SELECTION_POLICY.md`.
 
 ## Where quant actually enters the system
 
@@ -53,7 +61,9 @@ Three data surfaces, none of them weight-transforming code:
    `phone_low`/`pi_zero` → `q2_k`, `pi_5`/`desktop_cpu` →
    `q4_k_m`, `desktop_gpu` → `q8_0`, `server_gpu` → `fp16`
    (read live by the map; the resolver's default is `q4_k_m`).
-   A recommendation, not a gate — see D-QUANT-1.
+   A recommendation at TF-066's banking — since TF-068 it is
+   the policy default the load-time check announces against
+   (see D-QUANT-1 above).
 3. **The download catalogue** — `model_browser.CURATED_MODELS`
    (15 entries; declared quants Q4_K_M ×9, Q5_K_M ×2, Q8_0 ×2,
    IQ2_XS ×2). Filename inference (`quant_of_filename`, which
