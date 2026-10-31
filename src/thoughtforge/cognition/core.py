@@ -54,6 +54,14 @@ logger = logging.getLogger(__name__)
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 _QUALITY_REPAIR_THRESHOLD = 0.40     # below this composite score → trigger repair
+# TF-022 ruling on CORE_LOOP §8-F6: this threshold gates the core's own
+# FragmentScores composite (relevance/clarity/specificity/usefulness/
+# personality, knowledge/models.py) and decides only which fragments
+# are *kept on the turn record* for provenance. It is NOT the salvage
+# engine's threshold: FragmentSalvage._MIN_FRAGMENT_SCORE (0.54) gates
+# a different formula (length+citation, from the scoring spec) and
+# decides which fragments are *worth a refine pass*. The numbers
+# differ because the metrics differ — do not "unify" them.
 _MIN_FRAGMENT_SCORE = 0.25
 _MIN_RESPONSE_TOKENS = 8             # fewer tokens than this → probably garbage
 

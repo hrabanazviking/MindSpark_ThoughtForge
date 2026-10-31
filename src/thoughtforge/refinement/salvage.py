@@ -40,6 +40,12 @@ _CITATION_WEIGHT = 0.55
 _IDEAL_LENGTH_CHARS = 550          # chars at which length_score reaches 1.0
 _MAX_REFINE_PASSES = 2
 _MIN_FRAGMENT_SCORE = 0.54         # from Retrieval_and_Scoring_Spec §30
+# TF-022 ruling on CORE_LOOP §8-F6: this threshold gates salvage's own
+# length+citation score (see _score_fragment below) and decides which
+# fragments are *worth a refine pass*. It is NOT the core's threshold:
+# core._MIN_FRAGMENT_SCORE (0.25) gates the unrelated FragmentScores
+# composite and decides only turn-record provenance. Different
+# metrics, different jobs — the numbers are not a drift to reconcile.
 _MIN_FRAGMENT_WORDS = 4
 _MAX_FRAGMENTS_IN_REFINE = 5
 

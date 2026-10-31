@@ -112,6 +112,86 @@ class PromptBuilder:
         logger.debug("Built candidate prompt (mode=%s, ~%d chars)", mode, len(prompt))
         return prompt
 
+    # ── Strategy prompt (TF-022) ─────────────────────────────────────────────
+
+    def build_strategy_prompt(
+        self,
+        sketch: InputSketch,
+        scaffold: CognitionScaffold,
+        step,
+        memory_cues: list[str],
+        prior_text: str = "",
+    ) -> str:
+        """
+        Build one step prompt of a multi-step scaffold strategy
+        (TF-022, ``cognition/scaffold_strategies.py``).
+
+        One interface for every strategy step: the assembly order is
+        the candidate prompt's order — the step's instruction as the
+        opener, then request / intent / topic / tone / goal / focus /
+        avoid / memory cues / knowledge context — plus, for steps
+        that consume earlier work, a "Working so far" section, and a
+        closing output line naming what the step produces. Only a
+        step whose ``produces`` is "final_answer" gets the response
+        mode's output shape; working steps are told to produce their
+        working material only.
+
+        ``step`` is a ``StrategyStep`` (duck-typed, so this module
+        needs no import of the strategies module). The prior-output
+        contract is enforced, not assumed: a step that requires prior
+        output without any, or a first step handed prior output,
+        raises ValueError — a strategy run out of order is a caller
+        error and must surface as one.
+        """
+        if step.requires_prior and not prior_text.strip():
+            raise ValueError(
+                f"strategy step {step.name!r} requires prior output but none was given"
+            )
+        if not step.requires_prior and prior_text.strip():
+            raise ValueError(
+                f"strategy step {step.name!r} is a first step and takes no prior output"
+            )
+
+        output_shape = _MODE_TO_OUTPUT_SHAPE.get(sketch.response_mode, "2-4 sentences")
+        length_hint = _DEPTH_TO_LENGTH_HINT.get(scaffold.depth, "")
+
+        tone_str = ", ".join(scaffold.tone[:3]) if scaffold.tone else "direct, natural"
+        focus_str = ", ".join(scaffold.focus[:3]) if scaffold.focus else "clarity"
+        avoid_str = ", ".join(scaffold.avoid[:3]) if scaffold.avoid else "filler"
+
+        cue_lines = "\n".join(f"- {c}" for c in memory_cues[:3]) if memory_cues else "- none"
+
+        fact_section = ""
+        if scaffold.fact_block:
+            fact_section = f"\nKnowledge context:\n{scaffold.fact_block}\n"
+
+        prior_section = ""
+        if prior_text.strip():
+            prior_section = f"\nWorking so far:\n{prior_text.strip()[:1000]}\n"
+
+        if step.produces == "final_answer":
+            output_line = f"Output: {output_shape} {length_hint}".rstrip()
+        else:
+            output_line = f"Output: {step.produces} only"
+
+        prompt = (
+            f"{step.instruction}\n\n"
+            f"User request: {sketch.raw_text}\n"
+            f"Intent: {sketch.intent.replace('_', ' ')}\n"
+            f"Topic: {sketch.topic}\n"
+            f"Tone: {tone_str}\n"
+            f"Goal: {scaffold.goal}\n"
+            f"Focus: {focus_str}\n"
+            f"Avoid: {avoid_str}\n"
+            f"Memory cues:\n{cue_lines}\n"
+            f"{fact_section}"
+            f"{prior_section}\n"
+            f"{output_line}"
+        )
+
+        logger.debug("Built strategy prompt (step=%s, ~%d chars)", step.name, len(prompt))
+        return prompt
+
     # ── Refine prompt ──────────────────────────────────────────────────────────
 
     def build_refine_prompt(
