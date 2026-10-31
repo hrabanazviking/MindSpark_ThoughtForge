@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -135,6 +136,20 @@ class ThoughtForgeCore:
         self._enforcement = EnforcementGate()
 
         self._engine: Any = None      # TurboQuantEngine — loaded lazily
+        # TF-035: one core serves ONE conversation at a time. This
+        # lock serialises whole turns on this instance (think /
+        # think_stream / resume_turn): before it, two threads
+        # calling think() on one core raced on _last_turn_state
+        # and BOTH callers received whichever turn assigned it
+        # last — the other conversation's answer (measured in the
+        # TF-035 probe, 3/3 trials). Two conversations in parallel
+        # use two cores (cognition/concurrency.py); turns on one
+        # core queue instead of bleeding. The thread-local below
+        # is the lock's other half: think() reads back the turn
+        # ITS thread ran, so the read-back after the turn cannot
+        # be crossed by a queued turn starting on another thread.
+        self._turn_lock = threading.Lock()
+        self._turn_local = threading.local()
         # TF-025: the most recent turn's full typed state, retained
         # after think() returns (was built and discarded — CORE_LOOP
         # §8-F3). Trace *export* of it is TF-038's slice.
@@ -285,13 +300,20 @@ class ThoughtForgeCore:
                 content failure, so it is not swallowed into a
                 fabricated answer.
         """
-        for _ in self._run_turn(
-            user_text, retrieval_path, num_drafts, history, stream=False, interrupt=interrupt,
-        ):
-            pass
-        turn = self._last_turn_state
-        assert turn is not None and turn.final_response is not None
-        return turn.final_response
+        # TF-035: the turn lock is held across the whole turn
+        # AND the read-back below — a second turn attempted on
+        # this core waits here instead of racing (see __init__).
+        with self._turn_lock:
+            for _ in self._run_turn(
+                user_text, retrieval_path, num_drafts, history, stream=False, interrupt=interrupt,
+            ):
+                pass
+            # TF-035: read back THIS thread's turn (set in
+            # _run_turn), not only the shared retained state —
+            # belt and braces with the lock above.
+            turn = getattr(self._turn_local, "turn", None) or self._last_turn_state
+            assert turn is not None and turn.final_response is not None
+            return turn.final_response
 
     def think_stream(
         self,
@@ -318,12 +340,28 @@ class ThoughtForgeCore:
         instead of ``final``, and the turn can be finished with
         resume_turn(). Closing this stream mid-turn also cuts the
         turn (recorded on the retained state).
+
+        TF-035: the turn lock is held from the first event until
+        this stream is exhausted or closed (closing releases it);
+        a second turn on this same core waits for the stream to
+        finish rather than racing it.
         """
-        yield from self._run_turn(
-            user_text, retrieval_path, num_drafts, history, stream=True, interrupt=interrupt,
-        )
+        with self._turn_lock:
+            yield from self._run_turn(
+                user_text, retrieval_path, num_drafts, history, stream=True, interrupt=interrupt,
+            )
 
     def resume_turn(
+        self,
+        interrupt: InterruptToken | None = None,
+    ) -> FinalResponseRecord:
+        """TF-035: serialised entry point — a resume is a turn on
+        this core, so it takes the same turn lock as think() (see
+        __init__). The work itself is _resume_turn_inner (TF-027)."""
+        with self._turn_lock:
+            return self._resume_turn_inner(interrupt=interrupt)
+
+    def _resume_turn_inner(
         self,
         interrupt: InterruptToken | None = None,
     ) -> FinalResponseRecord:
@@ -416,6 +454,10 @@ class ThoughtForgeCore:
         ``interrupted`` event. A consumer closing the stream
         mid-turn (GeneratorExit) records the same cut and the
         exception propagates untouched.
+
+        TF-035: callers (think / think_stream / resume_turn) hold
+        this core's turn lock for the whole turn; this body never
+        takes it itself, so there is no re-entry to deadlock.
         """
         # TF-034: num_drafts is a real cap now (it was documented
         # but dead — CORE_LOOP §8-F1). Below 1 is a caller error,
@@ -429,6 +471,8 @@ class ThoughtForgeCore:
         turn_id = _new_turn_id()
         turn = RuntimeTurnState(turn_id=turn_id)
         self._last_turn_state = turn
+        # TF-035: this thread's own turn, for think()'s read-back.
+        self._turn_local.turn = turn
         t_start = time.perf_counter()
         try:
             if stream:
