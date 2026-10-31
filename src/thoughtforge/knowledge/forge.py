@@ -26,7 +26,15 @@ from thoughtforge.etl.embeddings import (
 from thoughtforge.etl.schema import get_connection
 from thoughtforge.knowledge.models import ActivatedRecord, MemoryActivationBundle
 from thoughtforge.knowledge.scoring import (
+    DEFAULT_SOURCE_RECENCY,
+    FTS_SCORE_DIVISOR,
+    GEONAMES_FIXED_FTS_SCORE,
+    IMPORTANCE_WEIGHT_DEFAULT,
     MIN_MEMORY_SCORE,
+    NEUTRAL_PREFERENCE_RELEVANCE,
+    NEUTRAL_TONE_SIMILARITY,
+    SOURCE_RECENCY_PROXIES,
+    VECTOR_MIN_SCORE,
     RetrievalDimensions,
     compute_recency_score,
     score_retrieval,
@@ -46,9 +54,15 @@ class KnowledgeForge:
         self,
         db_path: Path | None = None,
         model_name: str = "all-MiniLM-L6-v2",
+        retrieval_weights: dict[str, float] | None = None,
     ) -> None:
         self.db_path = db_path or get_knowledge_db_path()
         self.model_name = model_name
+        # TF-044: an explicit retrieval weight table for the fusion
+        # (e.g. resolved per hardware profile by
+        # knowledge/scoring_honesty.weights_for_profile). None =
+        # the shipped user_fact table, byte-identical scoring.
+        self.retrieval_weights = retrieval_weights
 
     # ── Primary retrieval API ──────────────────────────────────────────────────
 
@@ -222,7 +236,7 @@ class KnowledgeForge:
                                 "geonames_id": row["geonames_id"],
                                 "label_en": row["name"],
                                 "description_en": f"{row['feature_class']} in {row['country_code']}, pop {row['population']}",
-                                "fts_score": 0.5,
+                                "fts_score": GEONAMES_FIXED_FTS_SCORE,
                                 "source": "geonames",
                                 "record_type": "place",
                             })
@@ -253,7 +267,7 @@ class KnowledgeForge:
                 db_path=self.db_path,
                 model_name=self.model_name,
                 top_k=top_k,
-                min_score=0.3,
+                min_score=VECTOR_MIN_SCORE,
             )
             results.extend(entity_results)
 
@@ -263,7 +277,7 @@ class KnowledgeForge:
                 db_path=self.db_path,
                 model_name=self.model_name,
                 top_k=top_k // 2,
-                min_score=0.3,
+                min_score=VECTOR_MIN_SCORE,
             )
             results.extend(ref_results)
 
@@ -277,33 +291,41 @@ class KnowledgeForge:
         query: str,
     ) -> list[dict[str, Any]]:
         """
-        Compute composite retrieval scores for all records using the spec formula:
-          score = semantic_similarity * 0.35 + tone_similarity * 0.20 +
-                  preference_relevance * 0.20 + recency * 0.10 + importance * 0.15
+        Compute composite retrieval scores for all records.
+
+        TF-044 honesty fix: this docstring used to quote the BASE
+        weight row (0.35/0.20/0.20/0.10/0.15) while the code has
+        always scored with the ``user_fact`` row of
+        RETRIEVAL_WEIGHTS_BY_TYPE (TF-041 measured the arithmetic
+        live and pinned it) — or, when the forge was constructed
+        with ``retrieval_weights``, with that table instead. The
+        dimension proxies below are the named fusion constants in
+        knowledge/scoring.py (TF-044), values unchanged.
         """
         for record in records:
             # Semantic similarity: prefer vector score if available, fall back to FTS
             sim = record.get("similarity", 0.0)
             if sim == 0.0:
                 fts = record.get("fts_score", 0.0)
-                sim = min(fts / 20.0, 1.0) if fts > 0 else 0.0
+                sim = min(fts / FTS_SCORE_DIVISOR, 1.0) if fts > 0 else 0.0
 
             # Importance proxy: popularity for entities, weight for conceptnet
-            importance = min(record.get("popularity_score", 0.0) + record.get("weight", 0.5), 1.0)
+            importance = min(record.get("popularity_score", 0.0) + record.get("weight", IMPORTANCE_WEIGHT_DEFAULT), 1.0)
 
             # Recency: knowledge graph records are static; use source-based proxy
             source = record.get("source", "wikidata")
-            recency = {"reference": 0.9, "wikidata": 0.7, "conceptnet": 0.8,
-                       "geonames": 0.75, "dbpedia": 0.65}.get(source, 0.7)
+            recency = SOURCE_RECENCY_PROXIES.get(source, DEFAULT_SOURCE_RECENCY)
 
             dims = RetrievalDimensions(
                 semantic_similarity=sim,
-                tone_similarity=0.5,          # neutral default — no tone metadata at DB level
-                preference_relevance=0.5,      # neutral default
+                tone_similarity=NEUTRAL_TONE_SIMILARITY,  # no tone metadata at DB level
+                preference_relevance=NEUTRAL_PREFERENCE_RELEVANCE,
                 recency=recency,
                 importance=importance,
             )
-            record["_composite_score"] = score_retrieval(dims, "user_fact")
+            record["_composite_score"] = score_retrieval(
+                dims, "user_fact", weights=self.retrieval_weights
+            )
 
         return records
 
