@@ -18,6 +18,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from thoughtforge.etl.embedding_discipline import canonical_model_name
 from thoughtforge.etl.embeddings import (
     encode_single,
     vector_search_entities,
@@ -47,7 +48,19 @@ logger = logging.getLogger(__name__)
 class KnowledgeForge:
     """
     Hybrid SQL + vector retrieval engine over the ThoughtForge knowledge database.
-    Fully offline — no network calls.
+
+    TF-053 honesty fix: this class used to claim "Fully offline —
+    no network calls" outright. The truth: the SQL leg is fully
+    local; the vector leg loads a local embedding model through
+    sentence-transformers, whose own first-time load may fetch
+    the model when it is not cached — offline availability per
+    profile is *proven* by
+    ``etl/embedding_discipline.availability_report``, never
+    assumed here. And when the embedding backend is unavailable
+    (package missing, model uncached), the vector leg degrades
+    to SQL-only with a logged warning instead of failing the
+    whole retrieval — measured before this fix: hybrid retrieve
+    raised RuntimeError and lost the SQL results with it.
     """
 
     def __init__(
@@ -57,7 +70,9 @@ class KnowledgeForge:
         retrieval_weights: dict[str, float] | None = None,
     ) -> None:
         self.db_path = db_path or get_knowledge_db_path()
-        self.model_name = model_name
+        # TF-053: the canonical spelling, whichever spelling the
+        # caller handed in (the DB's model_name filter is exact).
+        self.model_name = canonical_model_name(model_name)
         # TF-044: an explicit retrieval weight table for the fusion
         # (e.g. resolved per hardware profile by
         # knowledge/scoring_honesty.weights_for_profile). None =
@@ -269,25 +284,43 @@ class KnowledgeForge:
         """
         results: list[dict[str, Any]] = []
 
+        # TF-053: each vector leg degrades on its own. A missing
+        # embedding package or uncached model is an availability
+        # fact (etl/embedding_discipline proves it per profile),
+        # not a retrieval failure — the SQL leg's results stand.
         if not sources or "wikidata" in sources or "entities" in sources:
-            entity_results = vector_search_entities(
-                query,
-                db_path=self.db_path,
-                model_name=self.model_name,
-                top_k=top_k,
-                min_score=VECTOR_MIN_SCORE,
-            )
-            results.extend(entity_results)
+            try:
+                entity_results = vector_search_entities(
+                    query,
+                    db_path=self.db_path,
+                    model_name=self.model_name,
+                    top_k=top_k,
+                    min_score=VECTOR_MIN_SCORE,
+                )
+                results.extend(entity_results)
+            except Exception as exc:  # noqa: BLE001 — degrade, named in log
+                logger.warning(
+                    "Vector entity search unavailable (%s: %s) — "
+                    "continuing with SQL results only",
+                    type(exc).__name__, exc,
+                )
 
         if not sources or "reference" in sources:
-            ref_results = vector_search_reference(
-                query,
-                db_path=self.db_path,
-                model_name=self.model_name,
-                top_k=top_k // 2,
-                min_score=VECTOR_MIN_SCORE,
-            )
-            results.extend(ref_results)
+            try:
+                ref_results = vector_search_reference(
+                    query,
+                    db_path=self.db_path,
+                    model_name=self.model_name,
+                    top_k=top_k // 2,
+                    min_score=VECTOR_MIN_SCORE,
+                )
+                results.extend(ref_results)
+            except Exception as exc:  # noqa: BLE001 — degrade, named in log
+                logger.warning(
+                    "Vector reference search unavailable (%s: %s) — "
+                    "continuing with SQL results only",
+                    type(exc).__name__, exc,
+                )
 
         return results
 

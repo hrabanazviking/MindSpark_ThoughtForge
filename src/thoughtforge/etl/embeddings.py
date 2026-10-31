@@ -8,6 +8,14 @@ Uses all-MiniLM-L6-v2 by default (fast, <100MB, CPU-friendly).
 Vector similarity is computed via cosine similarity on numpy float32 arrays.
 Optional: if sqlite-vss is installed, uses it for ANN search; otherwise
 falls back to brute-force cosine similarity.
+
+TF-053 (embedding discipline): model names are normalised through
+``etl/embedding_discipline.canonical_model_name`` at every entry
+point below — the registry there holds the per-profile assignment,
+the recorded licence, and the offline-availability proof. The
+scalar ``cosine_similarity`` that used to live here was removed by
+TF-053 (docket D-DEAD-2): it had no caller anywhere, while
+``batch_cosine_similarity`` is the live path.
 """
 
 from __future__ import annotations
@@ -20,6 +28,7 @@ from typing import Any
 
 import numpy as np
 
+from thoughtforge.etl.embedding_discipline import canonical_model_name
 from thoughtforge.etl.schema import get_connection
 from thoughtforge.utils.paths import get_knowledge_db_path
 
@@ -32,6 +41,7 @@ EMBEDDING_DIM = 384   # all-MiniLM-L6-v2 output dimension
 
 def _get_model(model_name: str = DEFAULT_MODEL) -> Any:
     """Load and cache a SentenceTransformer model."""
+    model_name = canonical_model_name(model_name)
     if model_name not in _MODEL_CACHE:
         try:
             from sentence_transformers import SentenceTransformer
@@ -81,15 +91,6 @@ def from_blob(blob: bytes) -> np.ndarray:
     return np.frombuffer(blob, dtype=np.float32)
 
 
-def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    """Cosine similarity between two L2-normalized vectors (fast path)."""
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
-
-
 def batch_cosine_similarity(query: np.ndarray, matrix: np.ndarray) -> np.ndarray:
     """
     Compute cosine similarity between a query vector and a matrix of vectors.
@@ -118,6 +119,7 @@ def build_entity_embeddings(
     Text used: "label_en: description_en"
     Returns count of embeddings generated.
     """
+    model_name = canonical_model_name(model_name)
     db_path = db_path or get_knowledge_db_path()
     conn = get_connection(db_path)
     total = 0
@@ -180,6 +182,7 @@ def build_reference_embeddings(
     batch_size: int = 64,
 ) -> int:
     """Generate embeddings for all reference_chunks without one."""
+    model_name = canonical_model_name(model_name)
     db_path = db_path or get_knowledge_db_path()
     conn = get_connection(db_path)
     total = 0
@@ -235,6 +238,7 @@ def vector_search_entities(
     Brute-force cosine similarity search over entity embeddings.
     Returns top_k entities sorted by similarity score descending.
     """
+    model_name = canonical_model_name(model_name)
     db_path = db_path or get_knowledge_db_path()
     query_vec = encode_single(query_text, model_name)
 
@@ -286,6 +290,7 @@ def vector_search_reference(
     min_score: float = 0.3,
 ) -> list[dict[str, Any]]:
     """Cosine similarity search over built-in reference chunk embeddings."""
+    model_name = canonical_model_name(model_name)
     db_path = db_path or get_knowledge_db_path()
     query_vec = encode_single(query_text, model_name)
 
