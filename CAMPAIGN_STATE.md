@@ -6,7 +6,8 @@ Working branch: yrsa/thoughtforge-road-build (own sparse/blob-filtered clone at 
 Sparse checkout: src, tests, docs, benchmarks, configs, hardware_profiles, scripts, .github, MindSpark_ThoughtForge, research_data/src (data/ canon excluded from checkout)
 
 ## Status
-- Last updated: 2026-10-31 01:45 EDT (keeper tick 01:32)
+- Last updated: 2026-10-31 01:52 EDT (keeper tick 01:42)
+- TF-029 IN PROGRESS — the will layer: goal/intent persistence across turns (keeper tick 01:42).
 - TF-001 DONE — clone, branch, roadmap filed under docs/ and PUSHED (filing only): commit e7d21aa85f34355c3771e3db036d76bc269e6d50, verified via `git ls-remote` matching local HEAD.
 - TF-002 DONE — module census: docs/audit/TF-002_MODULE_CENSUS.md (44 src files, 399,944 bytes; gaps: knowledge/forge, etl sources/wikidata/embeddings, utils paths/logging_setup lack direct test imports → TF-016 docket).
 - TF-004 DONE — docs/audit/TF-004_BASELINE_TESTS.md: 620 collected, 618 passed, 1 skipped, 1 failed (ENVIRONMENT: missing sentence-transformers on this VM). Campaign zero line pinned there.
