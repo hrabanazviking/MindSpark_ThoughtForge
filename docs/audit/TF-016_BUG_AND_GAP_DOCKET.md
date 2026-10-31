@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 67 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 24 FIXED
+**Totals: 69 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 26 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -21,9 +21,10 @@ Part III; D-ADV-1 by TF-062 in Part III; D-DEP-1 and
 D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
 Part IV; D-QUANT-1 by TF-068 in Part IV; D-ONNX-1 by
 TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
-TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV), 2
+TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
+D-HEALTH-1 by TF-073 in Part IV), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 17 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 19 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -71,7 +72,14 @@ name) and fixed in scope. Entry D-STREAM-1 was added
 by TF-072 in Part IV under the same rule — found by
 that slice's probes (the engine's llama stream
 iterator abandoned un-closed on the early-close and
-error exits) and fixed in scope.)
+error exits) and fixed in scope. Entries D-HEALTH-1
+and D-HEALTH-2 were added by TF-073 in Part IV under
+the same rule — D-HEALTH-1 found by that slice's
+probes (HF health meaning any status below 500) and
+fixed in scope; D-HEALTH-2 measured by that slice
+(the server-shaped backends' health cannot see the
+configured model) and assigned to TF-077's routing
+table, its first consumer.)
 
 ## The docket
 
@@ -122,7 +130,9 @@ error exits) and fixed in scope.)
 | D-PER-1 | A core's startup self-heal rewrote ANOTHER persona's store: `ThoughtForgeCore` ran `SelfHealer().heal_all()` un-targeted, so the healer repaired the DEFAULT deployment's memory dir + knowledge DB whatever store the core was built on — quarantining/resetting that store's files (and potentially renaming its DB) at any core's construction, while the constructed core's own store was never healed (found by TF-055's probe P3: a planted corrupt line in a fake default home was quarantined by constructing a core on a different persona's store) | TF-055 | III | **FIXED by TF-055**: `SelfHealer` takes an explicit `memory_dir` / `knowledge_db_path` target (defaults preserve the standalone behaviour) and the core passes its OWN store dir + DB path; post-fix probe: the foreign home is byte-identical after construction and the owning core's own corrupt line is healed in its own home, backup included |
 | D-PER-2 | The config personality fallback is a global assignment that can silently persona an empty-store core: a core whose store holds no personality core loads the YAML at the shared config's `cognition.personality_core_path`, so two personae served under ONE shared config share its assignment (measured TF-030 — default config → shipped `pers_001`; probed again by TF-055 P4 — empty store + a config naming persona A's core file runs as A) | TF-055 (verdict) | III | **CLOSED-BY-VERDICT by TF-055**: not a store bleed — the assignment never reads or writes any store, and identity precedence is pinned with evidence (a store's own core ALWAYS wins over the config file; the assignment applies only to a store holding no core). The ruled contract: serving two personae takes two stores AND two configs (or a config with no personality path); one shared config is one shared assignment, by the same rule as one shared directory (`knowledge/persona_separation.SEPARATION_SURFACES`). TF-030/TF-032/TF-038 own the fallback's semantics, unchanged |
 | D-ORPHAN-1 | `knowledge/lifecycle.py` is test-only: MemoryLifecycle is never wired into the live engine — no fact ever ages, decays, or is pruned at runtime (TF-011) | TF-045 (lifecycle wiring) | III | **FIXED by TF-045**: the core now holds a MemoryLifecycle over its own store — `_finish_turn` cools the active thread state once per completed turn (thread aging at runtime, cleared when stale) and `ThoughtForgeCore.prune_memory(mode)` runs an explicit prune pass; fact pruning is deliberately never automatic per turn (retirement is an operator's act). TF-041's K10 checker was flipped to pin the wiring's presence. Two further defects found by TF-045's probes and fixed in the same slice: hard-cap enforcement deleted PROTECTED records (the cap path ignored retention_class — a protected record was cap-deleted in the probe), now guarded (protection outranks the cap); and `MemoryLifecycle.reinforce` crashed on response patterns (`ResponsePatternRecord` had no `times_reinforced` field — every other record type carries one, and TF-042's counter vocabulary already named it), field added with default 0 |
-| D-ORPHAN-2 | `utils/retry.py` is test-only: CircuitBreaker/retry protect no production backend call (TF-011) | TF-073 (backend health & fallback) | IV | OPEN |
+| D-ORPHAN-2 | `utils/retry.py` is test-only: CircuitBreaker/retry protect no production backend call (TF-011) | TF-073 (backend health & fallback) | IV | **FIXED by TF-073**: the CircuitBreaker half now protects production backend calls — `inference/backend_fallback.FallbackBackend` carries one breaker per chain member, fed by every generate outcome; at the threshold the member is skipped without a health or generate call (outcome `circuit_open`) until the breaker's recovery timeout. The `retry` decorator stays unused in production, stated in the module: it retries exceptions, and backend failure under the TF-065 contract is data, not an exception |
+| D-HEALTH-1 | `HuggingFaceBackend.health_check` accepted any status below 500 from its per-model info endpoint: measured live, 401 (rejected credentials) and 404 (no such model) both returned True — "healthy" claimed a model that does not exist could serve (found by TF-073) | TF-073 | IV | **FIXED by TF-073**: health is True exactly on status 200; pinned against mocked 200/401/403/404/500/503 (tests/test_tf073_backend_fallback.py) and against the class source by `backend_fallback.fallback_problems` |
+| D-HEALTH-2 | The server-shaped backends' health cannot see the configured model: ollama's `/api/tags` and lmstudio's `/v1/models` checks prove only that the server answers 200 (measured: ollama healthy with the configured model absent from the server's list); TurboQuant's file-exists + importable check likewise does not prove the model loads (found by TF-073) | TF-077 (local-first routing — the first consumer of per-model health) | IV | OPEN — filed by TF-073 with the per-backend semantics stated as data (`inference/backend_fallback.HEALTH_SEMANTICS`: what each check proves and does not prove, judged live against the classes' sources) |
 | D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN |
 | D-DUP-1 | Three copied private helpers, drift-prone: `_now_iso` ×3 (one byte-identical pair), `_split_sentences` ×2, `_build_messages` ×2 (TF-011) | TF-025-era hygiene (one shared utils home) | II | **FIXED by TF-025**: implementations now live once in `utils/common.py` (`now_iso` / `split_sentences` / `build_messages`); old private names are aliases, identity-pinned by tests/test_tf025_turn_state.py |
 | D-DUP-2 | `MindSpark_ThoughtForge/` shadow directory holds md5-identical copies of root RULES.AI.md / PHILOSOPHY.md — copies that can silently diverge (TF-011; its README was not read or touched, per law) | TF-182 (Part X docs verdict) | X | OPEN |

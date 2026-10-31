@@ -61,7 +61,10 @@ class HuggingFaceBackend(UnifiedBackend):
                 headers=headers,
                 timeout=8,
             )
-            return resp.status_code < 500
+            # TF-073 (D-HEALTH-1): exactly 200 — the pre-fix
+            # below-500 test counted 401 (rejected credentials)
+            # and 404 (no such model) as healthy.
+            return resp.status_code == 200
         except Exception:
             return False
 
