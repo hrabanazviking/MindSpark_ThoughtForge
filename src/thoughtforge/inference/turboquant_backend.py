@@ -49,8 +49,11 @@ class TurboQuantBackend(UnifiedBackend):
         own streaming generator over the flattened prompt.
 
         A failure to load the engine yields nothing — the
-        standing UnifiedBackend error behaviour (the response
-        channel for a streamed turn is TF-084's road). A
+        standing UnifiedBackend error behaviour — but the
+        failure is stashed on ``last_stream_response``
+        (TF-084, D-HON-1's channel), so the streamed path
+        records the exact load error the plain path's
+        response would have carried. A
         failure mid-stream raises from the engine, exactly as
         ``TurboQuantEngine.generate_stream`` documents: deltas
         already yielded stay yielded, the caller decides.
@@ -59,6 +62,12 @@ class TurboQuantBackend(UnifiedBackend):
             engine = self._get_engine()
         except Exception as exc:
             logger.error("TurboQuantBackend: failed to load engine: %s", exc)
+            self.last_stream_response = GenerationResponse(
+                text="",
+                error=str(exc),
+                finish_reason="error",
+                backend_used=self.backend_name(),
+            )
             return
         from thoughtforge.inference.turboquant import GenerationParams
 

@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 84 entries — 45 OPEN, 1 OPEN-ENVIRONMENT, 36 FIXED
+**Totals: 85 entries — 45 OPEN, 1 OPEN-ENVIRONMENT, 37 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -22,9 +22,9 @@ D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
 Part IV; D-QUANT-1 by TF-068 in Part IV; D-ONNX-1 by
 TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
 TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
-D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV), 2
+D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV; D-HON-1 by TF-084 in Part IV), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 34 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 34 · Part V 2 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -181,7 +181,18 @@ working GPU backend — on this VM the library
 exists, vulkaninfo and any GPU device do not, yet
 vulkan reports available and desktop_gpu selects
 it) and assigned to TF-086's truth table v2, whose
-per-profile verdicts own the line.
+per-profile verdicts own the line. Entry D-TRACE-1
+was added by TF-084 in Part IV under the same
+rule — the gap that slice's own join measured and
+named rather than filled: the refine passes
+FragmentSalvage makes through the engine inside
+its own forge() are not individually recorded in
+the joined trace (the core hands the engine over
+and cannot see the passes' per-call sizes or
+latencies, and an aggregate invented from the
+salvage result would be fabrication), assigned to
+TF-097, Part V's rescue-record slice, which the
+roadmap already ties to TF-084.
 
 ## The docket
 
@@ -270,7 +281,8 @@ per-profile verdicts own the line.
 | D-REC-1 | TASK_PHASE1 and TASK_PHASE2 docs are absent from the tree (git ls-tree, TF-003) — a gap in the record, not in the software; their work exists as code | None — TF-015 verdict: no reconstruction commissioned (inventing them retroactively would falsify the record); TF-182 notes the gap for new readers | X | **CLOSED-BY-VERDICT** |
 | D-REL-1 | BP Phase 6's release claims are NOT PROVEN from the tree: no v1.0 GitHub release, HF model cards, or public demo is evidenced (TF-003) | TF-185 (release shaping) | X | OPEN |
 | D-DOC-1 | BUILD_PLAN_v1's spec pointers drift: of its 14 named spec files, 8 match exactly, 2 differ by case, 4 stand under drifted names — all subjects present, the plan's filenames unreliable (TF-015). No elder spec is renamed by the verdict | TF-182 (developer docs carry the correct pointers) | X | OPEN |
-| D-HON-1 | The streamed unified-backend path loses the backend's error string: `UnifiedBackend.generate_stream`'s default yields nothing at all when the response carries an error, so a streamed turn can only record "backend returned no text (error or empty)" while the plain path records `resp.error` exactly (found by TF-031's tests, 2026-10-31). The failure is stated either way (TF-031); only the detail is thinner on the stream | TF-084 (inference traces join cognition traces — the stream contract's error channel is inference-side) | IV | OPEN |
+| D-HON-1 | The streamed unified-backend path loses the backend's error string: `UnifiedBackend.generate_stream`'s default yields nothing at all when the response carries an error, so a streamed turn can only record "backend returned no text (error or empty)" while the plain path records `resp.error` exactly (found by TF-031's tests, 2026-10-31). The failure is stated either way (TF-031); only the detail is thinner on the stream | TF-084 (inference traces join cognition traces — the stream contract's error channel is inference-side) | IV | **FIXED by TF-084**: the yield-nothing contract itself is unchanged (TF-026/TF-065's pins stand), but the default stream now stashes the response it obtained on `backend.last_stream_response` and `TurboQuantBackend`'s load-failure stream leg stashes likewise; the core's streamed path reads the stash (or a FallbackBackend's `last_report`) so the streamed failure record and the TF-084 joined trace carry the exact error string, exactly as the plain path does — pinned by tests/test_tf084_joined_trace.py (a stated backend failure plain vs streamed carrying the same exact error). The generic no-text detail now stands only for a genuinely detail-less empty |
+| D-TRACE-1 | The joined trace does not individually record the refine passes `FragmentSalvage` makes through the engine inside its own `forge()`: the core hands the engine over and cannot see the passes' per-call sizes or latencies, and an aggregate invented from the salvage result would be fabrication — so a turn whose final came through refine passes carries those passes unrecorded, stated in `inference/joined_trace.py`'s TRACE_RULES (`salvage_refine_passes_are_a_named_gap`), never silently (found/named by TF-084) | TF-097 (Part V's rescue-record slice, which the roadmap already ties to TF-084) | V | OPEN — filed by TF-084; the joined trace's rules are the measured evidence that slice records from |
 
 ## Notes the table cannot hold
 
