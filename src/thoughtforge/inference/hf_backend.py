@@ -65,6 +65,26 @@ class HuggingFaceBackend(UnifiedBackend):
         except Exception:
             return False
 
+    def capabilities(self):
+        """TF-065 contract record: a REMOTE backend (the one
+        shipped backend that is not local-first), simulated
+        streaming, estimate token counting — its
+        tokens_generated is a word-split approximation and
+        is now declared as such — seed honoured on both the
+        client and raw-request legs."""
+        from thoughtforge.inference.backend_contract import BackendCapabilities
+
+        return BackendCapabilities(
+            name=self.backend_name(),
+            streaming="simulated",
+            token_counting="estimate",
+            seed="honoured",
+            placement="remote",
+            model=self.model,
+            notes=("tokens_generated is a word-split approximation, "
+                   "not a model token count",),
+        )
+
     # ── Private helpers ────────────────────────────────────────────────────────
 
     def _try_build_client(self):
@@ -79,11 +99,16 @@ class HuggingFaceBackend(UnifiedBackend):
     def _generate_via_client(self, request: GenerationRequest, start: float) -> GenerationResponse:
         prompt = _build_prompt(request)
         try:
+            client_kwargs: dict = {}
+            if request.seed is not None:
+                # TF-065 seed duty (client leg).
+                client_kwargs["seed"] = request.seed
             result = self._client.text_generation(  # type: ignore[union-attr]
                 prompt,
                 temperature=request.temperature,
                 max_new_tokens=request.max_tokens,
                 stop_sequences=request.stop or None,
+                **client_kwargs,
             )
             text: str = result if isinstance(result, str) else str(result)
             return GenerationResponse(
@@ -115,6 +140,9 @@ class HuggingFaceBackend(UnifiedBackend):
         }
         if request.stop:
             payload["parameters"]["stop"] = request.stop  # type: ignore[index]
+        if request.seed is not None:
+            # TF-065 seed duty (raw-request leg).
+            payload["parameters"]["seed"] = request.seed  # type: ignore[index]
 
         try:
             resp = requests.post(

@@ -50,6 +50,10 @@ class OllamaBackend(UnifiedBackend):
             }
             if request.stop:
                 payload["options"]["stop"] = request.stop  # type: ignore[index]
+            if request.seed is not None:
+                # TF-065 seed duty: Ollama honours a sampler seed
+                # through options.seed — forward the carried seed.
+                payload["options"]["seed"] = request.seed  # type: ignore[index]
 
             resp = requests.post(
                 f"{self.base_url}/api/chat",
@@ -86,6 +90,22 @@ class OllamaBackend(UnifiedBackend):
             return resp.status_code == 200
         except Exception:
             return False
+
+    def capabilities(self):
+        """TF-065 contract record: simulated streaming (no
+        generate_stream override), estimate token counting
+        (no tokeniser endpoint is assumed), seed honoured
+        via options.seed, served by a local-or-remote Ollama."""
+        from thoughtforge.inference.backend_contract import BackendCapabilities
+
+        return BackendCapabilities(
+            name=self.backend_name(),
+            streaming="simulated",
+            token_counting="estimate",
+            seed="honoured",
+            placement="local_or_remote",
+            model=self.model,
+        )
 
     def list_local_models(self) -> list[str]:
         try:

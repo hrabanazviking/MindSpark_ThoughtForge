@@ -62,6 +62,30 @@ class UnifiedBackend(ABC):
     @abstractmethod
     def backend_name(self) -> str: ...
 
+    def count_tokens(self, text: str) -> int:
+        """Count tokens in ``text`` (TF-065 contract duty).
+
+        Default: the contract estimate (~4 chars per token,
+        0 for empty) — declared ``estimate`` in the capability
+        record. A backend with a model tokeniser overrides
+        this and declares ``model`` while that tokeniser is
+        actually in hand.
+        """
+        from thoughtforge.inference.backend_contract import estimate_tokens
+
+        return estimate_tokens(text)
+
+    def capabilities(self):  # -> BackendCapabilities (TF-065)
+        """This backend's capability truth (TF-065 contract duty).
+
+        Default: the conservative record derived from the
+        class itself (see ``default_capabilities``). Shipped
+        backends override with their own declared record.
+        """
+        from thoughtforge.inference.backend_contract import default_capabilities
+
+        return default_capabilities(self)
+
 
 def load_backend_from_config(config_path: Path | None = None) -> UnifiedBackend | None:
     """

@@ -54,6 +54,9 @@ class LMStudioBackend(UnifiedBackend):
                 payload["model"] = self.model
             if request.stop:
                 payload["stop"] = request.stop
+            if request.seed is not None:
+                # TF-065 seed duty: the OpenAI-shaped seed field.
+                payload["seed"] = request.seed
 
             headers = {"Authorization": f"Bearer {self.api_key}"}
             resp = requests.post(
@@ -99,6 +102,23 @@ class LMStudioBackend(UnifiedBackend):
             return resp.status_code == 200
         except Exception:
             return False
+
+    def capabilities(self):
+        """TF-065 contract record: simulated streaming (no
+        generate_stream override), estimate token counting
+        (the OpenAI-compatible shape guarantees no tokeniser
+        endpoint), seed honoured via the seed field, served
+        by a local-or-remote server."""
+        from thoughtforge.inference.backend_contract import BackendCapabilities
+
+        return BackendCapabilities(
+            name=self.backend_name(),
+            streaming="simulated",
+            token_counting="estimate",
+            seed="honoured",
+            placement="local_or_remote",
+            model=self.model,
+        )
 
     def list_models(self) -> list[str]:
         try:

@@ -132,7 +132,14 @@ backend and engine (both sample among phrasings with
   slice.
 - unified backends honouring the request seed — the field
   is carried and the fixture honours it; making honouring
-  it a contract *duty* is TF-065's backend-contract slice.
+  it a contract *duty* was TF-065's backend-contract slice
+  — LANDED by TF-065 (see BACKEND_CONTRACT.md): seed is a
+  named contract duty, all four shipped backends forward
+  the carried seed (measured in their payloads / engine
+  params), and a backend that cannot must declare
+  `not_supported`. A live model's reproducibility under
+  the forwarded seed remains the model's own property
+  (TF-067 / TF-126, above).
 - streamed *native* engine reproducibility beyond the
   fixture engine's single-delta stream (the chunking and
   event contract are TF-026's, unchanged).
