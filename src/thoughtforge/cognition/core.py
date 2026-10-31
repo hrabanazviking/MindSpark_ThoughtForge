@@ -39,6 +39,10 @@ from thoughtforge.cognition.config_surface import (
     apply_conversation_config,
     resolve_conversation_config,
 )
+from thoughtforge.cognition.determinism import (
+    DeterminismMode,
+    resolve_determinism_mode,
+)
 from thoughtforge.cognition.history_discipline import CORE_HISTORY_MAX_CHARS
 from thoughtforge.cognition.interruption import (
     InterruptToken,
@@ -122,6 +126,26 @@ class ThoughtForgeCore:
         # cognition/config_surface.py). An invalid selection raises
         # ValueError here, at construction, never a silent default.
         self._conversation_config = resolve_conversation_config(self._config)
+        # TF-036: determinism mode — this conversation's seed, if
+        # it selected one (cognition/determinism.py). An invalid
+        # seed raises ValueError here, at construction. The two
+        # seeded streams (record ids, generation seeds) are
+        # dedicated random.Random instances, never the global
+        # module; both stay None when the mode is off, and every
+        # consumer below then takes the pre-TF-036 path exactly.
+        self._determinism: DeterminismMode = resolve_determinism_mode(
+            self._config
+        )
+        self._det_ids = (
+            self._determinism.new_id_stream()
+            if self._determinism.enabled
+            else None
+        )
+        self._det_gen_rng = (
+            self._determinism.new_generation_rng()
+            if self._determinism.enabled
+            else None
+        )
         self._model_path = Path(model_path) if model_path else None
         self._unified_backend = backend   # UnifiedBackend instance or None
 
@@ -249,6 +273,33 @@ class ThoughtForgeCore:
         return check_turn_latency(
             self._last_turn_state, self.latency_budget, total_ms=total_ms
         )
+
+    @property
+    def determinism_mode(self) -> DeterminismMode:
+        """TF-036: this conversation's determinism selection
+        (seed, or off). A MINOR addition under TF-034's rules —
+        the frozen v1 tables are untouched; TF-039/TF-192 record
+        the addition when the freeze is next reconciled."""
+        return self._determinism
+
+    def _mint_id(self, prefix: str, hex_len: int) -> str:
+        """TF-036: mint one record id. In determinism mode the id
+        comes from this core's seeded stream (same seed + same
+        call order = same ids, across processes); otherwise the
+        standing uuid4 shape, unchanged."""
+        if self._det_ids is not None:
+            return self._det_ids.new_id(prefix, hex_len)
+        return f"{prefix}_{uuid.uuid4().hex[:hex_len]}"
+
+    def _next_generation_seed(self) -> int | None:
+        """TF-036: the next per-call generation seed from this
+        core's seeded generation stream, or None when determinism
+        mode is off (generation then carries no seed at all, as
+        before this slice). One draw per generation call, in
+        call order, on every generation path."""
+        if self._det_gen_rng is None:
+            return None
+        return self._det_gen_rng.getrandbits(31)
 
     @property
     def persona_expectation(self) -> PersonaExpectation | None:
@@ -468,7 +519,7 @@ class ThoughtForgeCore:
                 f"got {num_drafts!r}"
             )
         user_text = sanitise_query(user_text)
-        turn_id = _new_turn_id()
+        turn_id = self._mint_id("turn", 8)
         turn = RuntimeTurnState(turn_id=turn_id)
         self._last_turn_state = turn
         # TF-035: this thread's own turn, for think()'s read-back.
@@ -818,6 +869,9 @@ class ThoughtForgeCore:
                     prompt,
                     params=GenerationParams(
                         temperature=_mode_temperature(mode),
+                        # TF-036: one seeded draw per generation
+                        # call in determinism mode; None otherwise.
+                        seed=self._next_generation_seed(),
                     ),
                 )
                 if not result.text or not result.text.strip():
@@ -829,7 +883,7 @@ class ThoughtForgeCore:
                         "engine returned no text (empty generation)", mode=mode,
                     )
                     continue
-                cid = f"cand_{uuid.uuid4().hex[:6]}"
+                cid = self._mint_id("cand", 6)
                 candidates.append(CandidateRecord(
                     candidate_id=cid,
                     mode=mode,
@@ -878,6 +932,8 @@ class ThoughtForgeCore:
                 # TF-032: the selected profile's cap, or the standing
                 # 512 when no profile was selected.
                 max_tokens=self._conversation_config.generation_max_tokens(),
+                # TF-036: the per-call seed (None when unseeded).
+                seed=self._next_generation_seed(),
             )
             resp = self._unified_backend.generate(req)
             if resp.error:
@@ -891,7 +947,7 @@ class ThoughtForgeCore:
                     "backend returned no text (empty generation)", mode=mode,
                 )
                 return []
-            cid = f"cand_{uuid.uuid4().hex[:6]}"
+            cid = self._mint_id("cand", 6)
             return [CandidateRecord(
                 candidate_id=cid,
                 mode=mode,
@@ -965,11 +1021,14 @@ class ThoughtForgeCore:
                 mode=mode,
                 memory_cues=memory_cues,
             )
-            cid = f"cand_{uuid.uuid4().hex[:6]}"
+            cid = self._mint_id("cand", 6)
             yield StreamEvent(kind="candidate_start", turn_id=turn_id, mode=mode, candidate_id=cid)
             try:
                 from thoughtforge.inference.turboquant import GenerationParams
-                params = GenerationParams(temperature=_mode_temperature(mode))
+                params = GenerationParams(
+                    temperature=_mode_temperature(mode),
+                    seed=self._next_generation_seed(),
+                )
                 native_stream = getattr(self._engine, "generate_stream", None)
                 if callable(native_stream):
                     parts: list[str] = []
@@ -1064,7 +1123,7 @@ class ThoughtForgeCore:
             mode=mode,
             memory_cues=memory_cues,
         )
-        cid = f"cand_{uuid.uuid4().hex[:6]}"
+        cid = self._mint_id("cand", 6)
         yield StreamEvent(kind="candidate_start", turn_id=turn_id, mode=mode, candidate_id=cid)
         try:
             req = GenerationRequest(
@@ -1073,6 +1132,8 @@ class ThoughtForgeCore:
                 # TF-032: as the plain path — the selected profile's
                 # cap, or the standing 512.
                 max_tokens=self._conversation_config.generation_max_tokens(),
+                # TF-036: the per-call seed (None when unseeded).
+                seed=self._next_generation_seed(),
             )
             backend = self._unified_backend
             # Native only when the backend class overrides the
@@ -1152,7 +1213,7 @@ class ThoughtForgeCore:
                 if len(sentence.split()) < 4:
                     continue
                 fscores = _score_fragment(sentence, sketch, scaffold)
-                fid = f"frag_{uuid.uuid4().hex[:6]}"
+                fid = self._mint_id("frag", 6)
                 keep = fscores.composite >= _MIN_FRAGMENT_SCORE
                 all_fragments.append(FragmentRecord(
                     fragment_id=fid,
@@ -1184,7 +1245,7 @@ class ThoughtForgeCore:
         fragments = turn.fragments
         turn_id = turn.turn_id
         assert sketch is not None and scaffold is not None and bundle is not None
-        rid = f"resp_{uuid.uuid4().hex[:8]}"
+        rid = self._mint_id("resp", 8)
         kept = [f for f in fragments if f.keep]
 
         # Delegate to FragmentSalvage for multi-pass scored reassembly
@@ -1195,6 +1256,9 @@ class ThoughtForgeCore:
             prompt_builder=self._prompt_builder,
             sketch=sketch,
             scaffold=scaffold,
+            # TF-036: one seeded draw per compose for the salvage
+            # refine passes (None when determinism mode is off).
+            generation_seed=self._next_generation_seed(),
         )
 
         # Run EnforcementGate
@@ -1235,7 +1299,7 @@ class ThoughtForgeCore:
         Build a response from retrieved knowledge records alone (no model).
         Used when no inference model is available.
         """
-        rid = f"resp_{uuid.uuid4().hex[:8]}"
+        rid = self._mint_id("resp", 8)
 
         if not bundle.activated_records:
             text = "The forge has no knowledge relevant to this query."
@@ -1315,10 +1379,15 @@ class ThoughtForgeCore:
             from thoughtforge.inference.turboquant import GenerationParams
             result = self._engine.generate(
                 repair_prompt,
-                params=GenerationParams(temperature=0.45),
+                params=GenerationParams(
+                    temperature=0.45,
+                    # TF-036: the repair pass is a generation call
+                    # too — it draws from the same seeded stream.
+                    seed=self._next_generation_seed(),
+                ),
             )
             scores = _score_final(result.text, sketch, scaffold)
-            rid = f"resp_{uuid.uuid4().hex[:8]}"
+            rid = self._mint_id("resp", 8)
             return FinalResponseRecord(
                 response_id=rid,
                 text=result.text,
@@ -1503,9 +1572,9 @@ def _mode_temperature(mode: str) -> float:
 
 # ── Utility ────────────────────────────────────────────────────────────────────
 
-def _new_turn_id() -> str:
-    return f"turn_{uuid.uuid4().hex[:8]}"
-
+# TF-036: turn ids are minted by ThoughtForgeCore._mint_id (seeded
+# in determinism mode, uuid4 otherwise) — the old module-level
+# _new_turn_id helper is gone; _mint_id is its one home now.
 
 # TF-025 (D-DUP-1): _now_iso's one implementation lives in
 # utils/common.py; this name is its alias.

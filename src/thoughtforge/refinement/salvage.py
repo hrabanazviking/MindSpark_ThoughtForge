@@ -102,6 +102,7 @@ class FragmentSalvage:
         sketch: "InputSketch | None" = None,
         scaffold: "CognitionScaffold | None" = None,
         max_passes: int = _MAX_REFINE_PASSES,
+        generation_seed: int | None = None,
     ) -> SalvageResult:
         """
         Score candidates and attempt fragment-based refinement.
@@ -114,6 +115,9 @@ class FragmentSalvage:
             sketch:         Optional InputSketch for prompt context.
             scaffold:       Optional CognitionScaffold for prompt context.
             max_passes:     Max refinement passes (default 2).
+            generation_seed: TF-036 — per-pass sampling seed base
+                for the refine generations (pass i uses base + i);
+                None = unseeded, the standing behaviour.
 
         Returns:
             SalvageResult with best text, citations, confidence.
@@ -158,6 +162,7 @@ class FragmentSalvage:
                 sketch=sketch,
                 scaffold=scaffold,
                 max_passes=max_passes,
+                generation_seed=generation_seed,
             )
             if result is not None:
                 return result
@@ -262,6 +267,7 @@ class FragmentSalvage:
         sketch: "InputSketch",
         scaffold: "CognitionScaffold",
         max_passes: int,
+        generation_seed: int | None = None,
     ) -> SalvageResult | None:
         """
         Attempt up to max_passes refine generations using salvaged fragments.
@@ -298,7 +304,18 @@ class FragmentSalvage:
                 )
                 result = engine.generate(
                     refine_prompt,
-                    params=GenerationParams(temperature=0.50 - (pass_num - 1) * 0.05),
+                    params=GenerationParams(
+                        temperature=0.50 - (pass_num - 1) * 0.05,
+                        # TF-036: pass i of a seeded compose carries
+                        # generation_seed + i (the core draws one
+                        # seed per compose; None = unseeded, as
+                        # before this slice).
+                        seed=(
+                            generation_seed + (pass_num - 1)
+                            if generation_seed is not None
+                            else None
+                        ),
+                    ),
                 )
                 passes_used = pass_num
 

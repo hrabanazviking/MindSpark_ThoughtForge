@@ -20,6 +20,11 @@ class GenerationRequest:
     system_prompt: str = ""
     # OpenAI chat format; if non-empty, backend should use this directly
     messages: list[dict] = field(default_factory=list)
+    # TF-036: the determinism mode's per-call seed, when the
+    # caller selected one. None = unseeded (the standing
+    # behaviour). A backend that can seed its sampler should
+    # honour this; TF-065 owns making that a contract duty.
+    seed: int | None = None
 
 
 @dataclass

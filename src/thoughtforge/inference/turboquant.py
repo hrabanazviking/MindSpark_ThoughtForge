@@ -55,6 +55,10 @@ class GenerationParams:
     top_k: int = 40
     stop: list[str] = field(default_factory=list)
     stream: bool = False
+    # TF-036: per-call sampling seed (determinism mode). None =
+    # unseeded; when set it is forwarded to the llama call, and
+    # omitted entirely when None so unseeded calls are unchanged.
+    seed: int | None = None
 
 
 @dataclass
@@ -243,6 +247,7 @@ class TurboQuantEngine:
                 top_k=p.get("top_k", 40),
                 stop=stop_sequences,
                 echo=False,
+                **({"seed": p["seed"]} if p.get("seed") is not None else {}),
             )
         except Exception as e:
             logger.error("Generation failed: %s", e)
@@ -315,6 +320,7 @@ class TurboQuantEngine:
                 stop=stop_sequences,
                 echo=False,
                 stream=True,
+                **({"seed": p["seed"]} if p.get("seed") is not None else {}),
             )
             for chunk in stream:
                 choices = chunk.get("choices") if isinstance(chunk, dict) else None
@@ -368,6 +374,13 @@ class TurboQuantEngine:
                 repeat_penalty=params.repeat_penalty if params else None,
                 top_p=params.top_p if params else None,
                 stop=params.stop if params else [],
+                # TF-036: a seeded draft set stays reproducible
+                # AND varied — draft i carries seed + i.
+                seed=(
+                    (params.seed + i)
+                    if params is not None and params.seed is not None
+                    else None
+                ),
             )
             try:
                 result = self.generate(prompt, draft_params)
@@ -497,6 +510,7 @@ class TurboQuantEngine:
             "top_p": p.top_p if p.top_p is not None else defaults.top_p,
             "top_k": p.top_k,
             "stop": p.stop,
+            "seed": p.seed,
         }
 
     def _enforce_token_budget(self, requested_tokens: int) -> int:
