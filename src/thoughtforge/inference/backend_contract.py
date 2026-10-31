@@ -201,6 +201,7 @@ BACKEND_CONFIG_KEYS: tuple[str, ...] = (
 # Dependency rulings (D-DEP-1 / D-DEP-5). `requests` is a hard
 # import in exactly these modules — the set is pinned by AST.
 REQUESTS_CONSUMERS: tuple[str, ...] = (
+    "src/thoughtforge/inference/aesir_backend.py",
     "src/thoughtforge/inference/hf_backend.py",
     "src/thoughtforge/inference/lmstudio_backend.py",
     "src/thoughtforge/inference/model_browser.py",
@@ -210,10 +211,12 @@ REQUESTS_CONSUMERS: tuple[str, ...] = (
 DEPENDENCY_RULINGS: tuple[dict[str, Any], ...] = (
     {"package": "requests", "ruling": "core",
      "extra": None,
-     "rule": "top-level unguarded import in the four "
+     "rule": "top-level unguarded import in the five "
              "REQUESTS_CONSUMERS modules -> declared in "
              "[project] dependencies (D-DEP-1 FIXED by "
-             "declaration)"},
+             "declaration; the set was four at TF-065 and "
+             "grew to five at TF-074, when the Aesir backend "
+             "joined as an announced consumer)"},
     {"package": "huggingface_hub", "ruling": "optional",
      "extra": "hub",
      "rule": "lazy in-function imports only (hf_backend, "

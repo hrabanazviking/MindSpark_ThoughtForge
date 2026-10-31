@@ -356,7 +356,9 @@ class TestDependenciesAndFactory:
         assert set(OPTIONAL_PACKAGES) == {
             "huggingface_hub", "transformers", "onnxruntime",
             "optimum", "psutil"}
-        assert len(REQUESTS_CONSUMERS) == 4
+        # TF-074 amended this pin in scope: the Aesir backend
+        # joined as a fifth announced requests consumer.
+        assert len(REQUESTS_CONSUMERS) == 5
 
     def test_dependency_problems_clean(self):
         assert dependency_problems() == []

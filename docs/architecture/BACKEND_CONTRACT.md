@@ -162,4 +162,7 @@ the factory source. What is **NOT PROVEN** here:
   each backend's counting mode declared and reachable;
 - the OpenAI-compatible *family* beyond LM Studio's
   shape — TF-076 binds arbitrary servers under this
-  same contract; Aesir joins at TF-074.
+  same contract; Aesir joined at TF-074
+  (`docs/architecture/AESIR_BACKEND.md`) — conformed
+  under this contract as a `UnifiedBackend` outside the
+  factory's shipped set, which TF-153 owns admitting.
