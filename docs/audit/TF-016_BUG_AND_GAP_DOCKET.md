@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 58 entries — 38 OPEN, 1 OPEN-ENVIRONMENT, 17 FIXED
+**Totals: 60 entries — 39 OPEN, 1 OPEN-ENVIRONMENT, 18 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -18,9 +18,10 @@ TF-054 in Part III; D-PER-1 by TF-055 in Part III; D-REF-1
 by TF-058 in Part III; D-FRESH-1 by TF-059 in Part III;
 D-ML-1 by TF-060 in Part III; D-INSP-1 by TF-061 in
 Part III; D-ADV-1 by TF-062 in Part III; D-DEP-1 and
-D-DEP-5 by TF-065 in Part IV), 2
+D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
+Part IV), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 8 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 10 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -42,7 +43,12 @@ Entry D-INSP-1 was added by TF-061 in Part III under
 the same rule — found by that slice's probes and fixed
 in scope. Entry D-ADV-1 was added by TF-062 in
 Part III under the same rule — found by that slice's
-probes and fixed in scope.)
+probes and fixed in scope. Entries D-QUANT-1 and
+D-QUANT-2 were added by TF-066 in Part IV under the
+same rule — D-QUANT-2 found by that slice's probes
+and fixed in scope; D-QUANT-1 measured by that slice
+and assigned to TF-068, whose selection policy owns
+the fix.)
 
 ## The docket
 
@@ -62,6 +68,8 @@ probes and fixed in scope.)
 | D-DEP-3 | Declared-but-unused dependency weight: sqlalchemy, rich, platformdirs in core; bitsandbytes, auto-gptq, accelerate in extras — promised to every installer, imported by no code (TF-008) | TF-069 / TF-110 weigh removal (install weight is a feature cost on phone_low) | IV | OPEN |
 | D-DEP-4 | No pins, no lockfile: every requirement is a bare lower bound, so "the dependency set" is a moving target (TF-008). Interim: TF-014 froze the tested-version record | TF-185 (release shaping decides the lockfile) | X | OPEN |
 | D-DEP-5 | Further undeclared imports riding transitively or declared nowhere: transformers, huggingface_hub (lazy), onnxruntime, optimum, psutil (guarded) (TF-008) | TF-065 (backend contract declares or guards each) | IV | **FIXED by TF-065**: each package is declared as an optional extra (`hub`: huggingface_hub + transformers; `onnx`: onnxruntime + optimum + transformers; `system`: psutil) under `inference/backend_contract.DEPENDENCY_RULINGS`, and an AST checker pins that none of the five is imported at module top level anywhere in `src/` (lazy/guarded sites only) |
+| D-QUANT-1 | The hardware profile's recommended quant is resolved into `ResolvedGenerationParams.quantization` and then read nowhere: `TurboQuantEngine` loads any GGUF regardless of the profile's stated quant, and never inspects the loaded file's quant type (TF-066's source pin: `.quantization` appears nowhere in `turboquant.py`) | TF-068 (quant selection policy chooses — and, if it rules so, enforces — per profile, from TF-067's measured curve) | IV | OPEN |
+| D-QUANT-2 | `backends.QUANT_SUFFIXES` — the GGUF quant filename vocabulary (9 types) — was defined and consumed nowhere, and is incomplete against the catalogue (no `IQ2_XS`; hyphen forms miss the catalogue's dot form `.Q4_K_M.gguf`) (TF-066) | TF-066 (TurboQuant map consumes it live) | IV | **FIXED by TF-066**: `inference/turboquant_map.py` consumes `QUANT_SUFFIXES` as its vocabulary (checker pins the two sets equal), adds `iq2_xs` as a named browser-only type, and `quant_of_filename` parses dot + hyphen forms; the catalogue's two under-specifying Phi-3 filenames (`-q4`/`-q5` vs declared K_M) are filed as data (`FILENAME_QUANT_GAPS`), never rounded up |
 | D-CFG-1 | `default.yaml` is mostly a mirage: 27 of 34 keys SHADOWED by identical hard-coded constants, 2 DEAD; its retrieval weights are also name-drifted (`tone_match`/`user_preference` vs code's `tone_similarity`/`preference_relevance`), so naive wiring would drop 2 of 5 weights (TF-009) | TF-032 (live keys only, per TF-009's exact list) + TF-044 (scoring weights made tunable) | II | OPEN — **narrowed by TF-032**: the cognition config surface (`cognition/config_surface.py`) reads the one live cognition key (`personality_core_path`, carried through) and no shadowed/dead key — the unread keys are pinned by tests (`hardware.profile`, the file key `cognition.scaffold_depth`, user_config `profile`/`chat_*`); its selections are new `conversation.*` keys that existed in no shipped file. The remaining mirage is the scoring weights (TF-044) and the unwired/unstruck keys themselves. **Scoring share CLOSED by TF-044**: every scoring weight in the knowledge layer is now a named, censused constant (`knowledge/scoring_honesty.py` — writeback/genericness/fusion constants named, values unchanged; the forge scores from the census, docstring drift fixed), an AST checker pins 'no unnamed literal in a scoring function body', the yaml drift is pinned by name in the checker, and retrieval weights are tunable per profile (`weights_for_profile`, wired through KnowledgeForge; measured on TF-043 fixtures — zero-shift profiles reproduce the baseline exactly, the phone_low/pi_zero shift experiment measures a precision cost, recorded not hidden; TF-064 judges the shifts). What remains of D-CFG-1 is only the unwired/unstruck shadow keys themselves |
 | D-CFG-2 | Personality expressive fields DORMANT: traits, speech_style, behavior_rules and all 5 tuning weights are parsed and carried but steer nothing — only `avoid[:3]` + `record_id` are consumed (TF-009) | TF-030 (persona consistency hooks) + TF-141 (persona compiler verdict) | II | OPEN — **narrowed by TF-030**: traits / speech_style / behavior_rules now steer every prompt via the persona steering block (`cognition/persona.py`, `inject_persona`), and `avoid` is checkable through the hook; the remaining dormancy is exactly the 5 tuning weights — carried on `PersonaExpectation` for scorers, given no steering effect by TF-030's deliberate ruling (numbers are not prose; the compiler question is TF-141's) |
 | D-CFG-3 | `user_config.yaml` mixes 10 LIVE backend keys with 5 DEAD (profile / knowledge_db_built / chat_*); the factory's fallback key `openai_model` is read and written by the wizard but absent from the shipped file (TF-009) | TF-065 (backend contract) + TF-153 (service shape) | IV | OPEN — **narrowed by TF-065**: the backend share is ruled — the factory's live key set (11 keys, `openai_model` included) is pinned as contract data (`inference/backend_contract.BACKEND_CONFIG_KEYS`, AST-judged against `load_backend_from_config`'s own `cfg.get` reads, so the factory can neither lose a live key nor grow a read of a dead one unnoticed). The dead keys' removal from the shipped file and the wizard's shape stay TF-153's |
