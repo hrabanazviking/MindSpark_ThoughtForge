@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 77 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 31 FIXED
+**Totals: 78 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 32 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -22,9 +22,9 @@ D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
 Part IV; D-QUANT-1 by TF-068 in Part IV; D-ONNX-1 by
 TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
 TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
-D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV), 2
+D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 27 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 28 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -115,7 +115,16 @@ profiles' recommended names overlap the catalogue
 only partially (6 carded / 5 family-only / 4 with no
 card at all), so "recommended" and "supported" name
 different sets until TF-086's truth table and
-TF-136/TF-183's doc work rule on them.)
+TF-136/TF-183's doc work rule on them. Entry D-COLD-1
+was added by TF-079 in Part IV under the same rule —
+measured by that slice (no cold-start budget and no
+time-to-first-token measurement existed anywhere:
+TF-033's warm turn budgets explicitly deferred the
+road, TF-069's profile boots recorded no timing, and
+the engine load was unmeasured) and fixed in scope at
+fixture/simulation grade; its live-model and
+real-hardware shares stand NOT PROVEN under TF-082 /
+TF-175, as the entry states.)
 
 ## The docket
 
@@ -177,6 +186,7 @@ TF-136/TF-183's doc work rule on them.)
 | D-OAI-4 | The TF-076 OpenAI-compatible backend has never faced a real third-party shape-speaking server (LM Studio, vLLM, LocalAI, llama.cpp server, the hosted OpenAI API): proofs are fixture transports in the shape's own forms plus a real HTTP round trip against a stdlib fixture server on loopback — the wire is exercised, no vendor dialect is | TF-086 (truth table v2 must carry it NOT PROVEN until a real server faces the backend) | IV | OPEN |
 | D-CARD-1 | The root `MODEL_CARD.md` compatible-models table drifts from the profiles/catalogue it names — measured by TF-078's live parse (`inference/model_cards.model_card_discrepancies()`): server_gpu's row pairs Q4_K_M against the profile's TF-068-ratified fp16 default and names Mixtral, which has no catalogue entry; phone_low's Q2_K TinyLlama pairing exists in the catalogue only at Q4_K_M; pi_zero's "TinyLlama-1.1B subset" and pi_5's "Phi-3-mini-128k" name no catalogue entry (3 of 6 rows drift; desktop_cpu/desktop_gpu rows are clean) (found by TF-078) | TF-136 (claims audit strikes or proves each row) + TF-183 (doc care makes the correction, existing text preserved) | IV | OPEN — filed by TF-078; the per-model cards in `inference/model_cards.py` are the measured evidence those slices rule from; the root card is not edited by TF-078 |
 | D-CARD-2 | "Recommended" and "supported" name different sets: the profiles' 15 distinct `recommended_models` overlap the 15-entry curated catalogue only partially — measured by TF-078's audit (`RECOMMENDED_AUDIT`, recomputed live): 6 carded (family + quant carried, with version drift noted), 5 family_only (this quant/variant not catalogued), 4 with no card at all (Granite-1B, Gemma-2B, LLaMA-3-13B, Mixtral-8x7B — recommended with no size truth anywhere in-tree); 8 catalogue entries are recommended by no profile (found by TF-078) | TF-086 (truth table v2 rules whether the recommendation lists or the catalogue change) | IV | OPEN |
+| D-COLD-1 | No cold-start budget and no time-to-first-token measurement existed anywhere in the tree: TF-033 budgets warm turn stages only and its docstring defers real-model latency to TF-079/TF-175; TF-069 boots every profile in simulation but records no timing on any leg; `TurboQuantEngine.load` was unmeasured, and the backends' `latency_ms` times generation calls on a loaded backend, never a load (measured by TF-079's grep + source probes) | TF-079 | IV | **FIXED by TF-079** at fixture/simulation grade: `inference/cold_start_budgets.py` defines cold start in four stages (profile load / core construction / no-model engine load / first token as first streaming chunk), files medians of 3 simulated boots per profile measured live on this VM (TTFT medians 95.231-199.084 ms; engine load + core construction dominate), budgets every profile by TF-033's PROFILE_FACTORS over measured bases (first_token base campaign-set at TF-033's generation base, stated), enforces the VM profile (desktop_cpu) with real wall-clock tests, and proves the cap deterministically (scripted measurements + an injectable FakeClock: a slow first token is caught by name, stage + profile). A live model's TTFT, a GGUF file load and real-hardware cold starts are NOT PROVEN (no GGUF in-tree, llama_cpp absent) — TF-082 (real Pi) / TF-175 (laptop line) own those roads and TF-086's truth table must carry the line |
 | D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN — **narrowed by TF-078** (model_browser share): the catalogue data is no longer test-only — `CURATED_MODELS` is read live by production modules TF-066 (`turboquant_map`), TF-067 (`quant_quality`), TF-069 (`profile_runner`) and TF-078 (`model_cards` builds the in-repo cards on it). The class's behaviour surface (`list_curated` / `download` / `detect_existing_ggufs`) still has no production caller — no tool or engine path instantiates `ModelBrowser` — and wiring a downloader is an install-surface act, reassigned to TF-179 (user docs I: install + first model). The db_integrity (TF-167), subset (TF-110) and onnx_export (TF-070) shares stand as filed |
 | D-DUP-1 | Three copied private helpers, drift-prone: `_now_iso` ×3 (one byte-identical pair), `_split_sentences` ×2, `_build_messages` ×2 (TF-011) | TF-025-era hygiene (one shared utils home) | II | **FIXED by TF-025**: implementations now live once in `utils/common.py` (`now_iso` / `split_sentences` / `build_messages`); old private names are aliases, identity-pinned by tests/test_tf025_turn_state.py |
 | D-DUP-2 | `MindSpark_ThoughtForge/` shadow directory holds md5-identical copies of root RULES.AI.md / PHILOSOPHY.md — copies that can silently diverge (TF-011; its README was not read or touched, per law) | TF-182 (Part X docs verdict) | X | OPEN |
