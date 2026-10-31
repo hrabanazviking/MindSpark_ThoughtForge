@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 70 entries — 41 OPEN, 1 OPEN-ENVIRONMENT, 26 FIXED
+**Totals: 71 entries — 41 OPEN, 1 OPEN-ENVIRONMENT, 27 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -22,9 +22,9 @@ D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
 Part IV; D-QUANT-1 by TF-068 in Part IV; D-ONNX-1 by
 TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
 TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
-D-HEALTH-1 by TF-073 in Part IV), 2
+D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV), 2
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 20 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 21 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -84,7 +84,13 @@ by TF-074 in Part IV under the same rule — measured by
 that slice (no live Aesir server has ever faced the
 new backend; the binding is fixture-proven only) and
 assigned to TF-086's gate, whose truth table must
-carry it NOT PROVEN live until the owed smoke runs.)
+carry it NOT PROVEN live until the owed smoke runs. Entry
+D-AESIR-2 was added by TF-075 in Part IV under the
+same rule — found by that slice's probes (TF-068's
+quant policy check was wired only into the local
+engine's load path; the TF-074 served path carried no
+quant check at all) and fixed in scope at identity
+grade.)
 
 ## The docket
 
@@ -139,6 +145,7 @@ carry it NOT PROVEN live until the owed smoke runs.)
 | D-HEALTH-1 | `HuggingFaceBackend.health_check` accepted any status below 500 from its per-model info endpoint: measured live, 401 (rejected credentials) and 404 (no such model) both returned True — "healthy" claimed a model that does not exist could serve (found by TF-073) | TF-073 | IV | **FIXED by TF-073**: health is True exactly on status 200; pinned against mocked 200/401/403/404/500/503 (tests/test_tf073_backend_fallback.py) and against the class source by `backend_fallback.fallback_problems` |
 | D-HEALTH-2 | The server-shaped backends' health cannot see the configured model: ollama's `/api/tags` and lmstudio's `/v1/models` checks prove only that the server answers 200 (measured: ollama healthy with the configured model absent from the server's list); TurboQuant's file-exists + importable check likewise does not prove the model loads (found by TF-073) | TF-077 (local-first routing — the first consumer of per-model health) | IV | OPEN — filed by TF-073 with the per-backend semantics stated as data (`inference/backend_fallback.HEALTH_SEMANTICS`: what each check proves and does not prove, judged live against the classes' sources) |
 | D-AESIR-1 | The TF-074 Aesir backend has never faced a live Aesir serve: no Aesir server answers on this VM (127.0.0.1:18434 refuses, probed by TF-074), so the binding is proven only against mocked HTTP legs in Aesir's own v1 shapes — the same NOT PROVEN LIVE standing Rúnmál recorded at P-009/F-02, whose owed live smoke is a purplelongship leg (found/filed by TF-074) | TF-086 (Part IV gate — its truth table must carry the Aesir backend NOT PROVEN live until the smoke runs: one real Aesir serve on the laptop line + one ThoughtForge turn through `inference/aesir_backend.AesirBackend`) | IV | OPEN — filed by TF-074; the backend's own rules state the limit (`AESIR_RULES.live_proof_not_claimed`) and no consumer may cite TF-074 as live proof |
+| D-AESIR-2 | The served path bypassed TF-068's quant policy entirely: `check_quant_for_profile` was wired only into `TurboQuantEngine.load` (the local path), so `AesirBackend` served any resident model with no quant verdict anywhere — a profile's policy default was never compared to what Aesir was actually serving (found by TF-075) | TF-075 | IV | **FIXED by TF-075**: `inference/aesir_quant.py` applies the same TF-068 verdict to served residents (`resident_verdict` over the resident model's id — the only quant channel, since the TF-074 wire payload carries no quant field) and files every profile's expected resident (`profile_residents`: all six verdict match, TF-068 classes/decisions carried verbatim). The grade is identity-only and stated as such: ThoughtForge does not load the served file, so a misnamed file on the server would pass this check — never load grade |
 | D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN |
 | D-DUP-1 | Three copied private helpers, drift-prone: `_now_iso` ×3 (one byte-identical pair), `_split_sentences` ×2, `_build_messages` ×2 (TF-011) | TF-025-era hygiene (one shared utils home) | II | **FIXED by TF-025**: implementations now live once in `utils/common.py` (`now_iso` / `split_sentences` / `build_messages`); old private names are aliases, identity-pinned by tests/test_tf025_turn_state.py |
 | D-DUP-2 | `MindSpark_ThoughtForge/` shadow directory holds md5-identical copies of root RULES.AI.md / PHILOSOPHY.md — copies that can silently diverge (TF-011; its README was not read or touched, per law) | TF-182 (Part X docs verdict) | X | OPEN |
