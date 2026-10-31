@@ -333,6 +333,14 @@ class TurboQuantEngine:
         RuntimeError, like ``generate()``; deltas already yielded
         stay yielded — the caller decides what a partial stream
         means (the cognition core discards the partial candidate).
+
+        TF-072 (D-STREAM-1): the underlying llama stream is
+        closed on EVERY exit — exhaustion, a mid-stream error,
+        and the consumer closing this generator early
+        (GeneratorExit) — via the ``finally`` below. Before this
+        fix the stream iterator was simply abandoned on the
+        error and early-close paths, leaving the model's
+        streaming state to garbage collection.
         """
         self._assert_ready()
         assert self._params is not None  # guaranteed by _assert_ready
@@ -341,6 +349,7 @@ class TurboQuantEngine:
         max_tokens = self._enforce_token_budget(p["max_tokens"])
         stop_sequences = p.get("stop", [])
 
+        stream = None
         try:
             llama = self._model
             stream = llama(
@@ -365,6 +374,20 @@ class TurboQuantEngine:
         except Exception as e:
             logger.error("Streaming generation failed: %s", e)
             raise RuntimeError(f"TurboQuantEngine streaming error: {e}") from e
+        finally:
+            # TF-072: close the model's stream iterator whatever
+            # way this generator ends. GeneratorExit is not an
+            # Exception and is not converted above; it still runs
+            # this finally, so a consumer's close() reaches the
+            # model. A stream with no close() (a plain iterator)
+            # needs nothing; a failing close never masks the
+            # stream's own outcome.
+            close = getattr(stream, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except Exception:
+                    logger.debug("llama stream close failed", exc_info=True)
 
     def generate_drafts(
         self,
