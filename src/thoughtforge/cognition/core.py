@@ -204,6 +204,38 @@ class ThoughtForgeCore:
         return strategy_registry()[self._conversation_config.strategy]
 
     @property
+    def latency_budget(self) -> Any:
+        """TF-033: this conversation's core-loop latency budget —
+        the selected profile's (TF-032), or the VM profile's
+        (desktop_cpu) when no profile was selected, so a verdict
+        always has a stated budget to answer to. Resolution is
+        through cognition/latency_budgets.py; an invalid selected
+        profile already raised at construction."""
+        from thoughtforge.cognition.latency_budgets import (
+            VM_PROFILE_ID,
+            budget_for_profile,
+        )
+
+        return budget_for_profile(
+            self._conversation_config.profile_id or VM_PROFILE_ID
+        )
+
+    def last_turn_latency(self, total_ms: float | None = None) -> Any:
+        """TF-033: the last finished turn's latency verdict against
+        this conversation's budget (None before the first turn).
+        ``total_ms`` is the caller's wall-clock measurement around
+        the turn; when given, the verdict also judges the total."""
+        if self._last_turn_state is None:
+            return None
+        from thoughtforge.cognition.latency_budgets import (
+            check_turn_latency,
+        )
+
+        return check_turn_latency(
+            self._last_turn_state, self.latency_budget, total_ms=total_ms
+        )
+
+    @property
     def persona_expectation(self) -> PersonaExpectation | None:
         """TF-030: the persona in force for this core (None when no
         personality is loaded). The live snapshot — callers must
