@@ -10,18 +10,21 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 49 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 7 FIXED
+**Totals: 51 entries — 40 OPEN, 1 OPEN-ENVIRONMENT, 9 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
-D-EMB-2 by TF-053 in Part III), 1
+D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
+TF-054 in Part III), 1
 CLOSED-BY-VERDICT.** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 7 · Part IV 8 · Part V 1 · Part VI 6 ·
+Part II 7 · Part III 9 · Part IV 8 · Part V 1 · Part VI 6 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
 nothing found stays unnumbered. Entries D-EMB-1 and D-EMB-2 were
 added by TF-053 in Part III under the same rule — defects that
-slice's own probes found and fixed in scope.)
+slice's own probes found and fixed in scope. Entries D-VEC-1
+and D-VEC-2 were added by TF-054 in Part III under the same
+rule.)
 
 ## The docket
 
@@ -59,6 +62,8 @@ slice's own probes found and fixed in scope.)
 | D-DEAD-3 | `utils/paths.py:get_embeddings_dir` has never been called (TF-011) | TF-053 / TF-110 era | III | **FIXED by TF-053** (wiring): `get_embeddings_dir()` is now called by `etl/embedding_discipline.onnx_artefact_status()` — the embeddings directory is the named ONNX artefact home the per-profile availability report checks |
 | D-EMB-1 | Hybrid/vector retrieval raised `RuntimeError` when the embedding backend was unavailable (package missing / model uncached), losing the working SQL leg with it — measured by TF-053's probe on this VM (`retrieve(path="hybrid")` raised; `sql` returned normally), while `KnowledgeForge`'s docstring claimed "Fully offline — no network calls" (found by TF-053) | TF-053 | III | **FIXED by TF-053**: each vector leg in `KnowledgeForge.vector_retrieve` degrades on its own (warning logged, exception named), hybrid retrieval keeps its SQL results (proven on TF-043's fixture corpus with the leg forced to raise), and the docstring claim is corrected — offline availability is proven per profile by `embedding_discipline.availability_report`, never assumed |
 | D-EMB-2 | The embedding model's name was split in two spellings — `all-MiniLM-L6-v2` (etl, forge, config) vs `sentence-transformers/all-MiniLM-L6-v2` (onnx_export) — splitting the loader's name-keyed cache and the DB's exact-match `model_name` filter, so embeddings built under one spelling were invisible to searches under the other (found by TF-053) | TF-053 | III | **FIXED by TF-053**: `embedding_discipline.canonical_model_name()` folds every spelling of a registered model to the canonical name, wired through the ETL loader, both embedding builders (rows are stored canonically), both vector searches, and the forge's constructor (proven: a search under the hub spelling finds a row stored under the canonical name, with a fake backend) |
+| D-VEC-1 | One corrupt embedding blob poisoned the whole vector search: both searches stacked every blob with `np.stack`, so a NULL / empty / truncated / non-multiple-of-4 blob raised and returned nothing (every good row lost), and a right-length non-finite blob scored NaN and sorted ahead of a perfect 1.0 match (found by TF-054) | TF-054 | III | **FIXED by TF-054**: both searches load through `etl/vector_store.load_searchable_rows` — corrupt rows are skipped by row, logged with id and class (`null_blob` / `empty_blob` / `wrong_byte_count` / `non_finite`), and the good rows are scored; a store whose rows are all corrupt searches empty instead of raising |
+| D-VEC-2 | The embedding builders stored wrong-dimension vectors blindly (a fake 10-dim model produced stored 40-byte poison rows) and embedding writes ran at the schema's `synchronous = NORMAL`, so a power failure could lose the last committed batches — the Samtal lesson (WAL + `synchronous = FULL`) applied nowhere in the embedding path (found by TF-054) | TF-054 | III | **FIXED by TF-054**: both builders gate every vector through `etl/vector_store.validated_blob` (exact registered dimension, all-finite — a bad batch raises before any of its rows is written) and write on connections hardened by `harden_write_connection` (`synchronous = FULL`); per-batch transactions mean a mid-build crash leaves a partial, resumable index, never a half-landed batch |
 | D-ORPHAN-1 | `knowledge/lifecycle.py` is test-only: MemoryLifecycle is never wired into the live engine — no fact ever ages, decays, or is pruned at runtime (TF-011) | TF-045 (lifecycle wiring) | III | **FIXED by TF-045**: the core now holds a MemoryLifecycle over its own store — `_finish_turn` cools the active thread state once per completed turn (thread aging at runtime, cleared when stale) and `ThoughtForgeCore.prune_memory(mode)` runs an explicit prune pass; fact pruning is deliberately never automatic per turn (retirement is an operator's act). TF-041's K10 checker was flipped to pin the wiring's presence. Two further defects found by TF-045's probes and fixed in the same slice: hard-cap enforcement deleted PROTECTED records (the cap path ignored retention_class — a protected record was cap-deleted in the probe), now guarded (protection outranks the cap); and `MemoryLifecycle.reinforce` crashed on response patterns (`ResponsePatternRecord` had no `times_reinforced` field — every other record type carries one, and TF-042's counter vocabulary already named it), field added with default 0 |
 | D-ORPHAN-2 | `utils/retry.py` is test-only: CircuitBreaker/retry protect no production backend call (TF-011) | TF-073 (backend health & fallback) | IV | OPEN |
 | D-ORPHAN-3 | Four more test-only modules, split owners (TF-011): `etl/db_integrity.py`, `etl/subset.py`, `inference/model_browser.py`, `inference/onnx_export.py` — see the reassignment note below | TF-167 / TF-110 / TF-078 / TF-070 respectively | IV | OPEN |
