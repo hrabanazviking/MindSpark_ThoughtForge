@@ -25,7 +25,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from thoughtforge.inference.backends import BackendInfo, build_llama_kwargs, select_backend
 from thoughtforge.inference.profiles import (
@@ -276,6 +276,56 @@ class TurboQuantEngine:
             completion_tokens, elapsed_ms, tps,
         )
         return result
+
+    def generate_stream(
+        self,
+        prompt: str,
+        params: GenerationParams | None = None,
+    ) -> "Iterator[str]":
+        """
+        Stream a single generation, yielding text deltas as the
+        model produces them (TF-026).
+
+        The llama call is made with ``stream=True``; each yielded
+        item is one choice-delta's text, in order, unstripped —
+        ``"".join(generate_stream(...))`` is the raw completion,
+        where ``generate()`` returns the same text stripped.
+        Parameters and the token budget are merged and enforced
+        exactly as in ``generate()``. A failure mid-stream raises
+        RuntimeError, like ``generate()``; deltas already yielded
+        stay yielded — the caller decides what a partial stream
+        means (the cognition core discards the partial candidate).
+        """
+        self._assert_ready()
+        assert self._params is not None  # guaranteed by _assert_ready
+
+        p = self._merge_params(params)
+        max_tokens = self._enforce_token_budget(p["max_tokens"])
+        stop_sequences = p.get("stop", [])
+
+        try:
+            llama = self._model
+            stream = llama(
+                prompt,
+                max_tokens=max_tokens,
+                temperature=p["temperature"],
+                repeat_penalty=p["repeat_penalty"],
+                top_p=p["top_p"],
+                top_k=p.get("top_k", 40),
+                stop=stop_sequences,
+                echo=False,
+                stream=True,
+            )
+            for chunk in stream:
+                choices = chunk.get("choices") if isinstance(chunk, dict) else None
+                if not choices:
+                    continue
+                delta = choices[0].get("text", "")
+                if delta:
+                    yield delta
+        except Exception as e:
+            logger.error("Streaming generation failed: %s", e)
+            raise RuntimeError(f"TurboQuantEngine streaming error: {e}") from e
 
     def generate_drafts(
         self,

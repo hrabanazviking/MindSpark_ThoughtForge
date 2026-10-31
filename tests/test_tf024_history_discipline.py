@@ -295,6 +295,10 @@ class TestCoreIntegration:
 
         from thoughtforge.cognition import core
 
-        src = inspect.getsource(core.ThoughtForgeCore.think)
+        # TF-026: the turn pipeline body moved from think() into
+        # _run_turn (think/think_stream are its two drivers); the
+        # pin follows the body — the pipeline uses the named
+        # constant, never the magic literal.
+        src = inspect.getsource(core.ThoughtForgeCore._run_turn)
         assert "CORE_HISTORY_MAX_CHARS" in src
         assert "max_chars=1500" not in src

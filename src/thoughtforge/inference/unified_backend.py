@@ -6,7 +6,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,21 @@ class GenerationResponse:
 class UnifiedBackend(ABC):
     @abstractmethod
     def generate(self, request: GenerationRequest) -> GenerationResponse: ...
+
+    def generate_stream(self, request: GenerationRequest) -> Iterator[str]:
+        """Stream a generation as text chunks (TF-026).
+
+        Default: NOT native streaming — the backend's completed
+        ``generate()`` response is yielded as a single chunk (and
+        nothing at all when the response carries an error). A
+        backend that can truly stream overrides this and yields
+        incrementally; the cognition core detects the override and
+        labels its chunks native, while chunks from this default
+        are re-chunked for delivery and labelled simulated.
+        """
+        resp = self.generate(request)
+        if not resp.error and resp.text:
+            yield resp.text
 
     @abstractmethod
     def health_check(self) -> bool: ...

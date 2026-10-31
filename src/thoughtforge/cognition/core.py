@@ -23,10 +23,11 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from thoughtforge.cognition.history_discipline import CORE_HISTORY_MAX_CHARS
 from thoughtforge.cognition.prompt_builder import PromptBuilder
+from thoughtforge.cognition.streaming import StreamEvent, chunk_words
 from thoughtforge.cognition.turn_state import advance_phase
 from thoughtforge.cognition.router import InputRouter
 from thoughtforge.cognition.scaffold import ScaffoldBuilder
@@ -160,10 +161,50 @@ class ThoughtForgeCore:
         Returns:
             FinalResponseRecord — always returns, never raises on content failure.
         """
+        for _ in self._run_turn(user_text, retrieval_path, num_drafts, history, stream=False):
+            pass
+        turn = self._last_turn_state
+        assert turn is not None and turn.final_response is not None
+        return turn.final_response
+
+    def think_stream(
+        self,
+        user_text: str,
+        retrieval_path: str | None = None,
+        num_drafts: int | None = None,
+        history: "Any | None" = None,
+    ) -> Iterator[StreamEvent]:
+        """
+        TF-026: one full turn, delivered as a stream of events.
+
+        Same pipeline as think() — routing, retrieval and scaffold
+        all run pre-stream, on the same prompts; only candidate
+        generation streams (chunk events, ``native`` marking whether
+        the source itself streamed); salvage + enforcement run on
+        completed text and their answer arrives as the single
+        terminal ``final`` event (see cognition/streaming.py for
+        the honesty contract). The finished turn is retained on
+        last_turn_state exactly as think() retains it.
+        """
+        yield from self._run_turn(user_text, retrieval_path, num_drafts, history, stream=True)
+
+    def _run_turn(
+        self,
+        user_text: str,
+        retrieval_path: str | None,
+        num_drafts: int | None,
+        history: "Any | None",
+        *,
+        stream: bool,
+    ) -> Iterator[StreamEvent]:
+        """The one turn pipeline; think() exhausts it silently,
+        think_stream() yields its events (stream=True only)."""
         user_text = sanitise_query(user_text)
         turn_id = _new_turn_id()
         turn = RuntimeTurnState(turn_id=turn_id)
         self._last_turn_state = turn
+        if stream:
+            yield StreamEvent(kind="turn_started", turn_id=turn_id)
         t_start = time.perf_counter()
 
         logger.info("think() turn=%s text=%r", turn_id, user_text[:80])
@@ -202,7 +243,12 @@ class ThoughtForgeCore:
 
         # ── Step 4–6: Generate, score, salvage ────────────────────────────────
         t_gen = time.perf_counter()
-        candidates = self._generate_candidates(sketch, scaffold, bundle, num_drafts)
+        if stream:
+            candidates = yield from self._generate_candidates_streaming(
+                turn_id, sketch, scaffold, bundle, num_drafts,
+            )
+        else:
+            candidates = self._generate_candidates(sketch, scaffold, bundle, num_drafts)
         turn.candidates = candidates
 
         fragments = self._score_and_extract_fragments(candidates, sketch, scaffold)
@@ -255,7 +301,8 @@ class ThoughtForgeCore:
         self._perf.record("think.generation", turn.generation_ms)
         self._perf.record("think.salvage", turn.salvage_ms)
 
-        return final
+        if stream:
+            yield StreamEvent(kind="final", turn_id=turn_id, text=final.text, final=final)
 
     def load_model(self, model_path: str | Path | None = None) -> None:
         """Explicitly load the inference model. Called automatically on first think() if not done."""
@@ -381,6 +428,174 @@ class ThoughtForgeCore:
             )]
         except Exception as e:
             logger.warning("UnifiedBackend generate failed: %s", e)
+            return []
+
+    # ── TF-026: streamed candidate generation ─────────────────────────────
+
+    def _generate_candidates_streaming(
+        self,
+        turn_id: str,
+        sketch: InputSketch,
+        scaffold: CognitionScaffold,
+        bundle: MemoryActivationBundle,
+        num_drafts: int | None,
+    ) -> Iterator[StreamEvent]:
+        """Streamed twin of _generate_candidates: same prompts, same
+        modes, same per-mode failure handling — plus events.
+
+        Yields StreamEvents and returns the candidate list (as the
+        yield-from value). Mirrors _generate_candidates' routing:
+        local engine when loaded/loadable, else the unified backend,
+        else no candidates (the turn degrades to knowledge-only).
+        """
+        if self._engine is None and self._model_path is not None:
+            try:
+                self.load_model()
+            except Exception as e:
+                logger.warning("Failed to load model: %s — running knowledge-only", e)
+                return []
+
+        if self._engine is None and self._unified_backend is not None:
+            candidates = yield from self._stream_via_unified_backend(turn_id, sketch, scaffold, bundle)
+            return candidates
+
+        if self._engine is None:
+            return []
+
+        memory_cues = self._prompt_builder.extract_memory_cues(bundle)
+        candidates: list[CandidateRecord] = []
+        modes = scaffold.candidate_modes[:2]    # max 2 candidate passes
+
+        for mode in modes:
+            prompt = self._prompt_builder.build_candidate_prompt(
+                sketch=sketch,
+                scaffold=scaffold,
+                mode=mode,
+                memory_cues=memory_cues,
+            )
+            cid = f"cand_{uuid.uuid4().hex[:6]}"
+            yield StreamEvent(kind="candidate_start", turn_id=turn_id, mode=mode, candidate_id=cid)
+            try:
+                from thoughtforge.inference.turboquant import GenerationParams
+                params = GenerationParams(temperature=_mode_temperature(mode))
+                native_stream = getattr(self._engine, "generate_stream", None)
+                if callable(native_stream):
+                    parts: list[str] = []
+                    for delta in native_stream(prompt, params=params):
+                        parts.append(delta)
+                        yield StreamEvent(
+                            kind="chunk", turn_id=turn_id, mode=mode,
+                            candidate_id=cid, text=delta, native=True,
+                        )
+                    # generate() strips its completed text; the
+                    # streamed candidate is the same text, stripped.
+                    text = "".join(parts).strip()
+                    token_estimate = len(text.split())
+                else:
+                    result = self._engine.generate(prompt, params=params)
+                    text = result.text
+                    token_estimate = result.tokens_generated
+                    for chunk in chunk_words(text):
+                        yield StreamEvent(
+                            kind="chunk", turn_id=turn_id, mode=mode,
+                            candidate_id=cid, text=chunk, native=False,
+                        )
+                candidates.append(CandidateRecord(
+                    candidate_id=cid,
+                    mode=mode,
+                    text=text,
+                    token_estimate=token_estimate,
+                    scores=_score_candidate(text, sketch, scaffold),
+                ))
+                yield StreamEvent(
+                    kind="candidate_end", turn_id=turn_id, mode=mode,
+                    candidate_id=cid, text=text,
+                )
+            except Exception as e:
+                # A partial stream is discarded whole: a candidate
+                # is its completed text or it is not a candidate.
+                logger.warning("Streamed candidate generation failed (mode=%s): %s", mode, e)
+                yield StreamEvent(
+                    kind="candidate_error", turn_id=turn_id, mode=mode,
+                    candidate_id=cid, text=str(e),
+                )
+
+        return candidates
+
+    def _stream_via_unified_backend(
+        self,
+        turn_id: str,
+        sketch: InputSketch,
+        scaffold: CognitionScaffold,
+        bundle: MemoryActivationBundle,
+    ) -> Iterator[StreamEvent]:
+        """Streamed twin of _generate_via_unified_backend (one
+        candidate, first scaffold mode, max_tokens 512 as there)."""
+        from thoughtforge.inference.unified_backend import GenerationRequest, UnifiedBackend
+
+        memory_cues = self._prompt_builder.extract_memory_cues(bundle)
+        mode = scaffold.candidate_modes[0] if scaffold.candidate_modes else "practical"
+        prompt = self._prompt_builder.build_candidate_prompt(
+            sketch=sketch,
+            scaffold=scaffold,
+            mode=mode,
+            memory_cues=memory_cues,
+        )
+        cid = f"cand_{uuid.uuid4().hex[:6]}"
+        yield StreamEvent(kind="candidate_start", turn_id=turn_id, mode=mode, candidate_id=cid)
+        try:
+            req = GenerationRequest(
+                prompt=prompt,
+                temperature=_mode_temperature(mode),
+                max_tokens=512,
+            )
+            backend = self._unified_backend
+            # Native only when the backend class overrides the
+            # default generate_stream; the default yields completed
+            # text, which is re-chunked and labelled simulated.
+            native = type(backend).generate_stream is not UnifiedBackend.generate_stream
+            parts: list[str] = []
+            for chunk in backend.generate_stream(req):
+                parts.append(chunk)
+                if native:
+                    yield StreamEvent(
+                        kind="chunk", turn_id=turn_id, mode=mode,
+                        candidate_id=cid, text=chunk, native=True,
+                    )
+                else:
+                    for piece in chunk_words(chunk):
+                        yield StreamEvent(
+                            kind="chunk", turn_id=turn_id, mode=mode,
+                            candidate_id=cid, text=piece, native=False,
+                        )
+            text = "".join(parts) if native else (parts[0] if parts else "")
+            if not text:
+                # The default stream yields nothing on a backend
+                # error (GenerationResponse.error) — no candidate,
+                # exactly as _generate_via_unified_backend returns [].
+                yield StreamEvent(
+                    kind="candidate_error", turn_id=turn_id, mode=mode,
+                    candidate_id=cid, text="backend returned no text (error or empty)",
+                )
+                return []
+            candidate = CandidateRecord(
+                candidate_id=cid,
+                mode=mode,
+                text=text,
+                token_estimate=len(text.split()),
+                scores=_score_candidate(text, sketch, scaffold),
+            )
+            yield StreamEvent(
+                kind="candidate_end", turn_id=turn_id, mode=mode,
+                candidate_id=cid, text=text,
+            )
+            return [candidate]
+        except Exception as e:
+            logger.warning("UnifiedBackend streamed generate failed: %s", e)
+            yield StreamEvent(
+                kind="candidate_error", turn_id=turn_id, mode=mode,
+                candidate_id=cid, text=str(e),
+            )
             return []
 
     def _score_and_extract_fragments(
