@@ -15,6 +15,31 @@ Tone taxonomy:
 Response modes:
   structured_technical | calm_supportive | concise_editorial |
   creative_brainstorm | light_natural_chat | factual_direct
+
+Decision procedure (TF-020 — the full table, with a worked example for
+every row, lives in docs/architecture/ROUTER_DECISION_TABLE.md):
+
+  1. Text is stripped and lower-cased. Every signal pattern is matched
+     against that lower-cased text, so patterns must be lower-case
+     literals — an upper-case pattern can never match (five patterns
+     of exactly that kind were found and fixed in TF-020: the api,
+     how-do-i, i-don't-know, and i've-been-thinking signals were dead
+     outright; \bTraceback\b was a dead duplicate of its own
+     lower-case twin and was removed).
+  2. Intent and tone are each scored by counting DISTINCT matching
+     patterns (repeating one signal never raises a score). The highest
+     count wins; ties break by the precedence order of the signal
+     tables below (table order IS the precedence order). No intent
+     signal at all → light_conversation; no tone signal → neutral.
+  3. Response mode is the fixed _INTENT_TO_MODE lookup for the intent.
+  4. Urgency = _URGENCY_BASELINE + one tone bonus + one intent bonus,
+     capped at _URGENCY_CAP (see the bonus tables below).
+  5. Retrieval path is set membership: _SQL_HEAVY_INTENTS → "sql",
+     _VECTOR_HEAVY_INTENTS → "vector", everything else → "hybrid".
+  6. Memory triggers are an extraction contract only (see
+     _extract_memory_triggers): the router publishes them on the
+     sketch; whether retrieval consumes them is TF-041's ruling
+     (CORE_LOOP §8-F5).
 """
 
 from __future__ import annotations
@@ -37,12 +62,12 @@ logger = logging.getLogger(__name__)
 _INTENT_SIGNALS: list[tuple[str, list[str]]] = [
     ("technical_debugging", [
         r"\berror\b", r"\bexception\b", r"\bfails?\b", r"\bcrash(es|ing)?\b",
-        r"\bTraceback\b", r"\btraceback\b", r"\bbug\b", r"\bfix\b",
+        r"\btraceback\b", r"\bbug\b", r"\bfix\b",
         r"\bnot work(ing)?\b", r"\bbroken\b", r"\bwrong output\b",
     ]),
     ("technical_spec_request", [
         r"\bspec\b", r"\bdesign\b", r"\barchitect(ure)?\b", r"\bschema\b",
-        r"\bAPI\b", r"\binterface\b", r"\bimplements?\b", r"\bmodule\b",
+        r"\bapi\b", r"\binterface\b", r"\bimplements?\b", r"\bmodule\b",
         r"\bclass\b", r"\bwrite.*code\b", r"\bbuild\b", r"\bcreate.*function\b",
         r"\brefactor\b", r"\bstructure\b",
     ]),
@@ -62,14 +87,14 @@ _INTENT_SIGNALS: list[tuple[str, list[str]]] = [
     ]),
     ("planning_request", [
         r"\bplan\b", r"\broadmap\b", r"\bsteps?\b", r"\bphases?\b",
-        r"\bhow (do|should|can) (I|we)\b", r"\bwhat.*order\b", r"\bschedule\b",
+        r"\bhow (do|should|can) (i|we)\b", r"\bwhat.*order\b", r"\bschedule\b",
         r"\bprioritize\b",
     ]),
     ("emotional_support", [
         r"\btired\b", r"\bexhausted\b", r"\bfrustrated\b", r"\bstressed\b",
         r"\banxious\b", r"\boverwhelmed\b", r"\bdepressed\b", r"\bworried\b",
         r"\bscared\b", r"\bfeel(ing)?\b.*\b(bad|awful|terrible|lost)\b",
-        r"\bI don'?t know (what|how)\b", r"\bnot ok(ay)?\b",
+        r"\bi don'?t know (what|how)\b", r"\bnot ok(ay)?\b",
     ]),
     ("factual_query", [
         r"\bwhat is\b", r"\bwho is\b", r"\bwhen (did|was|is)\b",
@@ -95,7 +120,7 @@ _TONE_SIGNALS: list[tuple[str, list[str]]] = [
     ]),
     ("curious", [
         r"\bwonder\b", r"\bcurious\b", r"\binteresting\b", r"\bfascinating\b",
-        r"\bI'?ve been thinking\b", r"\bwhat if\b",
+        r"\bi'?ve been thinking\b", r"\bwhat if\b",
     ]),
     ("playful", [
         r"\blol\b", r"\bhaha\b", r"\bfunny\b", r"\bjoke\b",
@@ -106,6 +131,31 @@ _TONE_SIGNALS: list[tuple[str, list[str]]] = [
         r"\bfocus\b", r"\bspecifically\b", r"\bexactly\b",
     ]),
 ]
+
+# ── Precedence (TF-020: explicit, was implicit in dict/max order) ─────────────
+# When two intents (or tones) score the same count of distinct matching
+# patterns, the one listed EARLIER in its signal table wins. These lists
+# are derived from the tables so the precedence can never drift from them.
+
+_INTENT_PRECEDENCE: list[str] = [intent for intent, _ in _INTENT_SIGNALS]
+_TONE_PRECEDENCE: list[str] = [tone for tone, _ in _TONE_SIGNALS]
+
+# ── Urgency table (TF-020: explicit, was inline conditionals) ─────────────────
+# urgency = baseline + tone bonus + intent bonus, capped. The highest
+# reachable value today is 0.85 (urgent tone + technical_debugging);
+# the cap is defensive, not a reachable row.
+
+_URGENCY_BASELINE = 0.3
+_URGENCY_CAP = 1.0
+_TONE_URGENCY_BONUS: dict[str, float] = {
+    "urgent": 0.4,
+    "frustrated": 0.2,
+    "tired": 0.1,
+}
+_INTENT_URGENCY_BONUS: dict[str, float] = {
+    "technical_debugging": 0.15,
+    "emotional_support": 0.1,
+}
 
 # ── Mode derivation table ──────────────────────────────────────────────────────
 
@@ -189,9 +239,13 @@ class InputRouter:
         if not scores:
             return "light_conversation"
 
-        # Disambiguation: technical_debugging beats technical_spec if error signals dominate
-        best = max(scores, key=lambda k: scores[k])
-        return best
+        # Highest distinct-pattern count wins; ties break by signal-table
+        # precedence (technical_debugging first — so it beats
+        # technical_spec_request on a tie, not only when it dominates).
+        return max(
+            scores,
+            key=lambda k: (scores[k], -_INTENT_PRECEDENCE.index(k)),
+        )
 
     # ── Tone classification ────────────────────────────────────────────────────
 
@@ -202,7 +256,14 @@ class InputRouter:
             if count:
                 scores[tone] = count
 
-        return max(scores, key=lambda k: scores[k]) if scores else "neutral"
+        if not scores:
+            return "neutral"
+
+        # Same rule as intent: highest count, ties by table precedence.
+        return max(
+            scores,
+            key=lambda k: (scores[k], -_TONE_PRECEDENCE.index(k)),
+        )
 
     # ── Topic extraction ───────────────────────────────────────────────────────
 
@@ -244,6 +305,11 @@ class InputRouter:
         clean = re.sub(r"[^\w\s]", " ", raw_text.lower())
         terms = [w for w in clean.split() if w not in stopwords and len(w) > 2]
 
+        # Cap BEFORE de-duplication (pinned by TF-020 tests): a repeated
+        # term consumes one of the 8 slots, so the unique message
+        # triggers can number fewer than 8. Thread tags then append
+        # (max 3, skipping ones already present) and the whole list is
+        # capped at 10 — a tag can be cut by that final cap.
         triggers = list(dict.fromkeys(terms[:8]))   # deduplicated, ordered, max 8
 
         if thread_state and thread_state.tags:
@@ -256,21 +322,10 @@ class InputRouter:
     # ── Urgency estimation ─────────────────────────────────────────────────────
 
     def _estimate_urgency(self, normalized: str, tone_in: str, intent: str) -> float:
-        urgency = 0.3  # baseline
-
-        if tone_in == "urgent":
-            urgency += 0.4
-        elif tone_in == "frustrated":
-            urgency += 0.2
-        elif tone_in == "tired":
-            urgency += 0.1
-
-        if intent == "technical_debugging":
-            urgency += 0.15
-        elif intent == "emotional_support":
-            urgency += 0.1
-
-        return min(urgency, 1.0)
+        urgency = _URGENCY_BASELINE
+        urgency += _TONE_URGENCY_BONUS.get(tone_in, 0.0)
+        urgency += _INTENT_URGENCY_BONUS.get(intent, 0.0)
+        return min(urgency, _URGENCY_CAP)
 
     # ── Retrieval path selection ───────────────────────────────────────────────
 

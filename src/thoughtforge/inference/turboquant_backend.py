@@ -67,6 +67,7 @@ class TurboQuantBackend(UnifiedBackend):
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 stop=request.stop or [],
+                seed=request.seed,
             )
             result = engine.generate(prompt, params=params)
             return GenerationResponse(

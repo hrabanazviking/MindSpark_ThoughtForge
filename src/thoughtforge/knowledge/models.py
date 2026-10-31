@@ -21,14 +21,12 @@ Storage formats:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Literal
 
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+# TF-025 (D-DUP-1): _now_iso's one implementation lives in
+# utils/common.py; this name is its alias, kept for the field
+# factories below and for existing importers.
+from thoughtforge.utils.common import now_iso as _now_iso
 
 
 RecordStatus = Literal["created", "reinforced", "active", "cooling", "stale", "archived", "deleted"]
@@ -246,10 +244,10 @@ class InputSketch:
     """Transient representation of the user's current message. Not persisted."""
 
     raw_text: str
-    intent: str = ""                       # e.g. "question", "command", "request", "chitchat"
+    intent: str = ""                       # the router's taxonomy (TF-020): technical_debugging | technical_spec_request | editing_refinement | brainstorming | naming_or_branding | planning_request | emotional_support | factual_query | light_conversation
     topic: str = ""
-    tone_in: str = ""                      # detected tone of user's message
-    response_mode: str = "conversational"  # conversational | technical | supportive | creative
+    tone_in: str = ""                      # detected tone of user's message: frustrated | tired | urgent | curious | playful | focused | neutral
+    response_mode: str = "conversational"  # the router's modes (TF-020): structured_technical | concise_editorial | creative_brainstorm | calm_supportive | factual_direct | light_natural_chat (the default here is a construction fallback the router never emits)
     memory_triggers: list[str] = field(default_factory=list)
     urgency: float = 0.5                   # 0.0 = low, 1.0 = urgent
     retrieval_path: str = "hybrid"         # sql | vector | hybrid
@@ -291,7 +289,12 @@ class CognitionScaffold:
     depth: str = "medium"                                  # light | medium | expert
     candidate_modes: list[str] = field(default_factory=list)
     fact_block: str = ""                                   # injected retrieval context
-    prompt_text: str = ""                                  # fully assembled prompt
+    # TF-023 (CORE_LOOP §8-F7 closed): there is deliberately NO
+    # prompt_text field. A turn builds many prompts (up to 2 candidate
+    # passes, refine passes, a repair pass) and PromptBuilder returns
+    # each prompt string to its caller; a single scaffold field could
+    # only ever hold one of them and mislead. Prompt export, if a
+    # consumer needs it, is TF-038's trace surface, not this object.
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -447,7 +450,31 @@ class WritebackRecord:
 
 @dataclass
 class RuntimeTurnState:
-    """Full transient state for one complete turn execution."""
+    """Full transient state for one complete turn execution.
+
+    TF-025: the typed turn-state object for the whole core loop.
+    ``phase`` holds one of ``cognition.turn_state.PHASE_ORDER`` and
+    only ever moves forward (see ``advance_phase`` there);
+    ``repair_attempted`` records the quality-gate repair branch;
+    ``salvage_ms`` is the measured compose (salvage + enforcement)
+    time — exactly 0 when no candidates existed and no salvage ran.
+
+    TF-027: ``interrupted`` / ``interrupt_reason`` /
+    ``interrupted_phase`` record a cut (see
+    ``cognition.interruption``): while a turn is cut,
+    ``interrupted`` is True, the other two describe that cut, and
+    ``final_response`` / ``completed_at`` stay empty.
+    ``resume_count`` counts the times a cut turn was taken up
+    again; the cut fields are cleared when a resume begins, so
+    they always describe the *current* cut, never a stale one.
+
+    TF-031: ``generation_failures`` carries the turn's
+    ``cognition.error_honesty.GenerationFailure`` records — one
+    per generation failure the core caught (kept untyped here to
+    avoid a models → cognition import cycle). Empty on a clean
+    turn and on a deliberate no-model turn: failures exist only
+    where generation was attempted and did not produce.
+    """
 
     turn_id: str
     input_sketch: InputSketch | None = None
@@ -463,3 +490,20 @@ class RuntimeTurnState:
     retrieval_ms: int = 0
     generation_ms: int = 0
     salvage_ms: int = 0
+    phase: str = "created"
+    repair_attempted: bool = False
+    interrupted: bool = False
+    interrupt_reason: str = ""
+    interrupted_phase: str = ""
+    resume_count: int = 0
+    generation_failures: list = field(default_factory=list)
+
+    @property
+    def is_complete(self) -> bool:
+        """True once the turn has reached the completed phase."""
+        return self.phase == "completed" and bool(self.completed_at)
+
+    @property
+    def is_interrupted(self) -> bool:
+        """TF-027: True while the turn stands cut, awaiting resume."""
+        return self.interrupted and not self.is_complete

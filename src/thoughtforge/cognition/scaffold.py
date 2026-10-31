@@ -107,7 +107,11 @@ _INTENT_TO_CANDIDATE_MODES: dict[str, list[str]] = {
     "technical_spec_request": ["strict_spec", "implementation_friendly"],
     "technical_debugging":    ["implementation_friendly", "strict_spec"],
     "editing_refinement":     ["editorial_sharp", "implementation_friendly"],
-    "brainstorming":          ["brainstorm_distinct", "brainstorm_distinct"],
+    # TF-021 ruling (CORE_LOOP §8-F8): brainstorming's second pass is the
+    # grounded "practical" angle, not a second copy of brainstorm_distinct —
+    # two identical modes bought a second sample, not a second scaffold.
+    # (Naming, its nearest kin, already pairs the two this way.)
+    "brainstorming":          ["brainstorm_distinct", "practical"],
     "naming_or_branding":     ["brainstorm_distinct", "practical"],
     "planning_request":       ["strict_spec", "practical"],
     "emotional_support":      ["empathic", "reflective"],
@@ -193,7 +197,10 @@ class ScaffoldBuilder:
                     avoid.append(a)
 
         depth = _derive_depth(sketch)
-        candidate_modes = list(_INTENT_TO_CANDIDATE_MODES.get(sketch.intent, ["practical", "practical"]))
+        # TF-021: the unknown-intent fallback is a single practical pass —
+        # the old ["practical", "practical"] was the same duplicate-mode
+        # defect as F8. No registry row may repeat a candidate mode.
+        candidate_modes = list(_INTENT_TO_CANDIDATE_MODES.get(sketch.intent, ["practical"]))
         fact_block = _build_fact_block(bundle.activated_records)
 
         scaffold = CognitionScaffold(
@@ -204,7 +211,8 @@ class ScaffoldBuilder:
             depth=depth,
             candidate_modes=candidate_modes,
             fact_block=fact_block,
-            prompt_text="",      # filled in by PromptBuilder
+            # No prompt_text: TF-023 removed the field (CORE_LOOP
+            # §8-F7) — PromptBuilder returns prompts to its callers.
         )
 
         logger.debug(
