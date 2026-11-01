@@ -18,7 +18,9 @@ by name; application stays TF-128's).
 Pinned here:
 
   * the filing as data: format, doc, rules, profiles,
-  * the index: nine entries, every one bound to a real
+  * the index: nine entries at TF-121 (TF-122 registered a
+    tenth, the persona suite — the pins below were updated in
+    the open by that slice), every one bound to a real
     module / attribute / file; the locust fate filed as
     excluded; axis coverage depth + presence only,
   * the fixtures: synthetic, bound live, six persona
@@ -123,11 +125,11 @@ class TestProfiles:
 
 
 class TestBenchmarkIndex:
-    def test_nine_entries_cover_the_estate(self) -> None:
+    def test_entries_cover_the_estate(self) -> None:
         ids = [b["id"] for b in BENCHMARKS]
-        assert len(ids) == len(set(ids)) == 9
+        assert len(ids) == len(set(ids)) == 10  # 9 at TF-121 + persona_suite (TF-122, in the open)
         for needed in ("persona_consistency", "profile_benchmark",
-                       "locust_load_test", "retrieval_precision",
+                       "locust_load_test", "persona_suite", "retrieval_precision",
                        "scoring_honesty", "quant_quality",
                        "quality_marks", "determinism", "perf_tracker"):
             assert needed in ids
@@ -164,7 +166,7 @@ class TestBenchmarkIndex:
 
 class TestFixtures:
     def test_fixtures_are_synthetic_and_bind_live(self) -> None:
-        assert len(FIXTURES) == 2
+        assert len(FIXTURES) == 3  # 2 at TF-121 + persona_suite_corpus (TF-122, in the open)
         for fixture in FIXTURES:
             assert fixture["synthetic"] is True
             module = importlib.import_module(fixture["bind_module"])

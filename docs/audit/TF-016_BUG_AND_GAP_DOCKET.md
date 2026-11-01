@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 123 entries — 36 OPEN, 1 OPEN-ENVIRONMENT, 83 FIXED
+**Totals: 123 entries — 35 OPEN, 1 OPEN-ENVIRONMENT, 84 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -691,6 +691,30 @@ the empty-store profile baseline with every target
 unmet; latency is pinned nowhere, by rule.
 Totals after TF-121: 123 entries.
 
+TF-122 fixed one standing entry in Part VII and
+narrowed one more, adding none — D-BENCH-3 was
+re-probed live exactly as TF-010 filed it (the filed
+fixture scored 0.71666… identically with
+`weights={"generic": 99}`) and fixed in scope: the
+weights are wired into the per-turn scoring as
+`weight / DEFAULT_WEIGHTS` multipliers, the defaults
+reproducing the TF-121 pinned persona baseline
+exactly (0.7166666666666667, `baseline_problems()`
+clean — preserved, never re-pinned), and the module
+docstring states the real computation. D-BENCH-4 was
+narrowed: its vacuous empty-list PASS is fixed
+(`score([])` is 0.0 / REVIEW) and its missing run is
+filed as the persona suite's 108-turn scripted corpus
+with a pinned harness baseline
+(`persona_suite_synthetic_v1`, overall 0.8454, PASS);
+the public-docs wording share stands with TF-136.
+The suite (benchmarks/persona_suite.py, registered in
+benchmarks/harness.py in the open — 10 benchmark
+entries, 3 fixtures, 3 baselines) scores identity
+facts, voice, and values under pressure against
+TF-030's FIXTURE_EXPECTATION, reused, never copied.
+Totals after TF-122: 123 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -753,8 +777,8 @@ Totals after TF-121: 123 entries.
 | D-CFG-5 | No single config system: three loaders (cached `load_config()`, hand-parsing in unified_backend + validators/health/self-heal, the memory store's own personality load) never meet; no code path sees a merged view (TF-009 finding 1) | TF-032 + TF-153 | II | OPEN — **narrowed by TF-032**: for cognition, one merged resolved view now exists (`ConversationConfig` — persona path + profile + strategy + depth + candidate modes in one frozen object per conversation); the system-wide merged view stays TF-153's |
 | D-BENCH-1 | `benchmark_profiles`: `profile_id` is never validated (a bogus profile exits 0) and never applied — `ThoughtForgeCore` has no profile parameter; every profile measures the same ephemeral empty-store core (TF-010). Child of D-PROF-3 | TF-121 (harness) + TF-128 (profile panels) | VII | OPEN — **narrowed by TF-121**: the validation share is FIXED — `ProfileBenchmark.run` validates `profile_id` against the shipped `hardware_profiles/*.json` ids (`known_profile_ids()`, filed as the harness's `KNOWN_PROFILES`) and raises ValueError naming the bogus id and the known set; the CLI exits 2 with that message (proven live with `totally_bogus_profile`). The application share stands exactly as filed for TF-128: the core has no profile parameter and every profile still measures the same ephemeral empty-store core until the profile panels land |
 | D-BENCH-2 | Metric name drift in `benchmark_profiles`: `token_efficiency` and `citation_accuracy` do not compute what their names/docstrings say; MODEL_CARD's "avg response words ≥ 30" target is checked nowhere (TF-010) | TF-121 | VII | **FIXED by TF-121**: the module docstring and field comments now state what each metric actually computes (`token_efficiency` is the min-words met rate — the fraction of successful turns meeting their query's min_response_words, not a useful/total words ratio; `citation_accuracy`'s denominator is all successful turns and any citation string counts); MODEL_CARD's target is filed as `BenchmarkResult.AVG_WORDS_TARGET = 30.0`, judged by `passes_avg_words_target()` and printed in the summary beside the other two targets (the empty-store baseline files it unmet, honestly). The field name `token_efficiency` is kept (the phase-6 tests and the dataclass API pin it) and is filed in the harness's `METRIC_DEFINITIONS` under its canonical name `min_words_met_rate` with the legacy name named |
-| D-BENCH-3 | Persona scorer: the `weights` argument is built into a dict and never read — callers are silently ignored; the docstring formula is not the implementation (skald bonus undocumented) (TF-010) | TF-122 (persona consistency suite) | VII | OPEN |
-| D-BENCH-4 | The "100+ turns" persona claim exists in 3 docs with no fixture or recorded run anywhere; an empty response list scores a vacuous 1.0 PASS (TF-010) | TF-122 + TF-136 (public-claims audit strikes or proves the claim) | VII | OPEN |
+| D-BENCH-3 | Persona scorer: the `weights` argument is built into a dict and never read — callers are silently ignored; the docstring formula is not the implementation (skald bonus undocumented) (TF-010) | TF-122 (persona consistency suite) | VII | **FIXED by TF-122**: `weights` is wired into the per-turn scoring in `benchmarks/persona_consistency.py` — each component is scaled by `weight / DEFAULT_WEIGHTS` (generic 1.0 / norse 1.0 / citation 0.5 / skald 0.5, the dict the scorer always built), so a non-default weight demonstrably moves the score (the TF-121 fixture at {generic: 2.0} scores 0.6667, at {norse: 3.0} 0.7333, at {generic: 0.0} 1.0) while the defaults reproduce the historical numbers EXACTLY — the TF-121 pinned baseline `persona_consistency_synthetic_v1` still measures 0.7166666666666667 and `baseline_problems()` stays clean (preserved, never re-pinned). The module docstring now states the computation as it actually is (per-turn penalty/bonuses with caps, weighted, clamped, then the mean). The public API (score signature, result fields) is unchanged |
+| D-BENCH-4 | The "100+ turns" persona claim exists in 3 docs with no fixture or recorded run anywhere; an empty response list scores a vacuous 1.0 PASS (TF-010) | TF-122 + TF-136 (public-claims audit strikes or proves the claim) | VII | OPEN — **narrowed by TF-122**: both filed defects are remedied in substance — `score([])` now returns 0.0 and does not pass (REVIEW), matching `score_persona_turns`' filed shape (the one existing test that pinned the vacuous 1.0 — phase-6's `test_empty_input_returns_perfect_score` — was updated in the open by TF-122 with the reason stated; TF-122's tests pin 0.0), and the missing run now exists: TF-122's persona suite (`benchmarks/persona_suite.py`) files a scripted corpus of 108 scored turns (36 identity + 36 voice + 36 values-under-pressure) with a pinned recorded baseline in the harness (`persona_suite_synthetic_v1`: identity 0.8333 / voice 0.8694 / values 0.8333 / overall 0.8454, PASS). What stands is exactly the share TF-010 filed for TF-136: BUILD_PLAN_v1.md, MODEL_CARD.md and TASK_PHASE6_RELEASE.md still word the claim without pointing at the suite — the public-claims audit strikes or re-points that wording |
 | D-BENCH-5 | `locustfile.py` is unrunnable as shipped (locust is a dev extra, not installed; its 3 tests are structural only) and TASK_PHASE6's HttpUser description of it is stale (TF-010) | TF-121 (harness decides its fate) + TF-136 (stale claim) | VII | OPEN — **narrowed by TF-121**: the fate share is decided and filed in the harness index (`benchmarks/harness.py`, the `locust_load_test` entry, status `excluded_by_verdict`) — the locust file is EXCLUDED from the harness panel: a manual throughput script, unrunnable without the dev extra (import probed absent on this VM again at TF-121), no-HTTP by its own header, measuring no claim axis; it stays a script a human runs on purpose, never a suite. The stale TASK_PHASE6 HttpUser description stands exactly as filed for TF-136 |
 | D-BENCH-6 | Benchmark estate decay bundle (TF-010): `quality_tiers` declared and never populated (always `{}`); warm-up turns are drawn from the measured set; the p95 index picks ~p90 at n=10 (printed below the mean); nothing is persisted — no baseline exists to regress against; the persona CLI cannot reach the module's own `generate_report()` | TF-121 (harness architecture starts from zero, per TF-010) | VII | **FIXED by TF-121** (all five items, re-probed live at the slice: a fresh run still filed `quality_tiers == {}` and the CLI printed avg 8ms with "p95: 2ms"): `quality_tiers` is populated from each successful turn's score tier (TurnResult carries `quality_tier`; the empty-store baseline now files `{"weak": 10}`); warm-up runs the dedicated `WARM_UP_QUERY`, never a measured query; p95 is nearest-rank (`ceil(0.95 * n) - 1`; a filed 1..10 latency set now files p95 10.0, not 9.0); the estate's first pinned baselines are filed as data in `benchmarks/harness.py` (`BASELINES`, re-measured live by `baseline_problems()` — the persistence TF-134's baseline book will regenerate); and the persona CLI reaches `generate_report()` via `--report` (proven live: the markdown report prints) |
 | D-BENCH-7 | Two unconnected latency systems: `utils/perf.py`'s tracker is wired into the core, but no benchmark consumes it — `ProfileBenchmark` times turns with its own `perf_counter` calls (TF-010) | TF-121 + TF-133 (cost panel) | VII | OPEN — **narrowed by TF-121**: both systems are now filed in one index with their roles stated (`benchmarks/harness.py`: the `perf_tracker` entry, kind instrument, status `instrumentation_not_a_scorer`, bound to `thoughtforge.utils.perf.PerfTracker`; the harness's turn timing is filed as ProfileBenchmark's own perf_counter). The consumption share stands exactly as filed for TF-133's cost panel — no benchmark consumes the tracker yet, and none is claimed to |

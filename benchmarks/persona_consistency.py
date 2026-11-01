@@ -5,12 +5,27 @@ Validates that the Skald persona (calm, direct, Norse-flavored, no generic AI ph
 is maintained across many turns of conversation. Designed to run against a list of
 response texts from ThoughtForgeCore.think() calls.
 
-Scoring formula:
-  consistency_score = (
-      (1.0 - generic_penalty)     # penalise AI-sounding phrases
-    + norse_bonus                  # reward Norse/Skald tone markers
-    + citation_bonus               # reward citations present
-  ) / 3.0  — clamped to [0.0, 1.0]
+Scoring formula (the computation as it actually is — TF-122,
+D-BENCH-3; the earlier docstring's "/ 3.0" formula was never
+the implementation):
+
+  Per turn, with the turn's phrase hits counted once each:
+    generic_penalty = min(1.0, generic_hits * 0.25) * (w_generic / 1.0)
+    norse_bonus     = min(0.3, norse_hits * 0.05)    * (w_norse / 1.0)
+    citation_bonus  = (0.1 if the turn cites a QID else 0.0)
+                      * (w_citation / 0.5)
+    skald_bonus     = min(0.1, skald_hits * 0.03)    * (w_skald / 0.5)
+    turn_score      = clamp(1.0 - generic_penalty + norse_bonus
+                            + citation_bonus + skald_bonus, 0.0, 1.0)
+  consistency_score = the mean of the turn scores, clamped to
+  [0.0, 1.0]. The ``weights`` argument scales each component
+  relative to ``DEFAULT_WEIGHTS`` — at the defaults every
+  multiplier is 1.0 and the scores are exactly the pre-TF-122
+  numbers (the TF-121 pinned baseline is unchanged).
+
+An empty response list scores 0.0 and does NOT pass — there is
+no vacuous consistency (TF-122, D-BENCH-4; the shape
+``score_persona_turns`` in the cognition layer filed first).
 
 A score ≥ 0.75 indicates consistent persona across the batch.
 
@@ -111,6 +126,15 @@ SKALD_QUALITY_MARKERS: list[str] = [
 
 _QID_RE = re.compile(r'\bQ\d{3,}\b')
 
+#: The scorer's default component weights (TF-122, D-BENCH-3).
+#: A caller-supplied ``weights`` dict is merged over these and
+#: each component is scaled by ``weight / default`` — so the
+#: defaults reproduce the historical scores exactly, and a
+#: non-default weight demonstrably moves its component.
+DEFAULT_WEIGHTS: dict[str, float] = {
+    "generic": 1.0, "norse": 1.0, "citation": 0.5, "skald": 0.5,
+}
+
 
 # ── Result type ───────────────────────────────────────────────────────────────
 
@@ -183,15 +207,22 @@ class PersonaConsistencyScorer:
 
         Args:
             responses: List of response strings from think() calls.
-            weights:   Optional weight override: {"generic": 1.0, "norse": 1.0, "citation": 1.0}
-                       Controls relative importance of each scoring component.
+            weights:   Optional weight override, merged over
+                       DEFAULT_WEIGHTS ({"generic": 1.0, "norse": 1.0,
+                       "citation": 0.5, "skald": 0.5}); each component
+                       is scaled by weight / its default, so a
+                       non-default weight demonstrably moves the
+                       score and the defaults reproduce the historical
+                       scores exactly (TF-122, D-BENCH-3).
 
         Returns:
             ConsistencyResult with per-turn breakdown and aggregate score.
         """
         if not responses:
+            # TF-122 (D-BENCH-4): an empty batch is 0.0 / REVIEW,
+            # never the vacuous 1.0 PASS this branch used to file.
             return ConsistencyResult(
-                consistency_score=1.0,   # vacuously consistent
+                consistency_score=0.0,
                 total_turns=0,
                 flagged_turns=0,
                 generic_phrase_hits=0,
@@ -201,7 +232,7 @@ class PersonaConsistencyScorer:
                 per_turn=[],
             )
 
-        w = {"generic": 1.0, "norse": 1.0, "citation": 0.5, "skald": 0.5}
+        w = dict(DEFAULT_WEIGHTS)
         if weights:
             w.update(weights)
 
@@ -213,7 +244,7 @@ class PersonaConsistencyScorer:
         flagged = 0
 
         for idx, text in enumerate(responses):
-            tc = self._score_turn(idx, text)
+            tc = self._score_turn(idx, text, w)
             per_turn.append(tc)
             total_generic += len(tc.generic_hits)
             total_norse += len(tc.norse_hits)
@@ -238,8 +269,20 @@ class PersonaConsistencyScorer:
             per_turn=per_turn,
         )
 
-    def _score_turn(self, idx: int, text: str) -> TurnConsistency:
-        """Score a single response turn."""
+    def _score_turn(
+        self, idx: int, text: str,
+        weights: dict[str, float] | None = None,
+    ) -> TurnConsistency:
+        """Score a single response turn.
+
+        ``weights`` (TF-122, D-BENCH-3) scales each component by
+        ``weight / DEFAULT_WEIGHTS[component]``; at the defaults
+        every multiplier is 1.0 and the turn score is exactly the
+        pre-fix computation.
+        """
+        w = dict(DEFAULT_WEIGHTS)
+        if weights:
+            w.update(weights)
         lower = text.lower()
 
         # Generic phrase detection (hard penalty)
@@ -261,10 +304,18 @@ class PersonaConsistencyScorer:
         #   skald_bonus     = min(0.1, len(skald_hits) * 0.03)
         #   turn_score = clamp(1.0 - generic_penalty + norse_bonus + citation_bonus + skald_bonus)
 
-        generic_penalty = min(1.0, len(generic_hits) * 0.25)
-        norse_bonus = min(0.3, len(norse_hits) * 0.05)
-        citation_bonus = 0.1 if has_citation else 0.0
-        skald_bonus = min(0.1, len(skald_hits) * 0.03)
+        generic_penalty = (
+            min(1.0, len(generic_hits) * 0.25)
+            * (w["generic"] / DEFAULT_WEIGHTS["generic"]))
+        norse_bonus = (
+            min(0.3, len(norse_hits) * 0.05)
+            * (w["norse"] / DEFAULT_WEIGHTS["norse"]))
+        citation_bonus = (
+            (0.1 if has_citation else 0.0)
+            * (w["citation"] / DEFAULT_WEIGHTS["citation"]))
+        skald_bonus = (
+            min(0.1, len(skald_hits) * 0.03)
+            * (w["skald"] / DEFAULT_WEIGHTS["skald"]))
 
         turn_score = 1.0 - generic_penalty + norse_bonus + citation_bonus + skald_bonus
         turn_score = max(0.0, min(1.0, turn_score))

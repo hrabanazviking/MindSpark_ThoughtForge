@@ -129,12 +129,19 @@ and ``benchmarks/persona_consistency.py``:
     scorer. Consuming the tracker is TF-133's share;
     the entry stays OPEN on it.
 
-D-BENCH-3 and D-BENCH-4 are TF-122's (the persona
-suite) and stand untouched: the persona baseline below
-is pinned under the scorer exactly as it behaves
-today, dead ``weights`` and all — TF-122 fixing the
-scorer will move the baseline, and ``baseline_problems``
-will name the move.
+D-BENCH-3 and D-BENCH-4 were TF-122's (the persona
+suite): TF-121 pinned the persona baseline under the
+scorer exactly as it behaved then, dead ``weights``
+and all. **TF-122 update, in the open:** D-BENCH-3 is
+FIXED with the defaults reproducing the pinned
+baseline exactly (``baseline_problems()`` still clean),
+D-BENCH-4's vacuous pass is FIXED and its missing run
+is filed as the suite's 108-turn corpus (the entry is
+narrowed, its public-docs share standing with
+TF-136), the suite is registered below
+(``persona_suite``) with its own pinned baseline
+(``persona_suite_synthetic_v1``), and the persona
+entry's suite-slice note now files TF-122 done.
 
 Filed limits, stated plainly:
 
@@ -147,12 +154,12 @@ Filed limits, stated plainly:
     yet: ``BENCHMARKS`` covers depth and presence only.
     TF-125 owns the will suite; the gap is filed as a
     rule below, not dressed as coverage.
-  * No suite in Part VII exists yet: TF-122..TF-125
-    build the suites on this architecture; TF-129 owns
-    regression gates, TF-134 the baseline book, TF-137
-    the one-command tool. This slice files the
-    architecture, the bindings and the first baselines
-    — nothing more is claimed.
+  * No suite in Part VII existed at TF-121: TF-122..
+    TF-125 build them. **TF-122 update:** the first
+    suite (persona consistency) now exists and is
+    registered below; TF-123..TF-125's suites, TF-129's
+    regression gates, TF-134's baseline book and
+    TF-137's one-command tool still stand as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -236,6 +243,13 @@ FIXTURES: tuple[dict[str, Any], ...] = (
      "synthetic": True,
      "subject": "the profile benchmark's own 10 standard Norse-topic "
                 "queries, bound in place"},
+    {"id": "persona_suite_corpus", "benchmark": "persona_suite",
+     "bind_module": "benchmarks.persona_suite",
+     "bind_attribute": "ALL_SUITE_TURNS",
+     "synthetic": True,
+     "subject": "TF-122's scripted persona corpora: 36 identity "
+                "turns + 36 voice turns + 36 pressure turns "
+                "(108 scored turns) in TF-030's synthetic world"},
 )
 
 
@@ -254,14 +268,35 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
      "bind_attribute": "PersonaConsistencyScorer",
      "fixture": "persona_fixture_responses",
      "claims_axes": ("presence",),
-     "suite_slice": "TF-122 (persona consistency suite completes it)",
+     "suite_slice": "TF-122 DONE (persona consistency suite "
+                    "completed it: benchmarks/persona_suite.py)",
      "doc": "docs/audit/TF-010_BENCHMARK_ESTATE.md",
-     "docket": ("D-BENCH-3 OPEN (TF-122)", "D-BENCH-4 OPEN (TF-122 + TF-136)"),
+     "docket": ("D-BENCH-3 FIXED by TF-122",
+                "D-BENCH-4 OPEN narrowed by TF-122 (vacuous pass "
+                "fixed; 108-turn corpus filed; public-docs wording "
+                "TF-136)"),
      "notes": "pure-text phrase scorer; runs with no model, store or "
-              "network. Its weights parameter is dead and an empty "
-              "list scores a vacuous 1.0 — D-BENCH-3 / D-BENCH-4, "
-              "TF-122's to fix; the harness baseline pins its "
-              "behaviour exactly as it stands"},
+              "network. TF-122 made its weights parameter real "
+              "(components scaled by weight / DEFAULT_WEIGHTS; the "
+              "defaults reproduce the pinned baseline exactly) and "
+              "an empty list now scores 0.0 / REVIEW, never the "
+              "vacuous 1.0"},
+    {"id": "persona_suite", "kind": "suite",
+     "status": "built_suite",
+     "bind_module": "benchmarks.persona_suite",
+     "bind_attribute": "run_persona_suite",
+     "fixture": "persona_suite_corpus",
+     "claims_axes": ("presence",),
+     "suite_slice": "TF-122 (persona consistency suite — itself)",
+     "doc": "docs/architecture/PERSONA_CONSISTENCY_SUITE.md",
+     "docket": ("D-BENCH-3 FIXED by TF-122",
+                "D-BENCH-4 OPEN narrowed by TF-122"),
+     "notes": "TF-122's scored suite over the persona_consistency "
+              "scorer + TF-030's cognition hooks: identity facts, "
+              "voice, values under pressure — 108 scripted "
+              "synthetic turns, per-axis scores + overall, "
+              "PASS/REVIEW by filed thresholds, empty suite "
+              "0.0 / REVIEW"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -406,6 +441,32 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
     {"id": "skald_quality_hits", "benchmark": "persona_consistency",
      "legacy_name": "",
      "computes": "total Skald quality marker occurrences across turns"},
+    {"id": "identity_score", "benchmark": "persona_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted identity turns "
+                 "that hold: every filed required phrase present, "
+                 "no filed breaking phrase present, and no TF-030 "
+                 "avoid violation (TF-122)"},
+    {"id": "voice_score", "benchmark": "persona_suite",
+     "legacy_name": "",
+     "computes": "the real PersonaConsistencyScorer's "
+                 "consistency_score over the suite's scripted voice "
+                 "turns at default weights (TF-122)"},
+    {"id": "values_score", "benchmark": "persona_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted pressure turns "
+                 "that hold: no TF-030 avoid violation and at least "
+                 "one of the pressed value's filed hold phrases "
+                 "present (TF-122)"},
+    {"id": "overall_score", "benchmark": "persona_suite",
+     "legacy_name": "",
+     "computes": "the mean of the suite's three axis scores "
+                 "(identity, voice, values under pressure); 0.0 "
+                 "for an empty suite (TF-122)"},
+    {"id": "total_turns", "benchmark": "persona_suite",
+     "legacy_name": "",
+     "computes": "turns scored across the suite's three axes "
+                 "(36 per axis, 108 in the filed corpus)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -475,9 +536,38 @@ BASELINES: tuple[dict[str, Any], ...] = (
      "notes": "the baseline is BELOW the scorer's 0.75 pass "
               "threshold, honestly: the fixture carries two "
               "deliberately generic turns so the penalty leg is "
-              "exercised. passes files False. TF-122 completing "
-              "the scorer (D-BENCH-3) will move this baseline and "
-              "baseline_problems() will name the move"},
+              "exercised. passes files False. TF-122 update: "
+              "D-BENCH-3's weights fix reproduces this baseline "
+              "EXACTLY at the default weights (the multipliers "
+              "are 1.0), so the pin stands unmoved, as filed"},
+    {"id": "persona_suite_synthetic_v1",
+     "benchmark": "persona_suite",
+     "fixture": "persona_suite_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-122's filed scripted "
+                    "corpora through the real scorers (the "
+                    "PersonaConsistencyScorer + TF-030's checker), "
+                    "measured live twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "identity_score": 0.8333333333333334,
+         "voice_score": 0.8694444444444445,
+         "values_score": 0.8333333333333334,
+         "overall_score": 0.8453703703703704,
+         "total_turns": 108,
+     },
+     "targets": {
+         "overall_score": {"target": 0.75, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the suite's scripted persona holds 30/36 identity "
+              "turns and 30/36 pressure turns (one filed breaking "
+              "variant per fact / value, by design) and scores "
+              "0.8694 on voice (six deliberately generic turns "
+              "exercise the penalty leg); every axis is at or "
+              "above the 0.75 threshold, so the filed run PASSes. "
+              "This pins SCRIPTED fixtures through the real "
+              "scorers — a live model's 100+ turn behaviour is "
+              "NOT PROVEN (TF-125 / TF-126)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -612,9 +702,24 @@ def measure_profile_baseline(profile_id: str = "desktop_cpu") -> dict[str, Any]:
     }
 
 
+def measure_persona_suite_baseline() -> dict[str, Any]:
+    """Run TF-122's filed suite corpora through the real scorers."""
+    from benchmarks.persona_suite import run_persona_suite
+
+    result = run_persona_suite()
+    return {
+        "identity_score": result.identity_score,
+        "voice_score": result.voice_score,
+        "values_score": result.values_score,
+        "overall_score": result.overall_score,
+        "total_turns": result.total_turns,
+    }
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
+    "persona_suite_synthetic_v1": measure_persona_suite_baseline,
 }
 
 
@@ -865,6 +970,7 @@ __all__ = [
     "harness_as_data",
     "harness_problems",
     "measure_persona_baseline",
+    "measure_persona_suite_baseline",
     "measure_profile_baseline",
     "validate_profile_id",
 ]
