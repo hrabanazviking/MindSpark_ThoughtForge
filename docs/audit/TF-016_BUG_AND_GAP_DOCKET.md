@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 123 entries — 38 OPEN, 1 OPEN-ENVIRONMENT, 81 FIXED
+**Totals: 123 entries — 36 OPEN, 1 OPEN-ENVIRONMENT, 83 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -34,7 +34,8 @@ D-POISON-1, D-POISON-2 and D-POISON-3 by TF-116 in Part VI;
 D-OFFLINE-1, D-OFFLINE-2 and D-OFFLINE-3 by TF-117 in Part VI;
 D-DATA-4, D-REF-2 and D-REF-3 by TF-118 in Part VI;
 D-ETL-1, D-ETL-2 and D-DATA-1 by TF-119 in Part VI;
-D-PROF-1 by TF-056 + TF-069 + TF-110 across Parts III–VI), 3
+D-PROF-1 by TF-056 + TF-069 + TF-110 across Parts III–VI;
+D-BENCH-2 and D-BENCH-6 by TF-121 in Part VII), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
 Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 36 ·
@@ -658,6 +659,38 @@ gate — every other Part VI entry was fixed by its own
 slice — and no new entry was added: the probe found
 no defect. Totals unchanged at the gate: 123 entries.
 
+TF-121 fixed two standing entries in Part VII and
+narrowed three more, adding none — D-BENCH-2 and
+D-BENCH-6 were measured open by that slice's live
+probes exactly as TF-010 filed them (the CLI printed
+avg 8ms with "p95: 2ms" below the mean; a fresh
+ProfileBenchmark run filed `quality_tiers == {}`; a
+bogus profile ran to exit 0) and D-BENCH-2 / D-BENCH-6
+were fixed in scope (honest metric definitions in
+benchmark_profiles' own text + MODEL_CARD's avg-words
+target filed as AVG_WORDS_TARGET and judged;
+quality_tiers populated from each turn's score tier,
+warm-up moved to a dedicated WARM_UP_QUERY, p95 made
+nearest-rank, the estate's first pinned baselines
+filed as data in benchmarks/harness.py, and the
+persona CLI given its `--report` reach to
+generate_report). D-BENCH-1 was narrowed (run-time
+profile validation fixed; application stands with
+TF-128), D-BENCH-5 narrowed (the locust file's fate
+decided in the harness index — excluded from the
+panel; TF-136's stale-claim share stands) and
+D-BENCH-7 narrowed (both latency systems filed in one
+index with roles stated; consumption stands with
+TF-133). The harness files the unified index
+(BENCHMARKS, 9 entries bound live), the first filed
+fixtures (synthetic only), METRIC_DEFINITIONS, and
+two pinned baselines re-measured live by
+baseline_problems() — the persona fixture baseline
+0.7167, honestly below the 0.75 pass threshold, and
+the empty-store profile baseline with every target
+unmet; latency is pinned nowhere, by rule.
+Totals after TF-121: 123 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -718,13 +751,13 @@ no defect. Totals unchanged at the gate: 123 entries.
 | D-CFG-3 | `user_config.yaml` mixes 10 LIVE backend keys with 5 DEAD (profile / knowledge_db_built / chat_*); the factory's fallback key `openai_model` is read and written by the wizard but absent from the shipped file (TF-009) | TF-065 (backend contract) + TF-153 (service shape) | IV | OPEN — **narrowed by TF-065**: the backend share is ruled — the factory's live key set (11 keys, `openai_model` included) is pinned as contract data (`inference/backend_contract.BACKEND_CONFIG_KEYS`, AST-judged against `load_backend_from_config`'s own `cfg.get` reads, so the factory can neither lose a live key nor grow a read of a dead one unnoticed). The dead keys' removal from the shipped file and the wizard's shape stay TF-153's |
 | D-CFG-4 | Credential-shaped keys (`openai_api_key`, `hf_token`) live in a plain YAML file — empty in the shipped copy, so no secret is in the tree, but the shape is the defect (TF-009) | TF-160 (Kista custody) | IX | OPEN |
 | D-CFG-5 | No single config system: three loaders (cached `load_config()`, hand-parsing in unified_backend + validators/health/self-heal, the memory store's own personality load) never meet; no code path sees a merged view (TF-009 finding 1) | TF-032 + TF-153 | II | OPEN — **narrowed by TF-032**: for cognition, one merged resolved view now exists (`ConversationConfig` — persona path + profile + strategy + depth + candidate modes in one frozen object per conversation); the system-wide merged view stays TF-153's |
-| D-BENCH-1 | `benchmark_profiles`: `profile_id` is never validated (a bogus profile exits 0) and never applied — `ThoughtForgeCore` has no profile parameter; every profile measures the same ephemeral empty-store core (TF-010). Child of D-PROF-3 | TF-121 (harness) + TF-128 (profile panels) | VII | OPEN |
-| D-BENCH-2 | Metric name drift in `benchmark_profiles`: `token_efficiency` and `citation_accuracy` do not compute what their names/docstrings say; MODEL_CARD's "avg response words ≥ 30" target is checked nowhere (TF-010) | TF-121 | VII | OPEN |
+| D-BENCH-1 | `benchmark_profiles`: `profile_id` is never validated (a bogus profile exits 0) and never applied — `ThoughtForgeCore` has no profile parameter; every profile measures the same ephemeral empty-store core (TF-010). Child of D-PROF-3 | TF-121 (harness) + TF-128 (profile panels) | VII | OPEN — **narrowed by TF-121**: the validation share is FIXED — `ProfileBenchmark.run` validates `profile_id` against the shipped `hardware_profiles/*.json` ids (`known_profile_ids()`, filed as the harness's `KNOWN_PROFILES`) and raises ValueError naming the bogus id and the known set; the CLI exits 2 with that message (proven live with `totally_bogus_profile`). The application share stands exactly as filed for TF-128: the core has no profile parameter and every profile still measures the same ephemeral empty-store core until the profile panels land |
+| D-BENCH-2 | Metric name drift in `benchmark_profiles`: `token_efficiency` and `citation_accuracy` do not compute what their names/docstrings say; MODEL_CARD's "avg response words ≥ 30" target is checked nowhere (TF-010) | TF-121 | VII | **FIXED by TF-121**: the module docstring and field comments now state what each metric actually computes (`token_efficiency` is the min-words met rate — the fraction of successful turns meeting their query's min_response_words, not a useful/total words ratio; `citation_accuracy`'s denominator is all successful turns and any citation string counts); MODEL_CARD's target is filed as `BenchmarkResult.AVG_WORDS_TARGET = 30.0`, judged by `passes_avg_words_target()` and printed in the summary beside the other two targets (the empty-store baseline files it unmet, honestly). The field name `token_efficiency` is kept (the phase-6 tests and the dataclass API pin it) and is filed in the harness's `METRIC_DEFINITIONS` under its canonical name `min_words_met_rate` with the legacy name named |
 | D-BENCH-3 | Persona scorer: the `weights` argument is built into a dict and never read — callers are silently ignored; the docstring formula is not the implementation (skald bonus undocumented) (TF-010) | TF-122 (persona consistency suite) | VII | OPEN |
 | D-BENCH-4 | The "100+ turns" persona claim exists in 3 docs with no fixture or recorded run anywhere; an empty response list scores a vacuous 1.0 PASS (TF-010) | TF-122 + TF-136 (public-claims audit strikes or proves the claim) | VII | OPEN |
-| D-BENCH-5 | `locustfile.py` is unrunnable as shipped (locust is a dev extra, not installed; its 3 tests are structural only) and TASK_PHASE6's HttpUser description of it is stale (TF-010) | TF-121 (harness decides its fate) + TF-136 (stale claim) | VII | OPEN |
-| D-BENCH-6 | Benchmark estate decay bundle (TF-010): `quality_tiers` declared and never populated (always `{}`); warm-up turns are drawn from the measured set; the p95 index picks ~p90 at n=10 (printed below the mean); nothing is persisted — no baseline exists to regress against; the persona CLI cannot reach the module's own `generate_report()` | TF-121 (harness architecture starts from zero, per TF-010) | VII | OPEN |
-| D-BENCH-7 | Two unconnected latency systems: `utils/perf.py`'s tracker is wired into the core, but no benchmark consumes it — `ProfileBenchmark` times turns with its own `perf_counter` calls (TF-010) | TF-121 + TF-133 (cost panel) | VII | OPEN |
+| D-BENCH-5 | `locustfile.py` is unrunnable as shipped (locust is a dev extra, not installed; its 3 tests are structural only) and TASK_PHASE6's HttpUser description of it is stale (TF-010) | TF-121 (harness decides its fate) + TF-136 (stale claim) | VII | OPEN — **narrowed by TF-121**: the fate share is decided and filed in the harness index (`benchmarks/harness.py`, the `locust_load_test` entry, status `excluded_by_verdict`) — the locust file is EXCLUDED from the harness panel: a manual throughput script, unrunnable without the dev extra (import probed absent on this VM again at TF-121), no-HTTP by its own header, measuring no claim axis; it stays a script a human runs on purpose, never a suite. The stale TASK_PHASE6 HttpUser description stands exactly as filed for TF-136 |
+| D-BENCH-6 | Benchmark estate decay bundle (TF-010): `quality_tiers` declared and never populated (always `{}`); warm-up turns are drawn from the measured set; the p95 index picks ~p90 at n=10 (printed below the mean); nothing is persisted — no baseline exists to regress against; the persona CLI cannot reach the module's own `generate_report()` | TF-121 (harness architecture starts from zero, per TF-010) | VII | **FIXED by TF-121** (all five items, re-probed live at the slice: a fresh run still filed `quality_tiers == {}` and the CLI printed avg 8ms with "p95: 2ms"): `quality_tiers` is populated from each successful turn's score tier (TurnResult carries `quality_tier`; the empty-store baseline now files `{"weak": 10}`); warm-up runs the dedicated `WARM_UP_QUERY`, never a measured query; p95 is nearest-rank (`ceil(0.95 * n) - 1`; a filed 1..10 latency set now files p95 10.0, not 9.0); the estate's first pinned baselines are filed as data in `benchmarks/harness.py` (`BASELINES`, re-measured live by `baseline_problems()` — the persistence TF-134's baseline book will regenerate); and the persona CLI reaches `generate_report()` via `--report` (proven live: the markdown report prints) |
+| D-BENCH-7 | Two unconnected latency systems: `utils/perf.py`'s tracker is wired into the core, but no benchmark consumes it — `ProfileBenchmark` times turns with its own `perf_counter` calls (TF-010) | TF-121 + TF-133 (cost panel) | VII | OPEN — **narrowed by TF-121**: both systems are now filed in one index with their roles stated (`benchmarks/harness.py`: the `perf_tracker` entry, kind instrument, status `instrumentation_not_a_scorer`, bound to `thoughtforge.utils.perf.PerfTracker`; the harness's turn timing is filed as ProfileBenchmark's own perf_counter). The consumption share stands exactly as filed for TF-133's cost panel — no benchmark consumes the tracker yet, and none is claimed to |
 | D-BENCH-8 | The `PYTHONPATH=src` requirement (package not pip-installed) is stated in no usage doc — without it the benchmark run-tests fail 3× with ModuleNotFoundError (TF-010 method note) | TF-182 (developer docs) | X | OPEN |
 | D-DEAD-1 | `utils/validators.py`: 5 of its 6 public functions are never called anywhere (`sanitise_system_prompt`, `validate_config`, `validate_model_path`, `validate_api_key`, `validate_jsonl_line`) — a validation layer that guards nothing (TF-011) | Wire-or-retire verdict per function: TF-032 (config surface) / TF-094 (policy configuration) | II | OPEN — **TF-032's share ruled**: `validate_config` is NOT wired into the cognition config surface — it requires the user_config `backend` key (it validates a backend dict, the wrong shape for a cognition config; the surface validates its own selections itself). Its wire-or-retire verdict, and the other four functions', belong to TF-094 / TF-065 — **TF-094's share ruled**: `validate_config` is NOT wired into the policy configuration surface either — it validates a backend dict, the wrong shape for a strictness level; that surface validates its own selections itself. The remaining functions are not policy configuration and their verdicts stand with TF-065 / the ingestion line; entry stays OPEN |
 | D-DEAD-2 | Scalar `cosine_similarity` (etl/embeddings.py:84) is dead while its batch sibling is live (TF-011) | TF-053 (embedding discipline) | III | **FIXED by TF-053** (retirement): the scalar function is removed from `etl/embeddings.py`; `batch_cosine_similarity` is the live path and its identity case is exercised by TF-053's checker and tests |

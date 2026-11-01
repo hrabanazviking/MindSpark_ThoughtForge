@@ -335,7 +335,13 @@ class PersonaConsistencyScorer:
 # ── CLI entry point ────────────────────────────────────────────────────────────
 
 def main() -> None:
-    """Run persona consistency scoring from stdin (one response per line)."""
+    """Run persona consistency scoring from stdin (one response per line).
+
+    With ``--report``, prints the module's full markdown report
+    (``PersonaConsistencyScorer.generate_report``) instead of the
+    short summary — TF-121 (D-BENCH-6: the report writer was
+    unreachable from this CLI).
+    """
     import sys
     responses = [line.strip() for line in sys.stdin if line.strip()]
     if not responses:
@@ -344,7 +350,10 @@ def main() -> None:
 
     scorer = PersonaConsistencyScorer()
     result = scorer.score(responses)
-    print(result.summary())
+    if "--report" in sys.argv:
+        print(PersonaConsistencyScorer.generate_report(result))
+    else:
+        print(result.summary())
 
 
 if __name__ == "__main__":
