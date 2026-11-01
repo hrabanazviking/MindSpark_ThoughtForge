@@ -24,6 +24,16 @@ connections hardened to ``synchronous = FULL``
 searches load their rows through ``load_searchable_rows``, so
 one corrupt stored blob is skipped by row instead of poisoning
 the whole search (docket D-VEC-1 / D-VEC-2).
+
+TF-111 (embedding at ingestion): both builders' only-missing
+selection joins on ``model_name`` as well as the row id, so
+"missing" means missing *under the model being built* — before
+this fix, a row embedded under one model silently blocked
+building it under another, while the searches (which do filter
+by model) found nothing for the second model (docket D-EMB-3).
+The per-profile, resumable, checksummed ingestion driver that
+consumes these builders' contract lives in
+``etl/embedding_ingestion.py``.
 """
 
 from __future__ import annotations
@@ -143,13 +153,14 @@ def build_entity_embeddings(
             SELECT e.qid, e.label_en, e.description_en
             FROM entities e
             LEFT JOIN embeddings em ON e.qid = em.qid
+                AND em.model_name = ?
             WHERE em.qid IS NULL
             AND e.label_en IS NOT NULL
         """
         if limit:
             query += f" LIMIT {limit}"
 
-        cursor = conn.execute(query)
+        cursor = conn.execute(query, (model_name,))
         rows = cursor.fetchall()
 
         if not rows:
@@ -207,8 +218,9 @@ def build_reference_embeddings(
             SELECT rc.chunk_id, rc.title, rc.content
             FROM reference_chunks rc
             LEFT JOIN reference_embeddings re ON rc.chunk_id = re.chunk_id
+                AND re.model_name = ?
             WHERE re.chunk_id IS NULL
-        """).fetchall()
+        """, (model_name,)).fetchall()
 
         if not rows:
             logger.info("No reference chunks without embeddings found")

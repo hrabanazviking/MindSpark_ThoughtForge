@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 106 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 60 FIXED
+**Totals: 108 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 61 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -26,11 +26,12 @@ D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-
 D-GATE-2 and D-GATE-3 by TF-108 in Part VI; D-MERGE-1,
 D-MERGE-2, D-MERGE-3 and D-MERGE-4 by TF-109 in Part VI;
 D-SUBSET-2, D-SUBSET-3 and D-SUBSET-4 by TF-110 in Part VI;
+D-EMB-3 by TF-111 in Part VI;
 D-PROF-1 by TF-056 + TF-069 + TF-110 across Parts III–VI), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 22 ·
-Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
+Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 23 ·
+Part VII 7 · Part VIII 1 · Part IX 2 · Part X 10.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
 nothing found stays unnumbered. Entries D-EMB-1 and D-EMB-2 were
@@ -442,6 +443,24 @@ share (the deployment section's subset keys are now
 read live), closing D-PROF-1. Totals after TF-110:
 106 entries.
 
+Entry D-EMB-3 was added by TF-111 in Part VI under
+the same rule — found by that slice's live probes
+(both embedding builders selected "missing" with a
+bare LEFT JOIN on the row id, no model_name, so a
+row embedded under one model silently blocked
+building it under another while the searches filter
+by model) and fixed in scope by the same slice (both
+builders' joins are per model; TF-111's driver in
+etl/embedding_ingestion.py selects the same way).
+Entry D-EMB-4 was added by TF-111 under the same
+rule — found by that slice's own regression test,
+not fixed in scope: the embeddings tables' primary
+key is the row id alone (TF-041's filed key), so two
+models' rows cannot coexist and a second model's
+build replaces the first's; the composite-key fix is
+a schema migration, assigned to TF-177's upgrade
+path. Totals after TF-111: 108 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -502,6 +521,8 @@ read live), closing D-PROF-1. Totals after TF-110:
 | D-DEAD-3 | `utils/paths.py:get_embeddings_dir` has never been called (TF-011) | TF-053 / TF-110 era | III | **FIXED by TF-053** (wiring): `get_embeddings_dir()` is now called by `etl/embedding_discipline.onnx_artefact_status()` — the embeddings directory is the named ONNX artefact home the per-profile availability report checks |
 | D-EMB-1 | Hybrid/vector retrieval raised `RuntimeError` when the embedding backend was unavailable (package missing / model uncached), losing the working SQL leg with it — measured by TF-053's probe on this VM (`retrieve(path="hybrid")` raised; `sql` returned normally), while `KnowledgeForge`'s docstring claimed "Fully offline — no network calls" (found by TF-053) | TF-053 | III | **FIXED by TF-053**: each vector leg in `KnowledgeForge.vector_retrieve` degrades on its own (warning logged, exception named), hybrid retrieval keeps its SQL results (proven on TF-043's fixture corpus with the leg forced to raise), and the docstring claim is corrected — offline availability is proven per profile by `embedding_discipline.availability_report`, never assumed |
 | D-EMB-2 | The embedding model's name was split in two spellings — `all-MiniLM-L6-v2` (etl, forge, config) vs `sentence-transformers/all-MiniLM-L6-v2` (onnx_export) — splitting the loader's name-keyed cache and the DB's exact-match `model_name` filter, so embeddings built under one spelling were invisible to searches under the other (found by TF-053) | TF-053 | III | **FIXED by TF-053**: `embedding_discipline.canonical_model_name()` folds every spelling of a registered model to the canonical name, wired through the ETL loader, both embedding builders (rows are stored canonically), both vector searches, and the forge's constructor (proven: a search under the hub spelling finds a row stored under the canonical name, with a fake backend) |
+| D-EMB-3 | Both embedding builders selected "missing" rows with a bare LEFT JOIN on the row id — no `model_name` in the join — so any row embedded under one model silently blocked building it under another, while both searches filter by `model_name` and found nothing for the second model: a profile/model switch changed which model searches use without changing which rows exist (probed live by TF-111: 2 entities embedded under the default model; a build under a second model name returned 0) | TF-111 | VI | **FIXED by TF-111**: both builders in `etl/embeddings.py` join on `model_name` as well as the row id, and TF-111's ingestion driver (`etl/embedding_ingestion.py`) selects the same way; TF-111's regression tests run both builders under two models through a fake sentence-transformers (first model builds, second model builds the same rows, a same-model re-run builds nothing) |
+| D-EMB-4 | The embeddings tables cannot hold two models' rows for the same entity/chunk: the primary key is the row id alone (`embeddings.qid`, `reference_embeddings.chunk_id` — TF-041's filed keys), so building under a second model REPLACES the first model's rows (INSERT OR REPLACE on the id key) instead of coexisting with them — found by TF-111's regression test (after a second model's build, the first model rebuilt every row) | TF-177 (upgrade path: composite (row id, model_name) primary key + store migration, fixture-proven there) | X | OPEN — filed by TF-111; per-model selection (D-EMB-3) makes each build honest, and TF-111's doc + module file the limit in the open; no slice may claim multi-model coexistence until this lands |
 | D-VEC-1 | One corrupt embedding blob poisoned the whole vector search: both searches stacked every blob with `np.stack`, so a NULL / empty / truncated / non-multiple-of-4 blob raised and returned nothing (every good row lost), and a right-length non-finite blob scored NaN and sorted ahead of a perfect 1.0 match (found by TF-054) | TF-054 | III | **FIXED by TF-054**: both searches load through `etl/vector_store.load_searchable_rows` — corrupt rows are skipped by row, logged with id and class (`null_blob` / `empty_blob` / `wrong_byte_count` / `non_finite`), and the good rows are scored; a store whose rows are all corrupt searches empty instead of raising |
 | D-VEC-2 | The embedding builders stored wrong-dimension vectors blindly (a fake 10-dim model produced stored 40-byte poison rows) and embedding writes ran at the schema's `synchronous = NORMAL`, so a power failure could lose the last committed batches — the Samtal lesson (WAL + `synchronous = FULL`) applied nowhere in the embedding path (found by TF-054) | TF-054 | III | **FIXED by TF-054**: both builders gate every vector through `etl/vector_store.validated_blob` (exact registered dimension, all-finite — a bad batch raises before any of its rows is written) and write on connections hardened by `harden_write_connection` (`synchronous = FULL`); per-batch transactions mean a mid-build crash leaves a partial, resumable index, never a half-landed batch |
 | D-PER-1 | A core's startup self-heal rewrote ANOTHER persona's store: `ThoughtForgeCore` ran `SelfHealer().heal_all()` un-targeted, so the healer repaired the DEFAULT deployment's memory dir + knowledge DB whatever store the core was built on — quarantining/resetting that store's files (and potentially renaming its DB) at any core's construction, while the constructed core's own store was never healed (found by TF-055's probe P3: a planted corrupt line in a fake default home was quarantined by constructing a core on a different persona's store) | TF-055 | III | **FIXED by TF-055**: `SelfHealer` takes an explicit `memory_dir` / `knowledge_db_path` target (defaults preserve the standalone behaviour) and the core passes its OWN store dir + DB path; post-fix probe: the foreign home is byte-identical after construction and the owning core's own corrupt line is healed in its own home, backup included |
