@@ -27,6 +27,17 @@ tables merge per filed identity (duplicates are not
 rewritten, empty incoming fields never erase, conflicts
 are recorded in the builder's ``merge_ledger`` before
 the incoming row wins).
+
+TF-114 (docs/architecture/UPDATE_INGESTION.md; the
+lifecycle rules as data live in
+etl/update_ingestion.py): re-runs update by the
+lifecycle rules — a changed field supersedes (ledgered,
+never silent), and the reference builder retires the
+stored chunks of a file it successfully re-reads whose
+chunk index the new presentation no longer produces
+(recorded in its ``update_ledger``, with any
+reference-embedding rows keyed on them). A file the
+re-run does not present at all keeps its chunks.
 """
 
 from __future__ import annotations
@@ -47,6 +58,10 @@ from thoughtforge.etl.dedup_merge import (
     merge_conceptnet_edge,
 )
 from thoughtforge.etl.schema_gate import SchemaGate
+from thoughtforge.etl.update_ingestion import (
+    UpdateLedger,
+    retire_unpresented_chunks,
+)
 from thoughtforge.utils.paths import get_knowledge_db_path, get_knowledge_reference_dir
 
 logger = logging.getLogger(__name__)
@@ -531,6 +546,8 @@ class ReferenceDataETL:
         self.db_path = db_path or get_knowledge_db_path()
         # TF-109: the merge ledger for the most recent build.
         self.merge_ledger = MergeLedger()
+        # TF-114: the update ledger for the most recent build.
+        self.update_ledger = UpdateLedger()
 
     def build(
         self,
@@ -544,6 +561,7 @@ class ReferenceDataETL:
         """
         ref_dir = ref_dir or get_knowledge_reference_dir()
         self.merge_ledger = MergeLedger()
+        self.update_ledger = UpdateLedger()
 
         if not ref_dir.exists():
             raise FileNotFoundError(f"Reference data directory not found: {ref_dir}")
@@ -562,6 +580,13 @@ class ReferenceDataETL:
                 try:
                     chunks = self._load_and_chunk(path, chunk_size, overlap)
                     if not chunks:
+                        # TF-114: the file was presented and
+                        # now produces no chunks, so its
+                        # stored chunks are retired too.
+                        retire_unpresented_chunks(
+                            conn, self.update_ledger,
+                            str(path.relative_to(ref_dir)), set())
+                        conn.commit()
                         stats["skipped"] += 1
                         continue
                     batch = []
@@ -585,6 +610,14 @@ class ReferenceDataETL:
                                 "title": title, "content": content,
                                 "tags": tags, "word_count": word_count,
                             })
+                    # TF-114: stored chunks of this file
+                    # whose index the new presentation does
+                    # not produce are retired (ledgered in
+                    # the update ledger), in the same commit.
+                    retire_unpresented_chunks(
+                        conn, self.update_ledger,
+                        str(path.relative_to(ref_dir)),
+                        {chunk_index for _, chunk_index, *_ in batch})
                     conn.commit()
                     stats["chunks"] += len(batch)
                     stats["files"] += 1

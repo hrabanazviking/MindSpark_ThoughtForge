@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 109 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 63 FIXED
+**Totals: 112 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 66 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -28,10 +28,11 @@ D-MERGE-2, D-MERGE-3 and D-MERGE-4 by TF-109 in Part VI;
 D-SUBSET-2, D-SUBSET-3 and D-SUBSET-4 by TF-110 in Part VI;
 D-EMB-3 by TF-111 in Part VI; D-COV-2 by TF-112 in Part VI;
 D-CANON-1 by TF-113 in Part VI;
+D-UPDATE-1, D-UPDATE-2 and D-UPDATE-3 by TF-114 in Part VI;
 D-PROF-1 by TF-056 + TF-069 + TF-110 across Parts III–VI), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 24 ·
+Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 27 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 10.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -499,6 +500,25 @@ provenance manifest beside the store, and skips and
 duplicates named in the report). Totals after
 TF-113: 109 entries.
 
+Entries D-UPDATE-1, D-UPDATE-2 and D-UPDATE-3 were
+added by TF-114 in Part VI under the same rule —
+found by that slice's live probes (a changed
+wikidata statement appended beside the old tuple so
+both stayed live, a removed claim never left, and
+chunks that disappeared from a re-presented
+reference file stayed stale and searchable; and no
+lifecycle statement or update record existed —
+TF-109's within-table default stood as a placeholder
+naming TF-114) and fixed in scope by the same slice
+(the lifecycle rules as data in
+etl/update_ingestion.py: statements supersede by
+presented set and disappeared chunks of presented
+files retire, both ledgered in each builder's new
+update_ledger; units absent from a re-run are kept
+by stated rule; TF-109's dedup_merge rule was
+replaced in the open with the lifecycle supersede).
+Totals after TF-114: 112 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -510,6 +530,9 @@ TF-113: 109 entries.
 | D-COV-2 | ETL `sources.py`, `wikidata.py`, `embeddings.py` have no direct test imports (TF-002) | TF-107 / TF-112 (Part VI owns, per TF-002) | VI | **FIXED by TF-112**: narrowed by TF-105 (all five builders + both embedding builders run directly on synthetic inputs) and by TF-107 (the wikidata builder exercised in depth, discharging its share); TF-112's dry-run (`etl/ingestion_dry_run.py`, tests `tests/test_tf112_ingestion_dry_run.py`) was the remainder — its live checker + tests now run every builder through the dry-run road in depth (stats, scratch counts, gate + merge ledgers, registry, target-untouched proof) and both embedding legs through TF-111's injected-encoder driver, so the ETL modules TF-002 found unimported are exercised directly end to end |
 | D-SUBSET-1 | The subset's reference-chunk copy ordered by `retrieval_score`, a column the schema has never carried (grep: its only occurrence in `src/` was the query itself): every limited build raised OperationalError, filed it as a note, copied ZERO reference chunks, and still returned success — probed live by TF-105 (pi_zero build of a store holding one chunk: copied 0, success True, note `reference_chunks skipped: no such column: retrieval_score`); the phase-5 tests never asserted a limited build's chunk count (found by TF-105) | TF-105 | VI | **FIXED by TF-105**: the copy orders by `chunk_id` (insertion order — the schema carries no per-chunk value score to order by); TF-105's live checker + regression tests prove a pi_zero subset of the synthetic store now keeps its chunk (copied 1, no skipped note), and the map's static checker pins the fix (the DESC ordering returning turns it red). TF-110 owns subset craft beyond this repair |
 | D-CANON-1 | The owner's own materials had no ingestion path: no module or `forge_memory.py` command named one, and they could enter a store only through the built-in library's generic `ReferenceDataETL` — with no affirmation that the target was a private local store, nothing forbidding the store inside the canon directory, no use gate (the TF-106 registry raises unregistered for `owner_canon`), and no provenance record in or beside the resulting store (probe rows carried the schema-default `reference` source; a .jpg and a .csv in the canon directory passed uncounted and a byte-duplicate was chunked twice, silently) (found by TF-113) | TF-113 | VI | **FIXED by TF-113**: `etl/canon_ingestion.py` files the path as data (CANON_PROVENANCE + CANON_RULES, format thoughtforge-canon-ingestion/1) — the real ReferenceDataETL runs only behind `check_canon_use(ingest_private)` and an explicit `private_store=True` affirmation (nothing created without it), a store resolving inside the canon directory raises CanonTargetError, redistribution/publication raise CanonPrivacyError at the gate, the canon source is proven untouched by a TF-058 metadata-only inventory before/after, a content-hashed provenance manifest (`<db>.canon-manifest.json`, atomic) travels beside the store with no file content in it, and skips (image/other, by TF-058 class) and byte-duplicates (with their keeper) are named in the report; embeddings only through TF-111's injected-encoder driver. Canon is filed NOT a TF-106 registry entry (no upstream terms exist for the owner's own materials); TF-118 owns ingestion-side dedup for the reference road generally |
+| D-UPDATE-1 | A changed wikidata statement appended beside the old fact: Q1 built with P31 -> Q111 and P17 -> Q900, then re-built with P31 -> Q999 and no P17 claim, held BOTH P31 tuples live (an unflagged contradiction in TF-050's sense) and kept the removed P17 statement — statements only ever grew; TF-107's idempotence covered exact duplicates only (probed live by TF-114) | TF-114 | VI | **FIXED by TF-114**: statements supersede by presented set (etl/update_ingestion.py) — before the wikidata build's final commit, stored statements (source wikidata) for subjects the run presented that the run did not re-present are deleted and recorded in the builder's update_ledger (statement_superseded when another value for the same property was presented, naming it; statement_retired when none was); only presented subjects are judged, multi-valued presented sets stand whole, and a completed-checkpoint return retires nothing |
+| D-UPDATE-2 | Chunks that disappeared from a re-presented reference file stayed stale: a file built with two chunks then edited to one changed chunk kept the vanished second chunk in the store, still searchable through the rebuilt FTS index; a file emptied kept its chunks too (probed live by TF-114) | TF-114 | VI | **FIXED by TF-114**: the reference builder retires, in the same per-file commit, stored chunks of a file it successfully re-reads whose chunk_index the new presentation does not produce — with any reference_embeddings row keyed on them — ledgered chunk_retired in its update_ledger; the build's closing FTS rebuild drops them from search in the same build |
+| D-UPDATE-3 | No lifecycle statement and no update record existed for re-runs: row tables resolved changed facts by TF-109's placeholder default ("the incoming row wins — TF-114 owns replacing this default"), nothing stated what a re-run should do with an unchanged fact, a changed fact, or a fact that disappears, and no ledger named a supersede or retirement as such — measured in the same probes, units absent from a re-run (Q2, a GeoNames place, a DBpedia uri, a deleted reference file's chunks) all survived by accident, not by rule (found by TF-114) | TF-114 | VI | **FIXED by TF-114**: the lifecycle rules are filed as data (UPDATE_RULES, format thoughtforge-update-ingestion/1) in etl/update_ingestion.py — unchanged = duplicate (TF-109 stands), changed within a source = supersede with the stored value ledgered (TF-050's rule in this store's form), disappeared-from-a-presented-unit = retired + ledgered, absent unit = kept (partial inputs are legitimate; whole-unit retirement is an operator's act, TF-045), cross-source rows never updated by a re-run; TF-109's dedup_merge within-table rule was replaced in the open with the lifecycle supersede, TF-107's pipeline rule text and TF-105's map updated with it, and the wikidata + reference builders hold a fresh UpdateLedger per build (TF-115 owns reporting it per run) |
 | D-SUBSET-2 | The subset builder's only sizing rule was an entity count: no byte budget existed anywhere — only pi_zero's profile declares any knowledge size (deployment.knowledge_subset_max_gb 0.5, read by no code), the other five profiles declare nothing, no build's size was ever compared to anything, the builder's docstring claimed output sizes (~50MB / ~80MB / ~200MB) measured nowhere, and the reference-chunk cap floored at max(1000, limit // 10) so a phone_low build limited to 5 entities copied all 50 synthetic chunks (1.24 MB) and reported success (probed live by TF-110) | TF-110 | VI | **FIXED by TF-110**: etl/subset_craft.py files the craft as data (SUBSET_RULES, format thoughtforge-subset-craft/1) — budget_for_profile resolves each profile's byte budget live (declared knowledge_subset_max_gb wins; otherwise derived at 0.25 x declared RAM, budget_source naming the road as a campaign rule), measure_subset reports the built file's own bytes (db + sidecars, per-table counts + dbstat bytes), and build_profile_subset trims by measured overshoot, rebuilding fresh, until the measured size fits or returns success=False naming the smallest build's size; the chunk cap's 1000-row floor is struck in subset.py and the unmeasured docstring sizes with it |
 | D-SUBSET-3 | A subset re-build was not the subset it claimed: the builder connected to an existing output file and INSERT OR IGNOREd into it, so re-building at limit 2 onto a limit-5 output reported 2 entities while the file still held 5 entities and all 50 chunks (probed live by TF-110) | TF-110 | VI | **FIXED by TF-110**: every build starts from no file (output + -wal + -shm removed first) and building over the source DB itself raises ValueError by name; TF-110's tests prove a re-build's file holds exactly the new build's rows, and the craft result's reported counts are checked against the file it produced |
 | D-SUBSET-4 | Subset entity selection ordered by popularity_score DESC alone: rows tied on popularity were members or not by SQLite's unspecified scan order, so the same source could yield different subsets on different builds (code-read finding, TF-110) | TF-110 | VI | **FIXED by TF-110**: selection orders by popularity_score DESC, qid ASC in both the limited and unlimited queries; TF-110's tests pin the tie group (Q9/Q1/Q5 at one score, limit 2 keeps Q1 + Q5) and the static checker turns red if the tie-break leaves the source |

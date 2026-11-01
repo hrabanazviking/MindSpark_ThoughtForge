@@ -118,7 +118,7 @@ PIPELINE_RULES: tuple[dict[str, Any], ...] = (
     {"id": "a_completed_checkpoint_is_the_result",
      "rule": "resuming a build whose checkpoint is complete returns the checkpoint's filed stats without re-streaming the dump"},
     {"id": "rows_are_idempotent",
-     "rule": "re-processing an item never duplicates a row: entities and labels replace by key, and a statement whose full stored tuple (subject, property, object, type, qualifiers, refs, source) is already present is not inserted again — TF-114 owns changed-fact updates; this slice owns only the duplicate line"},
+     "rule": "re-processing an item never duplicates a row: entities and labels replace by key, and a statement whose full stored tuple (subject, property, object, type, qualifiers, refs, source) is already present is not inserted again — this slice owns only the duplicate line; changed-fact updates are TF-114's lifecycle supersede (etl/update_ingestion.py)"},
     {"id": "the_rate_cap_is_a_ceiling_when_set",
      "rule": "with max_items_per_second set, item N of a run may not finish processing before N / cap seconds have elapsed on the run's clock; unset means uncapped, stated plainly — the dump is a local file and no upstream limit exists to respect by default"},
     {"id": "checkpoints_are_durable",

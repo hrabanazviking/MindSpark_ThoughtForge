@@ -44,6 +44,20 @@ it does not carry, and a conflicting value is recorded
 in this builder's ``merge_ledger`` before the incoming
 row wins; statement duplicates TF-107 skips are recorded
 in the same ledger.
+
+TF-114 (docs/architecture/UPDATE_INGESTION.md; the
+lifecycle rules as data live in
+etl/update_ingestion.py): a re-run updates facts by
+the lifecycle rules — a changed field supersedes
+(ledgered, never silent), and for every subject the
+run presents, its presented statement set is its
+complete newest statement set: stored statements the
+re-run does not present are retired from the live
+store before the final commit and recorded in this
+builder's ``update_ledger`` (superseded when another
+value for the same property is presented, retired
+when none is). Subjects the run does not present are
+kept untouched.
 """
 
 from __future__ import annotations
@@ -62,6 +76,13 @@ from tqdm import tqdm
 from thoughtforge.etl.schema import get_connection, initialize_schema
 from thoughtforge.etl.dedup_merge import MergeLedger, apply_row_merge
 from thoughtforge.etl.schema_gate import SchemaGate
+from thoughtforge.etl.update_ingestion import (
+    PRESENTED_SUBJECTS_TABLE,
+    UpdateLedger,
+    note_presented_statements,
+    prepare_presented_tables,
+    retire_unpresented_statements,
+)
 from thoughtforge.etl.wikidata_pipeline import (
     DEFAULT_CHECKPOINT_EVERY,
     STATUS_COMPLETE,
@@ -104,6 +125,8 @@ class WikidataETL:
         self.schema_gate = SchemaGate()
         # TF-109: the merge ledger for the most recent build.
         self.merge_ledger = MergeLedger()
+        # TF-114: the update ledger for the most recent build.
+        self.update_ledger = UpdateLedger()
 
     def build(
         self,
@@ -146,6 +169,7 @@ class WikidataETL:
         languages = languages or ["en"]
         self.schema_gate = SchemaGate()
         self.merge_ledger = MergeLedger()
+        self.update_ledger = UpdateLedger()
 
         if not dump_path.exists():
             raise FileNotFoundError(f"Wikidata dump not found: {dump_path}")
@@ -214,6 +238,11 @@ class WikidataETL:
             # (the TF-054 posture), never the old OFF.
             conn.execute("PRAGMA synchronous = FULL")
             conn.execute("PRAGMA journal_mode = WAL")
+            # TF-114: the presented sets this run's
+            # statement retirement is judged against —
+            # connection-local TEMP tables, no schema
+            # change (etl/update_ingestion.py).
+            prepare_presented_tables(conn)
 
             entity_batch: list[tuple[Any, ...]] = []
             statement_batch: list[tuple[Any, ...]] = []
@@ -330,6 +359,13 @@ class WikidataETL:
 
                 entity_batch.append((qid, label_en, desc_en, aliases_en, instance_of, popularity))
                 stats["entities"] += 1
+                # TF-114: this subject is presented by
+                # this run, so its stored statements are
+                # judged against its presented set at the
+                # end of the build.
+                conn.execute(
+                    f"INSERT OR IGNORE INTO {PRESENTED_SUBJECTS_TABLE} "
+                    "VALUES (?)", (qid,))
 
                 # Parse labels for all requested languages
                 for lang in languages:
@@ -371,8 +407,12 @@ class WikidataETL:
                 if stats["entities"] and stats["entities"] % MEMORY_CHECK_EVERY_N == 0:
                     self._check_memory(conn)
 
-            # Final flush + commit, then the complete checkpoint.
+            # TF-114: statement retirement runs after the
+            # final flush and before the final commit, so
+            # a failed build rolls it back with the rest
+            # of the run's uncommitted work.
             _flush_all()
+            retire_unpresented_statements(conn, self.update_ledger)
             conn.commit()
             _checkpoint(STATUS_COMPLETE, stream_pos)
             conn.close()
@@ -498,10 +538,15 @@ class WikidataETL:
         # this entity was processed by an earlier run, or by
         # this run before an interruption) is not inserted
         # again. The schema stores no claim id, so exact-tuple
-        # identity is the fidelity the table itself offers;
-        # changed facts are TF-114's update-ingestion road.
+        # identity is the fidelity the table itself offers.
+        # TF-114: every tuple in the batch is also noted as
+        # presented, so the build's end-of-run retirement
+        # (retire_unpresented_statements) can supersede /
+        # retire the stored tuples this run did not present
+        # for the subjects it presented.
         if not batch:
             return
+        note_presented_statements(conn, batch)
         subjects = sorted({row[0] for row in batch})
         placeholders = ", ".join("?" * len(subjects))
         existing = {

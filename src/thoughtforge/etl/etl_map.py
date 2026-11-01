@@ -151,7 +151,7 @@ SOURCE_BUILDERS: tuple[dict[str, Any], ...] = (
     {"id": "wikidata", "class": "WikidataETL", "module": "etl/wikidata.py",
      "input": "Wikidata JSON dump (.json or .json.gz), streamed via ijson",
      "tables": ("entities", "statements", "labels"),
-     "write_mode": "entities/labels merged per filed identity (TF-109: duplicates not rewritten, complementary fields union, conflicts ledgered with the incoming row winning); statements INSERT skipping rows already stored (TF-107 idempotence, skips ledgered by TF-109)",
+     "write_mode": "entities/labels merged per filed identity (TF-109: duplicates not rewritten, complementary fields union, conflicts ledgered with the incoming row winning — TF-114: that resolution is the lifecycle supersede, the stored value staying in the ledger); statements INSERT skipping rows already stored (TF-107 idempotence, skips ledgered by TF-109), and TF-114: stored statements of a subject the run presents that the run does not re-present are retired before the final commit (superseded/retired, ledgered in the builder's update_ledger)",
      "batch_default": 2000, "stats_keys": ("entities", "statements", "labels", "skipped"),
      "logs_ingestion": True, "synchronous": "FULL (TF-107; was OFF during the load)",
      "notes": "TF-107 hardened: checkpointed commit + atomic sidecar checkpoint every 1000 stream items (etl/wikidata_pipeline.py), resumable by dump+config fingerprint, optional max_items_per_second rate cap; checks host memory every 10000 entities and commits early above 85% (psutil optional); excludes 6 instance_of types; deprecated-rank claims skipped; TF-108: every entity is judged by the schema gate (etl/schema_gate.py) before any field is read — malformed entities are refused with reasons in the builder's schema_gate ledger and counted in skipped, never a crash or a coerced row; TF-109: entity/label writes merge per etl/dedup_merge.py and collisions ride the builder's merge_ledger"},
@@ -179,10 +179,10 @@ SOURCE_BUILDERS: tuple[dict[str, Any], ...] = (
     {"id": "reference", "class": "ReferenceDataETL", "module": "etl/sources.py",
      "input": "the built-in reference directory: .md / .json / .jsonl / .yaml / .yml / .txt files, found recursively",
      "tables": ("reference_chunks",),
-     "write_mode": "merged per filed identity on (source_file, chunk_index) (TF-109: duplicates not rewritten, complementary fields union, conflicts ledgered with the incoming row winning)",
+     "write_mode": "merged per filed identity on (source_file, chunk_index) (TF-109: duplicates not rewritten, complementary fields union, conflicts ledgered with the incoming row winning — TF-114: that resolution is the lifecycle supersede); TF-114: stored chunks of a successfully re-read file whose index the new presentation does not produce are retired in the same commit (with their reference_embeddings rows, ledgered in the builder's update_ledger)",
      "batch_default": 1000, "stats_keys": ("files", "chunks", "skipped"),
      "logs_ingestion": False, "synchronous": "the schema default (NORMAL)",
-     "notes": "chunk target 1000 chars with 100 overlap; markdown chunks by heading first; unsupported suffixes are passed over UNCOUNTED (only empty-chunk files and read errors count as skipped); build ends by rebuilding the FTS indexes (TF-058, D-REF-1); TF-109: chunk writes merge per etl/dedup_merge.py and collisions ride the builder's merge_ledger"},
+     "notes": "chunk target 1000 chars with 100 overlap; markdown chunks by heading first; unsupported suffixes are passed over UNCOUNTED (only empty-chunk files and read errors count as skipped); build ends by rebuilding the FTS indexes (TF-058, D-REF-1); TF-109: chunk writes merge per etl/dedup_merge.py and collisions ride the builder's merge_ledger; TF-114: a file absent from a re-run keeps its chunks (absence cannot be told from a partial input)"},
 )
 
 SCHEMA_FACTS: dict[str, Any] = {
@@ -242,6 +242,7 @@ ORCHESTRATION: dict[str, Any] = {
              "per-source commands exist beside `all` for wikidata / conceptnet / geonames / dbpedia / reference / embeddings"),
     "dry_run": "TF-112 (etl/ingestion_dry_run.py): a single-source scratch runner beside `all`, not a step of it — one real builder test-ingested into a scratch store (never the target, proven untouched by hash + counts), the TF-106 registry consulted first, and a full report (stats, store counts, TF-108 gate ledger, TF-109 merge ledger + overlaps, TF-111 embeddings when an encoder is injected); `all`'s filed shape above stands unchanged",
     "canon": "TF-113 (etl/canon_ingestion.py): the owner's own materials ingested beside `all`, not a step of it — the real ReferenceDataETL into an explicitly affirmed private store only (never inside the canon directory), the canon source proven untouched by a TF-058 metadata-only inventory before/after, a content-hashed provenance manifest beside the store, skips and duplicates named in the report, TF-111 embeddings when an encoder is injected; `all`'s filed shape above stands unchanged",
+    "update": "TF-114 (etl/update_ingestion.py): the lifecycle rules every re-run of a builder obeys, enforced inside the builders themselves, not a step of `all` — unchanged facts are duplicates (TF-109), changed facts supersede in place with the stored value ledgered, a presented wikidata subject's unpresented statements and a presented reference file's unproduced chunks are retired (ledgered in each builder's update_ledger), and units absent from a re-run are kept (partial inputs are legitimate); `all`'s filed shape above stands unchanged",
 }
 
 ETL_RULES: tuple[dict[str, Any], ...] = (

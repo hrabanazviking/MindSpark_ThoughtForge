@@ -84,9 +84,11 @@ builders:
         source's own table the incoming row is that
         source's newest statement of itself, so it
         wins — but the overwrite is surfaced, never
-        silent. TF-114 owns replacing this default with
-        lifecycle update rules, and must update this
-        module in the open when it does.
+        silent. (TF-114 has since replaced this
+        default's *statement* with its lifecycle
+        supersede rule — see ``MERGE_RULES`` and
+        etl/update_ingestion.py; the outcome name and
+        the ledgered resolution stand as filed here.)
 
   * ConceptNet edges resolve by **strength** instead,
     because two provenances assert the same edge there
@@ -218,7 +220,7 @@ MERGE_RULES: tuple[dict[str, Any], ...] = (
     {"id": "conflicts_are_surfaced_never_silent",
      "rule": "a field carrying two different non-empty values is a conflict in TF-050's sense: it is recorded in the MergeLedger with the field name and both values (truncated to LEDGER_VALUE_LIMIT) before any resolution writes — no overwrite on the ingestion side is silent any more (D-MERGE-3)"},
     {"id": "within_a_table_the_incoming_row_wins",
-     "rule": "within one source's own table, a recorded conflict resolves to the incoming row — it is that source's newest statement of itself. TF-114 owns replacing this default with lifecycle update rules and must update this module in the open"},
+     "rule": "within one source's own table, a recorded conflict resolves by TF-114's lifecycle supersede rule (etl/update_ingestion.py, which replaced this slice's incoming-wins placeholder in the open): the incoming value supersedes the stored one in place — it is that source's newest statement of itself — and the stored value stays recorded in this ledger as the superseded record, never a silent overwrite"},
     {"id": "conceptnet_edges_resolve_by_strength",
      "rule": "a ConceptNet semantic-key collision resolves by the edges' own weights, TF-050's strength rule in miniature: the stronger assertion stands and the weaker is not written; an exact tie keeps the first row; the surviving row keeps the stronger assertion's uri and weight (D-MERGE-2)"},
     {"id": "cross_source_overlap_is_a_finding_not_a_merge",
