@@ -17,6 +17,16 @@ builder's ``schema_gate`` ledger and counted in
 or silently dropped row. Stated filters (language,
 population, feature class) remain filter skips over
 schema-valid records, not refusals.
+
+TF-109 (docs/architecture/DEDUP_AND_MERGE.md; the rules
+as data live in etl/dedup_merge.py): every write the
+ConceptNet, GeoNames, DBpedia and reference builders
+make goes through the merge rules — ConceptNet edges
+dedup by semantic key and resolve by weight, the other
+tables merge per filed identity (duplicates are not
+rewritten, empty incoming fields never erase, conflicts
+are recorded in the builder's ``merge_ledger`` before
+the incoming row wins).
 """
 
 from __future__ import annotations
@@ -31,6 +41,11 @@ from typing import Any
 from tqdm import tqdm
 
 from thoughtforge.etl.schema import get_connection, initialize_schema, rebuild_fts_indexes
+from thoughtforge.etl.dedup_merge import (
+    MergeLedger,
+    apply_row_merge,
+    merge_conceptnet_edge,
+)
 from thoughtforge.etl.schema_gate import SchemaGate
 from thoughtforge.utils.paths import get_knowledge_db_path, get_knowledge_reference_dir
 
@@ -56,6 +71,8 @@ class ConceptNetETL:
         self.db_path = db_path or get_knowledge_db_path()
         # TF-108: the schema gate's ledger for the most recent build.
         self.schema_gate = SchemaGate()
+        # TF-109: the merge ledger for the most recent build.
+        self.merge_ledger = MergeLedger()
 
     def build(
         self,
@@ -71,6 +88,7 @@ class ConceptNetETL:
         csv_path = Path(csv_path)
         languages = set(languages) if languages else {"en"}
         self.schema_gate = SchemaGate()
+        self.merge_ledger = MergeLedger()
 
         if not csv_path.exists():
             raise FileNotFoundError(f"ConceptNet CSV not found: {csv_path}")
@@ -172,6 +190,7 @@ class ConceptNetETL:
         ref_dir = get_knowledge_reference_dir()
         total = 0
         self.schema_gate = SchemaGate()
+        self.merge_ledger = MergeLedger()
 
         conn = get_connection(db_path)
         try:
@@ -239,14 +258,17 @@ class ConceptNetETL:
         text = parts[-1] if parts else uri
         return text.replace("_", " ")
 
-    @staticmethod
-    def _flush(conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
-        conn.executemany(
-            "INSERT OR IGNORE INTO conceptnet_edges "
-            "(uri, concept1, relation, concept2, weight, language) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            batch,
-        )
+    def _flush(self, conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
+        # TF-109: edges dedup by semantic key and resolve by
+        # weight (etl/dedup_merge.py) — the same edge asserted
+        # under another uri no longer duplicates, and a
+        # stronger re-assertion is no longer IGNOREd away.
+        for uri, concept1, relation, concept2, weight, language in batch:
+            merge_conceptnet_edge(conn, self.merge_ledger, {
+                "uri": uri, "concept1": concept1, "relation": relation,
+                "concept2": concept2, "weight": weight,
+                "language": language,
+            })
 
 
 # ── GeoNames ───────────────────────────────────────────────────────────────────
@@ -268,6 +290,8 @@ class GeoNamesETL:
         self.db_path = db_path or get_knowledge_db_path()
         # TF-108: the schema gate's ledger for the most recent build.
         self.schema_gate = SchemaGate()
+        # TF-109: the merge ledger for the most recent build.
+        self.merge_ledger = MergeLedger()
 
     def build(
         self,
@@ -283,6 +307,7 @@ class GeoNamesETL:
         """
         txt_path = Path(txt_path)
         self.schema_gate = SchemaGate()
+        self.merge_ledger = MergeLedger()
         if not txt_path.exists():
             raise FileNotFoundError(f"GeoNames file not found: {txt_path}")
 
@@ -370,15 +395,16 @@ class GeoNamesETL:
         logger.info("GeoNames ETL complete: %s", stats)
         return stats
 
-    @staticmethod
-    def _flush(conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
-        conn.executemany(
-            "INSERT OR REPLACE INTO geonames_places "
-            "(geonames_id, name, ascii_name, latitude, longitude, feature_class, feature_code, "
-            "country_code, population, elevation, timezone, admin1_code, admin2_code) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            batch,
-        )
+    def _flush(self, conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
+        # TF-109: place writes go through the merge rules
+        # (etl/dedup_merge.py), keyed by geonames_id.
+        columns = ("geonames_id", "name", "ascii_name", "latitude",
+                   "longitude", "feature_class", "feature_code",
+                   "country_code", "population", "elevation", "timezone",
+                   "admin1_code", "admin2_code")
+        for row in batch:
+            apply_row_merge(conn, self.merge_ledger, "geonames_places",
+                            dict(zip(columns, row)))
 
 
 # ── DBpedia ────────────────────────────────────────────────────────────────────
@@ -397,6 +423,8 @@ class DBpediaETL:
         self.db_path = db_path or get_knowledge_db_path()
         # TF-108: the schema gate's ledger for the most recent build.
         self.schema_gate = SchemaGate()
+        # TF-109: the merge ledger for the most recent build.
+        self.merge_ledger = MergeLedger()
 
     def build(
         self,
@@ -407,6 +435,7 @@ class DBpediaETL:
         """Ingest a newline-delimited JSON file of DBpedia abstracts."""
         json_path = Path(json_path)
         self.schema_gate = SchemaGate()
+        self.merge_ledger = MergeLedger()
         if not json_path.exists():
             raise FileNotFoundError(f"DBpedia file not found: {json_path}")
 
@@ -480,13 +509,14 @@ class DBpediaETL:
         logger.info("DBpedia ETL complete: %s", stats)
         return stats
 
-    @staticmethod
-    def _flush(conn: sqlite3.Connection, batch: list[tuple[str, str, str, str]]) -> None:
-        conn.executemany(
-            "INSERT OR REPLACE INTO dbpedia_entities (uri, label_en, abstract_en, types) "
-            "VALUES (?, ?, ?, ?)",
-            batch,
-        )
+    def _flush(self, conn: sqlite3.Connection, batch: list[tuple[str, str, str, str]]) -> None:
+        # TF-109: entity writes go through the merge rules
+        # (etl/dedup_merge.py), keyed by uri.
+        for uri, label_en, abstract_en, types in batch:
+            apply_row_merge(conn, self.merge_ledger, "dbpedia_entities", {
+                "uri": uri, "label_en": label_en,
+                "abstract_en": abstract_en, "types": types,
+            })
 
 
 # ── Built-in Reference Data ────────────────────────────────────────────────────
@@ -499,6 +529,8 @@ class ReferenceDataETL:
 
     def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or get_knowledge_db_path()
+        # TF-109: the merge ledger for the most recent build.
+        self.merge_ledger = MergeLedger()
 
     def build(
         self,
@@ -511,6 +543,7 @@ class ReferenceDataETL:
         Supports .md, .json, .jsonl, .yaml files.
         """
         ref_dir = ref_dir or get_knowledge_reference_dir()
+        self.merge_ledger = MergeLedger()
 
         if not ref_dir.exists():
             raise FileNotFoundError(f"Reference data directory not found: {ref_dir}")
@@ -541,12 +574,17 @@ class ReferenceDataETL:
                             tags,
                             len(content.split()),
                         ))
-                    conn.executemany(
-                        "INSERT OR REPLACE INTO reference_chunks "
-                        "(source_file, chunk_index, title, content, tags, word_count) "
-                        "VALUES (?, ?, ?, ?, ?, ?)",
-                        batch,
-                    )
+                    # TF-109: chunk writes go through the
+                    # merge rules (etl/dedup_merge.py), keyed
+                    # by (source_file, chunk_index).
+                    for source_file, chunk_index, title, content, tags, word_count in batch:
+                        apply_row_merge(
+                            conn, self.merge_ledger, "reference_chunks", {
+                                "source_file": source_file,
+                                "chunk_index": chunk_index,
+                                "title": title, "content": content,
+                                "tags": tags, "word_count": word_count,
+                            })
                     conn.commit()
                     stats["chunks"] += len(batch)
                     stats["files"] += 1

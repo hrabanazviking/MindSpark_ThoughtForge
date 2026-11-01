@@ -35,6 +35,15 @@ field is read — a malformed entity is refused whole
 with reasons recorded in this builder's ``schema_gate``
 ledger and counted in ``skipped``, never a mid-stream
 crash and never a coerced row.
+
+TF-109 (docs/architecture/DEDUP_AND_MERGE.md; the rules
+as data live in etl/dedup_merge.py): entity and label
+writes go through the merge rules — an exact duplicate
+is not rewritten, a thinner re-run never erases fields
+it does not carry, and a conflicting value is recorded
+in this builder's ``merge_ledger`` before the incoming
+row wins; statement duplicates TF-107 skips are recorded
+in the same ledger.
 """
 
 from __future__ import annotations
@@ -51,6 +60,7 @@ from typing import Any, Iterator
 from tqdm import tqdm
 
 from thoughtforge.etl.schema import get_connection, initialize_schema
+from thoughtforge.etl.dedup_merge import MergeLedger, apply_row_merge
 from thoughtforge.etl.schema_gate import SchemaGate
 from thoughtforge.etl.wikidata_pipeline import (
     DEFAULT_CHECKPOINT_EVERY,
@@ -92,6 +102,8 @@ class WikidataETL:
         self.db_path = db_path or get_knowledge_db_path()
         # TF-108: the schema gate's ledger for the most recent build.
         self.schema_gate = SchemaGate()
+        # TF-109: the merge ledger for the most recent build.
+        self.merge_ledger = MergeLedger()
 
     def build(
         self,
@@ -133,6 +145,7 @@ class WikidataETL:
         dump_path = Path(dump_path)
         languages = languages or ["en"]
         self.schema_gate = SchemaGate()
+        self.merge_ledger = MergeLedger()
 
         if not dump_path.exists():
             raise FileNotFoundError(f"Wikidata dump not found: {dump_path}")
@@ -211,7 +224,7 @@ class WikidataETL:
                     self._flush_entities(conn, entity_batch)
                     entity_batch.clear()
                 if statement_batch:
-                    self._flush_statements(conn, statement_batch)
+                    self._flush_statements(conn, statement_batch, self.merge_ledger)
                     statement_batch.clear()
                 if label_batch:
                     self._flush_labels(conn, label_batch)
@@ -346,7 +359,7 @@ class WikidataETL:
                     self._flush_entities(conn, entity_batch)
                     entity_batch.clear()
                 if len(statement_batch) >= batch_size * 3:
-                    self._flush_statements(conn, statement_batch)
+                    self._flush_statements(conn, statement_batch, self.merge_ledger)
                     statement_batch.clear()
                 if len(label_batch) >= batch_size * len(languages):
                     self._flush_labels(conn, label_batch)
@@ -464,17 +477,22 @@ class WikidataETL:
 
     # ── Batch flush helpers ────────────────────────────────────────────────────
 
-    @staticmethod
-    def _flush_entities(conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
-        conn.executemany(
-            "INSERT OR REPLACE INTO entities "
-            "(qid, label_en, description_en, aliases_en, instance_of, popularity_score, source) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'wikidata')",
-            batch,
-        )
+    def _flush_entities(self, conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
+        # TF-109: every entity write is judged by the merge
+        # rules (etl/dedup_merge.py) — duplicates are not
+        # rewritten, empty incoming fields never erase, and
+        # conflicts are ledgered before the incoming row wins.
+        for qid, label_en, desc_en, aliases_en, instance_of, popularity in batch:
+            apply_row_merge(conn, self.merge_ledger, "entities", {
+                "qid": qid, "label_en": label_en,
+                "description_en": desc_en, "aliases_en": aliases_en,
+                "instance_of": instance_of,
+                "popularity_score": popularity, "source": "wikidata",
+            })
 
     @staticmethod
-    def _flush_statements(conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
+    def _flush_statements(conn: sqlite3.Connection, batch: list[tuple[Any, ...]],
+                          ledger: MergeLedger | None = None) -> None:
         # TF-107 (D-WIKI-1): statements are idempotent — a row
         # whose full stored tuple is already present (because
         # this entity was processed by an earlier run, or by
@@ -500,6 +518,14 @@ class WikidataETL:
         seen_in_batch: set[tuple[Any, ...]] = set()
         for row in batch:
             if row in existing or row in seen_in_batch:
+                # TF-109: the skip is a merge decision and is
+                # recorded in the builder's merge ledger.
+                if ledger is not None:
+                    ledger.record("statements", {
+                        "subject_qid": row[0], "property_pid": row[1],
+                        "object_value": row[2], "object_type": row[3],
+                        "qualifiers": row[4], "refs": row[5],
+                    }, "duplicate", [])
                 continue
             seen_in_batch.add(row)
             fresh.append(row)
@@ -511,12 +537,13 @@ class WikidataETL:
                 fresh,
             )
 
-    @staticmethod
-    def _flush_labels(conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
-        conn.executemany(
-            "INSERT OR REPLACE INTO labels (qid, language, label) VALUES (?, ?, ?)",
-            batch,
-        )
+    def _flush_labels(self, conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
+        # TF-109: label writes go through the merge rules,
+        # like entity writes above.
+        for qid, language, label in batch:
+            apply_row_merge(conn, self.merge_ledger, "labels", {
+                "qid": qid, "language": language, "label": label,
+            })
 
     # ── Ingestion log helpers ──────────────────────────────────────────────────
 
