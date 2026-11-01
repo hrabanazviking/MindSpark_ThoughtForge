@@ -365,10 +365,10 @@ class TestHarnessRegistration:
         for kind in PANEL_KINDS:
             assert ("quant_panel", f"{kind}_mean_score") in defined
         assert ("quant_panel", "total_cells") in defined
-        assert len(BENCHMARKS) == 24  # + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130) + data_hygiene (TF-131) + wyrd_panel (TF-132) + cost_panel (TF-133) + baseline_book (TF-134) + flake_discipline (TF-135) + public_claims (TF-136), in the open
+        assert len(BENCHMARKS) == 25  # + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130) + data_hygiene (TF-131) + wyrd_panel (TF-132) + cost_panel (TF-133) + baseline_book (TF-134) + flake_discipline (TF-135) + public_claims (TF-136) + harness_tool (TF-137), in the open
         assert len(FIXTURES) == 13  # + profile_panel_corpus (TF-128) + regression_gate_corpus (TF-129) + spot_checks_corpus (TF-130) + data_hygiene_corpus (TF-131) + wyrd_panel_corpus (TF-132), in the open
-        assert len(BASELINES) == 17  # + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129) + spot_checks_synthetic_v1 (TF-130) + data_hygiene_synthetic_v1 (TF-131) + wyrd_panel_synthetic_v1 (TF-132) + cost_panel_synthetic_v1 (TF-133) + baseline_book_synthetic_v1 (TF-134) + flake_discipline_synthetic_v1 (TF-135) + public_claims_synthetic_v1 (TF-136), in the open
-        assert len(METRIC_DEFINITIONS) == 139  # + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129) + 6 spot_checks metrics (TF-130) + 7 data_hygiene metrics (TF-131) + 7 wyrd_panel metrics (TF-132) + 10 cost_panel metrics (TF-133) + 6 baseline_book metrics (TF-134) + 7 flake_discipline metrics (TF-135) + 7 public_claims metrics (TF-136), in the open
+        assert len(BASELINES) == 18  # + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129) + spot_checks_synthetic_v1 (TF-130) + data_hygiene_synthetic_v1 (TF-131) + wyrd_panel_synthetic_v1 (TF-132) + cost_panel_synthetic_v1 (TF-133) + baseline_book_synthetic_v1 (TF-134) + flake_discipline_synthetic_v1 (TF-135) + public_claims_synthetic_v1 (TF-136), in the open
+        assert len(METRIC_DEFINITIONS) == 146  # + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129) + 6 spot_checks metrics (TF-130) + 7 data_hygiene metrics (TF-131) + 7 wyrd_panel metrics (TF-132) + 10 cost_panel metrics (TF-133) + 6 baseline_book metrics (TF-134) + 7 flake_discipline metrics (TF-135) + 7 public_claims metrics (TF-136) + 7 harness_tool metrics (TF-137), in the open
         assert harness.harness_problems() == []
 
 

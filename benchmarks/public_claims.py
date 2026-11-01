@@ -365,24 +365,24 @@ CLAIM_ROWS: tuple[dict[str, Any], ...] = (
      "reason": ""},
     {"id": "baseline_book_baseline_count",
      "source": "docs/architecture/BASELINE_BOOK.md",
-     "marker": "Baselines filed: 17",
-     "claim": "Baseline book: 17 baselines filed "
+     "marker": "Baselines filed: 18",
+     "claim": "Baseline book: 18 baselines filed "
               "(the generated book's own header)",
      "disposition": "matched",
      "baseline": "baseline_book_synthetic_v1",
      "metric": "total_baselines",
-     "filed_value": 17,
+     "filed_value": 18,
      "reason": ""},
     {"id": "flake_discipline_deterministic_count",
      "source": "docs/architecture/FLAKE_DISCIPLINE.md",
-     "marker": "Deterministic baselines: 17",
-     "claim": "Flake discipline: 17 deterministic "
+     "marker": "Deterministic baselines: 18",
+     "claim": "Flake discipline: 18 deterministic "
               "baselines (the rendered filing's own "
               "header)",
      "disposition": "matched",
      "baseline": "flake_discipline_synthetic_v1",
      "metric": "deterministic_baselines",
-     "filed_value": 17,
+     "filed_value": 18,
      "reason": ""},
     {"id": "model_card_citation_accuracy_target",
      "source": "MODEL_CARD.md",

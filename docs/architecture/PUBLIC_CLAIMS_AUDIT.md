@@ -24,8 +24,8 @@ Every performance claim in the repo's docs that purports to state a suite / harn
 | `quant_panel_q5_k_m_score` | `docs/architecture/QUANT_PANEL.md` | `quant_panel_synthetic_v1` | `q5_k_m_score` | 0.7083333333333334 |
 | `wyrd_panel_overall_score` | `docs/architecture/WYRD_PANEL.md` | `wyrd_panel_synthetic_v1` | `overall_score` | 0.5555555555555556 |
 | `cost_panel_total_token_budget` | `docs/architecture/COST_PANEL.md` | `cost_panel_synthetic_v1` | `total_token_budget` | 766800 |
-| `baseline_book_baseline_count` | `docs/architecture/BASELINE_BOOK.md` | `baseline_book_synthetic_v1` | `total_baselines` | 17 |
-| `flake_discipline_deterministic_count` | `docs/architecture/FLAKE_DISCIPLINE.md` | `flake_discipline_synthetic_v1` | `deterministic_baselines` | 17 |
+| `baseline_book_baseline_count` | `docs/architecture/BASELINE_BOOK.md` | `baseline_book_synthetic_v1` | `total_baselines` | 18 |
+| `flake_discipline_deterministic_count` | `docs/architecture/FLAKE_DISCIPLINE.md` | `flake_discipline_synthetic_v1` | `deterministic_baselines` | 18 |
 
 ## Struck claims (reason filed for each)
 

@@ -289,11 +289,11 @@ class TestHarnessRegistration:
                        "clean_inputs", "probes_passed",
                        "probes_total"):
             assert ("data_hygiene", metric) in defined
-        assert len(BENCHMARKS) == 24
+        assert len(BENCHMARKS) == 25
         assert len(FIXTURES) == 13
-        assert len(BASELINES) == 17
-        assert len(METRIC_DEFINITIONS) == 139
-        assert len(HARNESS_RULES) == 17
+        assert len(BASELINES) == 18
+        assert len(METRIC_DEFINITIONS) == 146
+        assert len(HARNESS_RULES) == 18
         assert "benchmark_inputs_are_synthetic_or_licensed_never_canon" \
             in {r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []

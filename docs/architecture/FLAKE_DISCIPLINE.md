@@ -4,8 +4,8 @@ GENERATED from the filed data in `benchmarks/flake_discipline.py` — the filed 
 
 Format: `thoughtforge-flake-discipline/1`
 Census repeats: 5
-Baselines censused: 17
-Deterministic baselines: 17
+Baselines censused: 18
+Deterministic baselines: 18
 Quarantined baselines: 0
 Excluded-by-rule metrics: 6
 Flake reports filed: 1
@@ -33,6 +33,7 @@ Every pinned suite is census-measured by repetition: each baseline is re-measure
 | `baseline_book_synthetic_v1` | baseline_book | 5 | 6 | deterministic | — | 0.0 |
 | `flake_discipline_synthetic_v1` | flake_discipline | 5 | 7 | deterministic | — | 0.0 |
 | `public_claims_synthetic_v1` | public_claims | 5 | 7 | deterministic | — | 0.0 |
+| `harness_tool_synthetic_v1` | harness_tool | 5 | 7 | deterministic | — | 0.0 |
 | `profile_benchmark_empty_store_v1` | profile_benchmark | 5 | 9 | deterministic | — | 0.0 |
 
 ## Excluded by rule (never flakes)

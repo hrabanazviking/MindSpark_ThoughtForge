@@ -725,6 +725,91 @@ benchmarks/flake_discipline.py); every
 other earlier pinned baseline stands
 exactly as filed (never re-pinned).
 
+**TF-137 update, in the open:** the harness
+as a tool is built
+(``benchmarks/harness_tool.py``) and
+registered below (``harness_tool``) with
+its own pinned baseline
+(``harness_tool_synthetic_v1``, measured
+live twice, identical): the panels a slice
+needs filed as literal data — the full
+panel (every pinned baseline, this slice's
+included, 18), the gate panel (TF-129's
+nine gated baselines) and the audit panel
+(the nine ungated, checker-judged
+baselines) — each filing its purpose and
+its members drawn from this harness's
+pinned baselines, whose runners are the
+real ``run_*`` functions the BENCHMARKS
+index binds (no scorer or runner copied).
+One command runs a panel
+(``python3 -m benchmarks.harness_tool
+--panel <id>``; ``--list-panels`` lists,
+``--baseline <id>`` selects individually,
+and the bare command regenerates the
+filed doc ``docs/architecture/
+HARNESS_TOOL.md``, the module's render
+filed verbatim), and every run prints
+deterministic citable lines — a citation
+line (panel, members run, members passed,
+verdict), one member line per baseline,
+one line per problem, with no wall times
+anywhere in the output (TF-121's rule), so
+keepers cite its output verbatim. The
+verdict is PASS only on a full panel
+selection with every member running and
+passing; a partial selection files REVIEW
+however it scores, and an empty or
+unknown selection is named and files
+REVIEW, never a vacuous pass. Seven filed
+probes prove the pure validators can fail
+(an unknown member, a duplicate member,
+an empty panel, a panel missing its
+purpose, a member reported passing that
+did not run, and a citation line that does
+not match the run, each named, + the clean
+panel). TF-137's probes found and filed
+**D-BENCH-22** (no harness tool existed —
+the panels existed as separate modules
+with separate invocations, no panel
+registry and no citable run output
+anywhere; the gap was assigned to TF-137
+by the roadmap without ever being
+numbered — the D-BENCH-9..21 pattern) and
+FIXED it. The tool baseline is NOT one of
+TF-129's gated baselines: the gate's gated
+set stays the nine TF-121..TF-128
+baselines exactly as filed, and the
+exclusion is filed in the open in
+``benchmarks/regression_gate.py``.
+**TF-131 coupling, in the open:** the tool
+adds NO benchmark input (it runs only
+already-filed baselines through their
+already-filed measurers), so it files no
+new fixture here and the hygiene
+inventory does NOT grow — its pinned
+baseline stands exactly as filed. **Two
+deliberate re-pins, in the open:** the
+baseline-book baseline below is re-pinned
+for exactly the registry growth this slice
+files (17 -> 18 baselines, 139 -> 146
+pinned metrics, ungated 8 -> 9), and the
+flake-discipline baseline below is
+re-pinned for exactly its census growth
+(17 -> 18 censused baselines, 17 -> 18
+deterministic — TF-135's CENSUS_ROWS grew
+by this slice's baseline in the open in
+benchmarks/flake_discipline.py); the
+public-claims baseline stands exactly as
+filed (its literal census metrics do not
+move — only two matched rows' filed
+values follow the book / flake growth, in
+the open in benchmarks/public_claims.py);
+every other earlier pinned baseline
+stands exactly as filed (never
+re-pinned). Live-model runs are NOT
+PROVEN (TF-173).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -751,76 +836,63 @@ Filed limits, stated plainly:
     TF-125 build them. **TF-122 update:** the first
     suite (persona consistency) now exists and is
     registered below; TF-123..TF-125's suites and
-    TF-137's one-command tool still stand as filed
+    TF-137 DONE (the harness as a tool — the TF-137 update above)
     (TF-134's baseline book DONE — the TF-134 update
     below).
     **TF-123 update:** the second suite (memory
     fidelity) now exists and is registered below;
-    TF-124..TF-125's suites and TF-137's one-command
-    tool still stand as filed (TF-134's baseline
+    TF-124..TF-125's suites and TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-124 update:** the third suite (depth) now
     exists and is registered below; TF-125's suite
-    and TF-137's one-command tool still stand as
-    filed (TF-134's baseline book DONE — the TF-134
+    and TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline book DONE — the TF-134
     update below).
     **TF-125 update:** the fourth suite (presence)
-    now exists and is registered below; TF-137's
-    one-command tool still stands as filed
+    now exists and is registered below; TF-137 DONE (the harness as a tool — the TF-137 update above)
     (TF-134's baseline book DONE — the TF-134 update
     below).
     **TF-126 update:** the honesty panel over the
     four suites now exists and is registered below;
-    TF-137's one-command
-    tool still stands as filed (TF-134's baseline
+    TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-127 update:** the quant-vs-quality panel
     over TF-067's fixture estate now exists and is
-    registered below; TF-137's one-command
-    tool still stands as filed (TF-134's baseline
+    registered below; TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-128 update:** the profile panels over
     the six shipped profiles now exist and are
-    registered below; TF-137's one-command
-    tool still stands as filed (TF-134's baseline
+    registered below; TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-129 update:** the regression gates over
     the nine pinned baselines now exist and are
-    registered below; TF-137's one-command
-    tool still stands as filed (TF-134's baseline
+    registered below; TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-130 update:** the human-shaped spot
     checks over the suites' own filed corpora now
-    exist and are registered below; TF-137's
-    one-command tool still stands as filed
+    exist and are registered below; TF-137 DONE (the harness as a tool — the TF-137 update above)
     (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-131 update:** the benchmark data
     hygiene inventory over every benchmark
     input in the estate now exists and is
-    registered below; TF-137's one-command
-    tool still stands as filed (TF-134's baseline
+    registered below; TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-132 update:** the WYRD-shaped panel
     over its filed synthetic world now exists
-    and is registered below; TF-137's one-command
-    tool still stands as filed (TF-134's baseline
+    and is registered below; TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-133 update:** the cost panel over
     the suites x shipped profiles now exists
-    and is registered below; TF-137's one-command
-    tool still stands as filed (TF-134's baseline
+    and is registered below; TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's baseline
     book DONE — the TF-134 update below).
     **TF-135 update:** the flake discipline
     over every pinned baseline now exists and
-    is registered below; TF-137's one-command
-    tool still stands as filed (TF-134's
+    is registered below; TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's
     baseline book DONE — the TF-134 update
     above).
     **TF-136 update:** the public-claims audit
     over the repo's docs now exists and is
-    registered below; TF-137's one-command
-    tool still stands as filed (TF-134's
+    registered below; TF-137 DONE (the harness as a tool — the TF-137 update above) (TF-134's
     baseline book DONE — the TF-134 update
     above).
 
@@ -1448,6 +1520,41 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "pins and adds no benchmark input "
               "(TF-131 coupling, filed in the open). "
               "Live-model claims are NOT PROVEN "
+              "(TF-173)"},
+    {"id": "harness_tool", "kind": "tool",
+     "status": "built_tool",
+     "bind_module": "benchmarks.harness_tool",
+     "bind_attribute": "run_harness_tool",
+     "fixture": None,
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-137 (the harness as a tool — itself)",
+     "doc": "docs/architecture/HARNESS_TOOL.md",
+     "docket": ("D-BENCH-22 FIXED by TF-137",),
+     "notes": "TF-137's harness tool: the panels a "
+              "slice needs filed as literal data — "
+              "the full panel (every pinned baseline, "
+              "18), the gate panel (TF-129's nine "
+              "gated baselines) and the audit panel "
+              "(the nine ungated, checker-judged "
+              "baselines) — each filing its purpose "
+              "and its members drawn from this "
+              "harness's pinned baselines, whose "
+              "runners are the real run_* functions "
+              "this index binds (no scorer or runner "
+              "copied); one command runs a panel "
+              "(python3 -m benchmarks.harness_tool "
+              "--panel <id>, --list-panels, "
+              "--baseline <id>) and every run prints "
+              "deterministic citable lines with no "
+              "wall times, so keepers cite its output "
+              "verbatim; 7 filed probes prove the "
+              "pure validators can fail. The rendered "
+              "filing IS the doc (HARNESS_TOOL.md). "
+              "The tool files no fixture of its own: "
+              "it runs only already-filed baselines "
+              "and adds no benchmark input (TF-131 "
+              "coupling, filed in the open). "
+              "Live-model runs are NOT PROVEN "
               "(TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
@@ -2372,6 +2479,44 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "legacy_name": "",
      "computes": "TF-136's filed probes in "
                  "total (7 on this tree)"},
+    {"id": "total_panels", "benchmark": "harness_tool",
+     "legacy_name": "",
+     "computes": "panels filed in TF-137's harness "
+                 "tool: the full, gate and audit "
+                 "panels as literal data (3 on this "
+                 "tree) (TF-137)"},
+    {"id": "full_panel_baselines", "benchmark": "harness_tool",
+     "legacy_name": "",
+     "computes": "member baselines in the full "
+                 "panel — every pinned baseline in "
+                 "the harness (18 on this tree) "
+                 "(TF-137)"},
+    {"id": "gate_panel_baselines", "benchmark": "harness_tool",
+     "legacy_name": "",
+     "computes": "member baselines in the gate "
+                 "panel — TF-129's nine gated "
+                 "baselines (9 on this tree) "
+                 "(TF-137)"},
+    {"id": "audit_panel_baselines", "benchmark": "harness_tool",
+     "legacy_name": "",
+     "computes": "member baselines in the audit "
+                 "panel — the ungated, checker-judged "
+                 "baselines (9 on this tree) "
+                 "(TF-137)"},
+    {"id": "panel_member_slots", "benchmark": "harness_tool",
+     "legacy_name": "",
+     "computes": "member slots across all filed "
+                 "panels (18 + 9 + 9 = 36 on this "
+                 "tree) (TF-137)"},
+    {"id": "probes_passed", "benchmark": "harness_tool",
+     "legacy_name": "",
+     "computes": "TF-137's filed probes against "
+                 "the pure validators that behave "
+                 "as filed (7 on this tree)"},
+    {"id": "probes_total", "benchmark": "harness_tool",
+     "legacy_name": "",
+     "computes": "TF-137's filed probes in "
+                 "total (7 on this tree)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -3055,19 +3200,19 @@ BASELINES: tuple[dict[str, Any], ...] = (
                     "identical",
      "tolerance": 1e-9,
      "metrics": {
-         "total_baselines": 17,
-         "total_pinned_metrics": 139,
+         "total_baselines": 18,
+         "total_pinned_metrics": 146,
          "gated_baselines": 9,
-         "ungated_baselines": 8,
+         "ungated_baselines": 9,
          "probes_passed": 7,
          "probes_total": 7,
      },
      "targets": {
-         "total_baselines": {"target": 17, "met": True},
+         "total_baselines": {"target": 18, "met": True},
      },
      "excluded_metrics": {},
      "notes": "the baseline book's own verdict "
-              "row (17 filed entries in "
+              "row (18 filed entries in "
               "benchmarks/baseline_book.py, "
               "recomputed live by its checker): "
               "every pinned baseline in this "
@@ -3080,7 +3225,7 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "filed book and the live registries. "
               "The filed target is the book's "
               "completeness truth: every one of "
-              "the estate's 17 pinned baselines "
+              "the estate's 18 pinned baselines "
               "stands in the book. TF-135 update, "
               "in the open: this baseline was "
               "re-pinned 15 -> 16 baselines / "
@@ -3099,6 +3244,16 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "reason — TF-136 filed a new "
               "pinned baseline "
               "(public_claims_synthetic_v1) "
+              "and the book it pins grew by that "
+              "baseline; no other value moved. "
+              "TF-137 update, "
+              "in the open: this baseline was "
+              "re-pinned 17 -> 18 baselines / "
+              "139 -> 146 pinned metrics / "
+              "ungated 8 -> 9 for exactly one "
+              "reason — TF-137 filed a new "
+              "pinned baseline "
+              "(harness_tool_synthetic_v1) "
               "and the book it pins grew by that "
               "baseline; no other value moved. "
               "The baseline's "
@@ -3127,8 +3282,8 @@ BASELINES: tuple[dict[str, Any], ...] = (
                     "identical",
      "tolerance": 1e-9,
      "metrics": {
-         "total_census_baselines": 17,
-         "deterministic_baselines": 17,
+         "total_census_baselines": 18,
+         "deterministic_baselines": 18,
          "quarantined_baselines": 0,
          "excluded_by_rule_metrics": 6,
          "census_repeats": 5,
@@ -3136,7 +3291,7 @@ BASELINES: tuple[dict[str, Any], ...] = (
          "probes_total": 7,
      },
      "targets": {
-         "deterministic_baselines": {"target": 17, "met": True},
+         "deterministic_baselines": {"target": 18, "met": True},
      },
      "excluded_metrics": {
          "census_wall_time_s": "timing varies run to run "
@@ -3149,13 +3304,13 @@ BASELINES: tuple[dict[str, Any], ...] = (
                               "never its own wall",
      },
      "notes": "the flake discipline's own verdict "
-              "row (17 filed census rows in "
+              "row (18 filed census rows in "
               "benchmarks/flake_discipline.py, "
               "recomputed live by its checker): "
               "every pinned baseline re-measured "
               "5 times in one process through the "
               "harness measurers and classified — "
-              "17 deterministic (every repeat "
+              "18 deterministic (every repeat "
               "reproduced its pin exactly, "
               "TF-036's determinism measured over "
               "the whole estate), 0 quarantined "
@@ -3261,6 +3416,73 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "filed docs and fixture baselines "
               "— live-model performance is NOT "
               "PROVEN (TF-173)"},
+    {"id": "harness_tool_synthetic_v1",
+     "benchmark": "harness_tool",
+     "fixture": "profile_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-137's "
+                    "filed panels over the harness's "
+                    "pinned baselines (bound live "
+                    "against the registries) and its "
+                    "filed probes, measured live "
+                    "twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "total_panels": 3,
+         "full_panel_baselines": 18,
+         "gate_panel_baselines": 9,
+         "audit_panel_baselines": 9,
+         "panel_member_slots": 36,
+         "probes_passed": 7,
+         "probes_total": 7,
+     },
+     "targets": {
+         "full_panel_baselines": {"target": 18, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the harness tool's own verdict "
+              "row (3 filed panel rows in "
+              "benchmarks/harness_tool.py, "
+              "recomputed live by its checker): "
+              "the full panel (18 members — every "
+              "pinned baseline in this harness, "
+              "this one included), the gate panel "
+              "(9 members — TF-129's gated "
+              "baselines) and the audit panel "
+              "(9 members — the ungated, "
+              "checker-judged baselines), each "
+              "filing its purpose; one command "
+              "runs the panel a slice needs and "
+              "every run prints deterministic "
+              "citable lines with no wall times, "
+              "so keepers cite its output "
+              "verbatim; the verdict is PASS only "
+              "on the full panel with every "
+              "member passing, partial / empty / "
+              "unknown selections REVIEW, named. "
+              "The filed target is the panel "
+              "truth: the full panel files every "
+              "pinned baseline at 18. The "
+              "baseline's fixture names the "
+              "profile panel's corpus estate in "
+              "the open, as TF-133's, TF-134's, "
+              "TF-135's and TF-136's baselines "
+              "did: the tool files no fixture of "
+              "its own because it adds no "
+              "benchmark input — it runs only "
+              "already-filed baselines through "
+              "their already-filed measurers "
+              "(TF-131 coupling, filed in "
+              "benchmarks/harness_tool.py). This "
+              "baseline's own measurer is "
+              "literal-based over the filed "
+              "panels + the pure probes "
+              "(TF-135's / TF-136's shape), so "
+              "running the full panel cannot "
+              "recurse into the tool itself. "
+              "This pins the tool's SHAPE over "
+              "scripted fixture baselines — a "
+              "live model's runs are NOT PROVEN "
+              "(TF-173)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -3588,6 +3810,49 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "so the hygiene inventory does not "
              "move; live-model performance is NOT "
              "PROVEN (TF-173)"},
+    {"id": "the_harness_is_a_tool_with_citable_panels",
+     "rule": "TF-137 DONE: the harness is a tool "
+             "(benchmarks/harness_tool.py, "
+             "D-BENCH-22) — the panels a slice "
+             "needs filed as literal data (the "
+             "full panel: every pinned baseline, "
+             "18; the gate panel: TF-129's nine "
+             "gated baselines; the audit panel: "
+             "the nine ungated, checker-judged "
+             "baselines), each filing its purpose "
+             "and its members drawn from this "
+             "harness's pinned baselines, whose "
+             "runners are the real run_* functions "
+             "this index binds — no scorer or "
+             "runner copied; one command runs a "
+             "panel (python3 -m "
+             "benchmarks.harness_tool --panel "
+             "<id>, --list-panels, --baseline "
+             "<id>; the bare command regenerates "
+             "docs/architecture/HARNESS_TOOL.md, "
+             "the module's render filed verbatim) "
+             "and every run prints deterministic "
+             "citable lines — a citation line, one "
+             "member line per baseline, one line "
+             "per problem, no wall times anywhere "
+             "(TF-121's rule) — so keepers cite "
+             "its output verbatim; the verdict is "
+             "PASS only on the full panel with "
+             "every member running and passing, a "
+             "partial selection files REVIEW "
+             "however it scores, and an empty or "
+             "unknown selection is named and files "
+             "REVIEW, never a vacuous pass; 7 "
+             "filed probes prove the pure "
+             "validators can fail. The tool "
+             "baseline is judged by that checker, "
+             "not gated by TF-129's gate (the "
+             "gated set stays the nine "
+             "TF-121..TF-128 baselines). The tool "
+             "adds no benchmark input, so the "
+             "hygiene inventory does not move; "
+             "live-model runs are NOT PROVEN "
+             "(TF-173)"},
 )
 
 
@@ -3937,6 +4202,40 @@ def measure_public_claims_baseline() -> dict[str, Any]:
     }
 
 
+def measure_harness_tool_baseline() -> dict[str, Any]:
+    """File TF-137's panels over the real estate.
+
+    Literal-based over the filed panels (the shape
+    TF-129's gate measurer and TF-135's / TF-136's
+    measurers file): the counts come from the filed
+    PANEL_ROWS + the pure probes, so measuring this
+    baseline never recurses into a panel run;
+    harness_tool_problems() binds every panel
+    against the live registries and runs the full
+    panel live, naming any drift.
+    """
+    from benchmarks.harness_tool import (
+        PANEL_ROWS,
+        panel_by_id,
+        run_tool_probes,
+    )
+
+    probes = run_tool_probes()
+    full = panel_by_id("full_panel")
+    gate = panel_by_id("gate_panel")
+    audit = panel_by_id("audit_panel")
+    return {
+        "total_panels": len(PANEL_ROWS),
+        "full_panel_baselines": len(full["members"]) if full else 0,
+        "gate_panel_baselines": len(gate["members"]) if gate else 0,
+        "audit_panel_baselines": len(audit["members"]) if audit else 0,
+        "panel_member_slots": sum(
+            len(p["members"]) for p in PANEL_ROWS),
+        "probes_passed": sum(1 for p in probes if p["passed"]),
+        "probes_total": len(probes),
+    }
+
+
 def measure_data_hygiene_baseline() -> dict[str, Any]:
     """Run TF-131's filed hygiene inventory through the real machinery."""
     from benchmarks.data_hygiene import (
@@ -3969,6 +4268,7 @@ _MEASURERS = {
     "baseline_book_synthetic_v1": measure_baseline_book_baseline,
     "flake_discipline_synthetic_v1": measure_flake_discipline_baseline,
     "public_claims_synthetic_v1": measure_public_claims_baseline,
+    "harness_tool_synthetic_v1": measure_harness_tool_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -4043,7 +4343,8 @@ def harness_problems() -> list[str]:
                    "the_cost_panel_files_tokens_time_and_no_watts",
                    "the_baseline_book_regenerates_every_pinned_baseline",
                    "no_silent_rerolls_flake_discipline",
-                   "no_unmatched_public_claims"):
+                   "no_unmatched_public_claims",
+                   "the_harness_is_a_tool_with_citable_panels"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -4251,6 +4552,7 @@ __all__ = [
     "measure_baseline_book_baseline",
     "measure_flake_discipline_baseline",
     "measure_public_claims_baseline",
+    "measure_harness_tool_baseline",
     "measure_regression_gate_baseline",
     "measure_spot_checks_baseline",
     "validate_profile_id",

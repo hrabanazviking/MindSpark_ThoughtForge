@@ -303,11 +303,11 @@ class TestHarnessRegistration:
                        "overall_score", "probes_passed",
                        "probes_total"):
             assert ("wyrd_panel", metric) in defined
-        assert len(BENCHMARKS) == 24
+        assert len(BENCHMARKS) == 25
         assert len(FIXTURES) == 13
-        assert len(BASELINES) == 17
-        assert len(METRIC_DEFINITIONS) == 139
-        assert len(HARNESS_RULES) == 17
+        assert len(BASELINES) == 18
+        assert len(METRIC_DEFINITIONS) == 146
+        assert len(HARNESS_RULES) == 18
         assert "the_wyrd_panel_scores_world_state_consistency" \
             in {r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []

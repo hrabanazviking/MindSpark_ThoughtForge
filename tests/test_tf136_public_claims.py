@@ -367,11 +367,11 @@ class TestHarnessRegistration:
                        "live_verified_matched",
                        "probes_passed", "probes_total"):
             assert ("public_claims", metric) in defined
-        assert len(BENCHMARKS) == 24
+        assert len(BENCHMARKS) == 25
         assert len(FIXTURES) == 13
-        assert len(BASELINES) == 17
-        assert len(METRIC_DEFINITIONS) == 139
-        assert len(HARNESS_RULES) == 17
+        assert len(BASELINES) == 18
+        assert len(METRIC_DEFINITIONS) == 146
+        assert len(HARNESS_RULES) == 18
         assert "no_unmatched_public_claims" in {
             r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []
@@ -410,9 +410,9 @@ class TestHarnessRegistration:
         # The two deliberate re-pins, in the open.
         book = run_baseline_book()
         assert book.verdict == "PASS"
-        assert book.total_baselines == 17
-        assert book.total_pinned_metrics == 139
-        assert book.ungated_baselines == 8
+        assert book.total_baselines == 18
+        assert book.total_pinned_metrics == 146
+        assert book.ungated_baselines == 9
         assert baseline_problems(
             "baseline_book_synthetic_v1") == []
         assert baseline_problems(
@@ -426,7 +426,7 @@ class TestHarnessRegistration:
         assert PUBLIC_CLAIMS_BASELINE_ID in \
             UNGATED_BASELINE_IDS
         assert len(GATED_BASELINE_IDS) == 9
-        assert len(UNGATED_BASELINE_IDS) == 8
+        assert len(UNGATED_BASELINE_IDS) == 9
         assert run_regression_gate().verdict == "PASS"
 
 
