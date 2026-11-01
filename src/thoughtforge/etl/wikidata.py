@@ -58,6 +58,17 @@ builder's ``update_ledger`` (superseded when another
 value for the same property is presented, retired
 when none is). Subjects the run does not present are
 kept untouched.
+
+TF-116 (docs/architecture/POISONED_SOURCE_FIXTURES.md;
+the gate as data lives in etl/poisoned_source.py):
+each entity's landed text (en label / description /
+aliases, every requested language's label, and string
+or monolingual statement values) is screened by
+TF-062's threat classes after the schema gate — a
+non-pass entity is held out whole (no entity, label
+or statement row, and it does not present its subject
+to TF-114), recorded in this builder's ``poison_gate``
+ledger and counted in ``skipped``.
 """
 
 from __future__ import annotations
@@ -75,6 +86,7 @@ from tqdm import tqdm
 
 from thoughtforge.etl.schema import get_connection, initialize_schema
 from thoughtforge.etl.dedup_merge import MergeLedger, apply_row_merge
+from thoughtforge.etl.poisoned_source import PoisonLedger
 from thoughtforge.etl.schema_gate import SchemaGate
 from thoughtforge.etl.update_ingestion import (
     PRESENTED_SUBJECTS_TABLE,
@@ -127,6 +139,8 @@ class WikidataETL:
         self.merge_ledger = MergeLedger()
         # TF-114: the update ledger for the most recent build.
         self.update_ledger = UpdateLedger()
+        # TF-116: the poison ledger for the most recent build.
+        self.poison_gate = PoisonLedger()
 
     def build(
         self,
@@ -170,6 +184,7 @@ class WikidataETL:
         self.schema_gate = SchemaGate()
         self.merge_ledger = MergeLedger()
         self.update_ledger = UpdateLedger()
+        self.poison_gate = PoisonLedger()
 
         if not dump_path.exists():
             raise FileNotFoundError(f"Wikidata dump not found: {dump_path}")
@@ -340,6 +355,40 @@ class WikidataETL:
                 aliases_en = self._get_aliases(item, "en")
                 instance_of = self._get_instance_of(item)
                 popularity = self._estimate_popularity(item)
+
+                # TF-116 poison gate (D-POISON-1): the
+                # entity's landed text is screened — the en
+                # label / description / aliases, every
+                # requested language's label, and string or
+                # monolingual statement values. A non-pass
+                # entity is held out whole, before it can
+                # present its subject to TF-114.
+                statement_texts: list[str] = []
+                for claims_list in item.get("claims", {}).values():
+                    for claim in claims_list:
+                        if claim.get("rank") == "deprecated":
+                            continue
+                        value, value_type = self._parse_snak(
+                            claim.get("mainsnak", {}))
+                        if value_type in ("string", "monolingualtext") \
+                                and value:
+                            statement_texts.append(value)
+                verdict = self.poison_gate.check("wikidata", {
+                    "label": label_en, "description": desc_en,
+                    "aliases": aliases_en,
+                    "labels": " ".join(
+                        self._get_label(item, lang) or ""
+                        for lang in languages),
+                    "statement_text": " ".join(statement_texts),
+                }, ref=qid)
+                if verdict != "pass":
+                    logger.warning(
+                        "Wikidata entity held out by the poison "
+                        "gate (%s): %s", qid, verdict)
+                    stats["skipped"] += 1
+                    processed_this_run += 1
+                    _tick()
+                    continue
 
                 # Skip excluded types
                 if EXCLUDED_INSTANCE_OF.intersection(instance_of.split(",") if instance_of else []):

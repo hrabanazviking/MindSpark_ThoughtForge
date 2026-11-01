@@ -38,6 +38,15 @@ chunk index the new presentation no longer produces
 (recorded in its ``update_ledger``, with any
 reference-embedding rows keyed on them). A file the
 re-run does not present at all keeps its chunks.
+
+TF-116 (docs/architecture/POISONED_SOURCE_FIXTURES.md;
+the gate as data lives in etl/poisoned_source.py):
+every record's LANDED text is screened by TF-062's
+threat classes before insertion — a refuse verdict is
+dropped whole, a quarantine verdict is held out, both
+recorded in the builder's ``poison_gate`` ledger and
+counted in ``skipped`` (for the reference builder, per
+chunk in ``skipped``). Clean records are untouched.
 """
 
 from __future__ import annotations
@@ -57,6 +66,7 @@ from thoughtforge.etl.dedup_merge import (
     apply_row_merge,
     merge_conceptnet_edge,
 )
+from thoughtforge.etl.poisoned_source import PoisonLedger
 from thoughtforge.etl.schema_gate import SchemaGate
 from thoughtforge.etl.update_ingestion import (
     UpdateLedger,
@@ -88,6 +98,8 @@ class ConceptNetETL:
         self.schema_gate = SchemaGate()
         # TF-109: the merge ledger for the most recent build.
         self.merge_ledger = MergeLedger()
+        # TF-116: the poison ledger for the most recent build.
+        self.poison_gate = PoisonLedger()
 
     def build(
         self,
@@ -104,6 +116,7 @@ class ConceptNetETL:
         languages = set(languages) if languages else {"en"}
         self.schema_gate = SchemaGate()
         self.merge_ledger = MergeLedger()
+        self.poison_gate = PoisonLedger()
 
         if not csv_path.exists():
             raise FileNotFoundError(f"ConceptNet CSV not found: {csv_path}")
@@ -178,6 +191,21 @@ class ConceptNetETL:
                     c1_name = self._uri_to_text(concept1)
                     c2_name = self._uri_to_text(concept2)
 
+                    # TF-116 poison gate (D-POISON-1): the
+                    # landed text (concepts as text, relation)
+                    # is screened — a non-pass edge is held
+                    # out whole, named in the poison ledger.
+                    verdict = self.poison_gate.check("conceptnet", {
+                        "concept1": c1_name, "relation": rel_name,
+                        "concept2": c2_name,
+                    }, ref=uri)
+                    if verdict != "pass":
+                        logger.warning(
+                            "ConceptNet record held out by the "
+                            "poison gate (%s): %s", uri, verdict)
+                        stats["skipped"] += 1
+                        continue
+
                     batch.append((uri, c1_name, rel_name, c2_name, weight, c1_lang))
                     stats["inserted"] += 1
 
@@ -206,6 +234,7 @@ class ConceptNetETL:
         total = 0
         self.schema_gate = SchemaGate()
         self.merge_ledger = MergeLedger()
+        self.poison_gate = PoisonLedger()
 
         conn = get_connection(db_path)
         try:
@@ -245,6 +274,14 @@ class ConceptNetETL:
                                 else "",
                             })
                         if reasons:
+                            continue
+                        # TF-116 poison gate: the landed edge
+                        # text is screened, as in build().
+                        if self.poison_gate.check(
+                                "conceptnet_reference", {
+                                    "concept1": c1, "relation": rel,
+                                    "concept2": c2,
+                                }, ref=f.name) != "pass":
                             continue
                         if c1 and rel and c2:
                             uri = f"ref/{f.stem}/{c1}/{rel}/{c2}"[:512]
@@ -307,6 +344,8 @@ class GeoNamesETL:
         self.schema_gate = SchemaGate()
         # TF-109: the merge ledger for the most recent build.
         self.merge_ledger = MergeLedger()
+        # TF-116: the poison ledger for the most recent build.
+        self.poison_gate = PoisonLedger()
 
     def build(
         self,
@@ -323,6 +362,7 @@ class GeoNamesETL:
         txt_path = Path(txt_path)
         self.schema_gate = SchemaGate()
         self.merge_ledger = MergeLedger()
+        self.poison_gate = PoisonLedger()
         if not txt_path.exists():
             raise FileNotFoundError(f"GeoNames file not found: {txt_path}")
 
@@ -361,6 +401,19 @@ class GeoNamesETL:
                         logger.warning(
                             "GeoNames record refused at the gate "
                             "(%s): %s", parts[0], "; ".join(reasons))
+                        stats["skipped"] += 1
+                        continue
+
+                    # TF-116 poison gate (D-POISON-1): the
+                    # landed name fields are screened — a
+                    # non-pass place is held out whole.
+                    verdict = self.poison_gate.check("geonames", {
+                        "name": parts[1], "ascii_name": parts[2],
+                    }, ref=parts[0])
+                    if verdict != "pass":
+                        logger.warning(
+                            "GeoNames record held out by the "
+                            "poison gate (%s): %s", parts[0], verdict)
                         stats["skipped"] += 1
                         continue
 
@@ -440,6 +493,8 @@ class DBpediaETL:
         self.schema_gate = SchemaGate()
         # TF-109: the merge ledger for the most recent build.
         self.merge_ledger = MergeLedger()
+        # TF-116: the poison ledger for the most recent build.
+        self.poison_gate = PoisonLedger()
 
     def build(
         self,
@@ -451,6 +506,7 @@ class DBpediaETL:
         json_path = Path(json_path)
         self.schema_gate = SchemaGate()
         self.merge_ledger = MergeLedger()
+        self.poison_gate = PoisonLedger()
         if not json_path.exists():
             raise FileNotFoundError(f"DBpedia file not found: {json_path}")
 
@@ -502,6 +558,21 @@ class DBpediaETL:
                     if isinstance(types, list):
                         types = ",".join(types)
 
+                    # TF-116 poison gate (D-POISON-1): the
+                    # landed label / abstract / types text is
+                    # screened — a non-pass entity is held
+                    # out whole.
+                    verdict = self.poison_gate.check("dbpedia", {
+                        "label": label, "abstract": abstract,
+                        "types": types,
+                    }, ref=uri or None)
+                    if verdict != "pass":
+                        logger.warning(
+                            "DBpedia record held out by the "
+                            "poison gate (%s): %s", uri, verdict)
+                        stats["skipped"] += 1
+                        continue
+
                     if not uri:
                         stats["skipped"] += 1
                         continue
@@ -548,6 +619,8 @@ class ReferenceDataETL:
         self.merge_ledger = MergeLedger()
         # TF-114: the update ledger for the most recent build.
         self.update_ledger = UpdateLedger()
+        # TF-116: the poison ledger for the most recent build.
+        self.poison_gate = PoisonLedger()
 
     def build(
         self,
@@ -562,6 +635,7 @@ class ReferenceDataETL:
         ref_dir = ref_dir or get_knowledge_reference_dir()
         self.merge_ledger = MergeLedger()
         self.update_ledger = UpdateLedger()
+        self.poison_gate = PoisonLedger()
 
         if not ref_dir.exists():
             raise FileNotFoundError(f"Reference data directory not found: {ref_dir}")
@@ -591,6 +665,23 @@ class ReferenceDataETL:
                         continue
                     batch = []
                     for idx, (title, content, tags) in enumerate(chunks):
+                        # TF-116 poison gate (D-POISON-1): each
+                        # chunk's landed text is screened — a
+                        # non-pass chunk is held out (its index
+                        # is not presented, so TF-114 retires
+                        # any stored copy on a re-run).
+                        verdict = self.poison_gate.check(
+                            "reference", {
+                                "title": title, "content": content,
+                                "tags": tags,
+                            }, ref=str(path.relative_to(ref_dir)))
+                        if verdict != "pass":
+                            logger.warning(
+                                "Reference chunk held out by the "
+                                "poison gate (%s#%d): %s",
+                                path.name, idx, verdict)
+                            stats["skipped"] += 1
+                            continue
                         batch.append((
                             str(path.relative_to(ref_dir)),
                             idx,
@@ -599,6 +690,15 @@ class ReferenceDataETL:
                             tags,
                             len(content.split()),
                         ))
+                    if not batch:
+                        # TF-116: every chunk of this file was
+                        # held out — the file lands nothing, and
+                        # TF-114 retires its stored chunks.
+                        retire_unpresented_chunks(
+                            conn, self.update_ledger,
+                            str(path.relative_to(ref_dir)), set())
+                        conn.commit()
+                        continue
                     # TF-109: chunk writes go through the
                     # merge rules (etl/dedup_merge.py), keyed
                     # by (source_file, chunk_index).
