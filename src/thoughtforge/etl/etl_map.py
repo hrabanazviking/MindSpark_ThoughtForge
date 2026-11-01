@@ -42,15 +42,18 @@ Two defects this map carries as findings, not decorations:
     store holding one chunk: copied 0, success True). The
     fix orders by ``chunk_id``; the live checker below proves
     a limited subset now keeps its chunks.
-  * **D-ETL-1 — filed OPEN, owner TF-119.** The orchestrator's
-    ``--dbpedia-json`` option is accepted and never used: the
-    ``all`` command's steps ingest reference, wikidata,
-    conceptnet, and geonames data, then embeddings — a user
-    who passes a DBpedia file is told nothing and gets no
-    DBpedia rows. The static checker pins the gap's exact
-    shape (the option exists; no DBpedia step exists), so
-    wiring the step turns the checker red until this map is
-    updated in the open.
+  * **D-ETL-1 — FIXED by TF-119.** The orchestrator's
+    ``--dbpedia-json`` option was accepted and never used:
+    the ``all`` command's steps ingested reference,
+    wikidata, conceptnet, and geonames data, then
+    embeddings — a user who passed a DBpedia file was told
+    nothing and got no DBpedia rows. TF-119 wired the
+    DBpedia step into ``build_all`` (step 6 of 7, only
+    when ``--dbpedia-json`` is passed, else a skipped
+    message), and this map was updated in the open: the
+    static checker now REQUIRES DBpediaETL in
+    ``build_all``, between GeoNamesETL and the embedding
+    builders, in the filed step order.
 
 Filed limits the map states plainly:
 
@@ -113,7 +116,7 @@ PIPELINE_STAGES: tuple[dict[str, Any], ...] = (
      "modules": ("etl/wikidata.py", "etl/sources.py"),
      "consumes": "external source files + the built-in reference directory",
      "produces": "rows in the builder's target table(s)",
-     "position_in_build_all": "steps 2-5 (reference always; the rest only when their file is passed)",
+     "position_in_build_all": "steps 2-6 (reference always; the rest only when their file is passed)",
      "contract": "every builder initialises the schema itself, raises FileNotFoundError on a missing input, and returns its own stats dict"},
     {"id": "schema", "order": 2,
      "modules": ("etl/schema.py",),
@@ -125,7 +128,7 @@ PIPELINE_STAGES: tuple[dict[str, Any], ...] = (
      "modules": ("etl/embeddings.py", "etl/embedding_discipline.py", "etl/vector_store.py"),
      "consumes": "entities + reference chunks already in the store",
      "produces": "validated embedding BLOBs in embeddings + reference_embeddings",
-     "position_in_build_all": "step 6 (with the FTS rebuild), skippable by flag",
+     "position_in_build_all": "step 7 (with the FTS rebuild), skippable by flag",
      "contract": "only rows missing an embedding under the model being built are built (per-model since TF-111, D-EMB-3); every vector is dimension/finiteness-validated before it is written (TF-054); TF-111's driver (etl/embedding_ingestion.py) runs this stage per profile (TF-053's assignment), resumably, with per-row SHA-256 checksums verified on read-back and a sidecar checkpoint"},
     {"id": "subset", "order": 4,
      "modules": ("etl/subset.py", "etl/subset_craft.py"),
@@ -175,7 +178,7 @@ SOURCE_BUILDERS: tuple[dict[str, Any], ...] = (
      "write_mode": "merged per filed identity (TF-109: duplicates not rewritten, complementary fields union, conflicts ledgered with the incoming row winning)",
      "batch_default": 2000, "stats_keys": ("inserted", "skipped"),
      "logs_ingestion": False, "synchronous": "OFF",
-     "notes": "label truncated to 512 chars, abstract to 2000, types to 512; TF-108: every line is judged by the schema gate (etl/schema_gate.py) — unparseable JSON, non-object values, wrong-typed fields and a missing uri are refused with reasons in the builder's schema_gate ledger and counted in skipped (a blank line is not a record and is not counted); NOT wired into the orchestrator's all command (D-ETL-1); TF-109: entity writes merge per etl/dedup_merge.py and collisions ride the builder's merge_ledger"},
+     "notes": "label truncated to 512 chars, abstract to 2000, types to 512; TF-108: every line is judged by the schema gate (etl/schema_gate.py) — unparseable JSON, non-object values, wrong-typed fields and a missing uri are refused with reasons in the builder's schema_gate ledger and counted in skipped (a blank line is not a record and is not counted); TF-119: wired into the orchestrator's all command as step 6 of 7, only when --dbpedia-json is passed (D-ETL-1 FIXED); TF-109: entity writes merge per etl/dedup_merge.py and collisions ride the builder's merge_ledger"},
     {"id": "reference", "class": "ReferenceDataETL", "module": "etl/sources.py",
      "input": "the built-in reference directory: .md / .json / .jsonl / .yaml / .yml / .txt files, found recursively",
      "tables": ("reference_chunks",),
@@ -236,9 +239,9 @@ ORCHESTRATION: dict[str, Any] = {
               "3 wikidata (only with --wikidata-dump)",
               "4 conceptnet (only with --conceptnet-csv)",
               "5 geonames (only with --geonames-txt)",
-              "6 embeddings + FTS rebuild (unless --skip-embeddings)"),
-    "gaps": ("--dbpedia-json is accepted by `all` and never ingested (D-ETL-1, OPEN, owner TF-119)",
-             "the subset stage is not a step of `all` at all — it runs only when invoked directly",
+              "6 dbpedia (only with --dbpedia-json)",
+              "7 embeddings + FTS rebuild (unless --skip-embeddings)"),
+    "gaps": ("the subset stage is not a step of `all` at all — it runs only when invoked directly",
              "per-source commands exist beside `all` for wikidata / conceptnet / geonames / dbpedia / reference / embeddings"),
     "dry_run": "TF-112 (etl/ingestion_dry_run.py): a single-source scratch runner beside `all`, not a step of it — one real builder test-ingested into a scratch store (never the target, proven untouched by hash + counts), the TF-106 registry consulted first, and a full report (stats, store counts, TF-108 gate ledger, TF-109 merge ledger + overlaps, TF-111 embeddings when an encoder is injected); `all`'s filed shape above stands unchanged",
     "canon": "TF-113 (etl/canon_ingestion.py): the owner's own materials ingested beside `all`, not a step of it — the real ReferenceDataETL into an explicitly affirmed private store only (never inside the canon directory), the canon source proven untouched by a TF-058 metadata-only inventory before/after, a content-hashed provenance manifest beside the store, skips and duplicates named in the report, TF-111 embeddings when an encoder is injected; `all`'s filed shape above stands unchanged",
@@ -247,6 +250,7 @@ ORCHESTRATION: dict[str, Any] = {
     "poison": "TF-116 (etl/poisoned_source.py): adversarial-content screening inside every builder, not a step of `all` — each record's landed text is screened by TF-062's threat classes after TF-108's gate and before insertion (refuse dropped whole, quarantine held out, both named in the builder's poison_gate ledger and counted in skipped); KnowledgeForge's SQL + vector retrieval legs screen results and name exclusions in retrieve()'s screened_out, and scan_store screens a finished store read-only; `all`'s filed shape above stands unchanged",
     "offline": "TF-117 (etl/offline_ingestion.py): offline ingestion proven under a network cut, not a step of `all` — the fetch boundary filed as data (source download, embedding-model download and package install are the only fetches, all outside ingestion; no downloader exists in etl/), the whole synthetic pipeline plus a TF-116 scan run inside a recording NetworkCut with zero attempts, and the embedding loader local-files-only so ingestion never becomes a model fetch; `all`'s filed shape above stands unchanged",
     "reference_library": "TF-118 (etl/reference_ingestion.py): the reference library as a source beside `all`, not a step of it — the real ReferenceDataETL (now skipping by rule and chunking each distinct content once, D-DATA-4) with a checksummed manifest beside the store (per-file SHA-256 + status, per-chunk checksums, library + store digests, the builder's library/merge/update/poison ledgers), verify_reference_store naming drift without repairing it, and check_reproducibility proving two independent builds agree on stats, chunk checksums and store digest; `all`'s filed shape above stands unchanged",
+    "etl_docs": "TF-119 (etl/etl_docs.py): the ETL documentation index + new-source recipe as data beside `all`, not a step of it — DOC_INDEX files every Part VI architecture doc (TF-105..TF-119) and RECIPE_STEPS files the ordered new-source recipe bound to the real modules it files into; TF-119 also changed `all`'s filed shape above in the open: DBpedia is now step 6 of 7 (only with --dbpedia-json) and embeddings + FTS are step 7 (D-ETL-1 FIXED)",
 }
 
 ETL_RULES: tuple[dict[str, Any], ...] = (
@@ -266,8 +270,8 @@ ETL_RULES: tuple[dict[str, Any], ...] = (
      "rule": "D-SUBSET-1 fixed: a limited (edge-profile) subset copies its capped share of reference chunks instead of silently copying none"},
     {"id": "there_is_no_orchestrator_in_the_package",
      "rule": "src/thoughtforge/etl exposes builders, never a pipeline runner; the order lives in forge_memory.py's all command"},
-    {"id": "build_all_never_ingests_dbpedia",
-     "rule": "D-ETL-1 (OPEN, TF-119): the all command accepts --dbpedia-json and has no DBpedia step; this rule pins the gap until the step is wired"},
+    {"id": "build_all_ingests_dbpedia_when_passed",
+     "rule": "D-ETL-1 (FIXED by TF-119): the all command ingests DBpedia when --dbpedia-json is passed — DBpediaETL runs as step 6 of 7, between GeoNamesETL and the embedding builders; with no file passed the step is reported skipped"},
 )
 
 
@@ -551,18 +555,17 @@ def etl_map_problems() -> list[str]:
     build_all_src = forge_memory.split("def build_all", 1)[1].split(
         "\ndef ", 1)[0]
     step_marks = ["initialize_schema", "ReferenceDataETL", "WikidataETL",
-                  "ConceptNetETL", "GeoNamesETL", "build_entity_embeddings"]
+                  "ConceptNetETL", "GeoNamesETL", "DBpediaETL",
+                  "build_entity_embeddings"]
     positions = [build_all_src.find(mark) for mark in step_marks]
     if any(pos < 0 for pos in positions) or positions != sorted(positions):
         problems.append("forge_memory build_all step order drifted from "
-                        "ORCHESTRATION")
+                        "ORCHESTRATION (TF-119: DBpediaETL is required "
+                        "between GeoNamesETL and build_entity_embeddings, "
+                        "D-ETL-1 FIXED)")
     if "--dbpedia-json" not in forge_memory:
         problems.append("the --dbpedia-json option vanished; D-ETL-1's "
                         "filed shape changed")
-    if "DBpediaETL" in build_all_src:
-        problems.append("D-ETL-1 changed shape: build_all now wires "
-                        "DBpediaETL — update ORCHESTRATION and this rule "
-                        "in the open")
 
     wikidata_src = Path(wikidata_module.__file__).read_text(encoding="utf-8")
     if "_start_log" not in wikidata_src or "ingestion_log" not in wikidata_src:

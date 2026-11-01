@@ -233,42 +233,49 @@ def build_all(
     click.echo(f"Target DB: {db_path}\n")
 
     # Always: init schema
-    click.echo("Step 1/6: Initializing schema...")
+    click.echo("Step 1/7: Initializing schema...")
     initialize_schema(db_path)
 
     # Always: reference data
-    click.echo("\nStep 2/6: Ingesting reference documents...")
+    click.echo("\nStep 2/7: Ingesting reference documents...")
     ReferenceDataETL(db_path).build()
 
     # Optional: Wikidata
     if wikidata_dump:
-        click.echo(f"\nStep 3/6: Streaming Wikidata dump ({wikidata_dump})...")
+        click.echo(f"\nStep 3/7: Streaming Wikidata dump ({wikidata_dump})...")
         WikidataETL(db_path).build(dump_path=wikidata_dump, limit=limit)
     else:
-        click.echo("\nStep 3/6: Wikidata — skipped (no --wikidata-dump provided)")
+        click.echo("\nStep 3/7: Wikidata — skipped (no --wikidata-dump provided)")
 
     # Optional: ConceptNet
     if conceptnet_csv:
-        click.echo(f"\nStep 4/6: Ingesting ConceptNet ({conceptnet_csv})...")
+        click.echo(f"\nStep 4/7: Ingesting ConceptNet ({conceptnet_csv})...")
         ConceptNetETL(db_path).build(csv_path=conceptnet_csv, limit=limit)
     else:
-        click.echo("\nStep 4/6: ConceptNet — skipped (no --conceptnet-csv provided)")
+        click.echo("\nStep 4/7: ConceptNet — skipped (no --conceptnet-csv provided)")
 
     # Optional: GeoNames
     if geonames_txt:
-        click.echo(f"\nStep 5/6: Ingesting GeoNames ({geonames_txt})...")
+        click.echo(f"\nStep 5/7: Ingesting GeoNames ({geonames_txt})...")
         GeoNamesETL(db_path).build(txt_path=geonames_txt, limit=limit)
     else:
-        click.echo("\nStep 5/6: GeoNames — skipped (no --geonames-txt provided)")
+        click.echo("\nStep 5/7: GeoNames — skipped (no --geonames-txt provided)")
+
+    # Optional: DBpedia (TF-119, D-ETL-1)
+    if dbpedia_json:
+        click.echo(f"\nStep 6/7: Ingesting DBpedia ({dbpedia_json})...")
+        DBpediaETL(db_path).build(json_path=dbpedia_json, limit=limit)
+    else:
+        click.echo("\nStep 6/7: DBpedia — skipped (no --dbpedia-json provided)")
 
     # Embeddings + FTS index rebuild
     if not skip_embeddings:
-        click.echo("\nStep 6/6: Generating embeddings + rebuilding FTS indexes...")
+        click.echo("\nStep 7/7: Generating embeddings + rebuilding FTS indexes...")
         build_entity_embeddings(db_path=db_path)
         build_reference_embeddings(db_path=db_path)
         rebuild_fts_indexes(db_path)
     else:
-        click.echo("\nStep 6/6: Embeddings — skipped (--skip-embeddings)")
+        click.echo("\nStep 7/7: Embeddings — skipped (--skip-embeddings)")
 
     click.echo("\n" + "=" * 60)
     click.echo("Knowledge Forge complete!")

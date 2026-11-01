@@ -11,7 +11,8 @@ The map lives as verifiable data in
 `SUBSET_FACTS`, `ORCHESTRATION`, `ETL_RULES`, checked by
 `etl_map_problems()` and `etl_map_live_problems()`); the
 tests are `tests/test_tf105_etl_map.py`. This slice also
-**fixes D-SUBSET-1** (§5) and **files D-ETL-1** (§6).
+**fixes D-SUBSET-1** (§5) and **files D-ETL-1** (§6;
+**FIXED by TF-119**, which updated this map in the open).
 
 ## 1. Measured start
 
@@ -43,9 +44,12 @@ pipeline runner in the tree is the root instrument
 
 The roadmap's order is the data flow. The one
 orchestrator runs it differently: schema **first** (step
-1), then sources (steps 2–5), embeddings last (step 6),
+1), then sources (steps 2–6), embeddings last (step 7),
 and the subset not at all. Both orders are filed in the
 map; the difference is stated, never smoothed.
+*Updated in the open by TF-119:* sources were steps 2–5
+and embeddings step 6 of 6 until TF-119 wired DBpedia
+in as step 6 of 7 (§6).
 
 ## 3. The sources stage — five builders, five contracts
 
@@ -130,18 +134,35 @@ by), and the live checker now proves a pi_zero subset of
 the synthetic store keeps its chunk. The static checker
 pins the fix (the DESC ordering returning turns it red).
 
-## 6. D-ETL-1 — filed OPEN, owner TF-119
+## 6. D-ETL-1 — FIXED by TF-119
 
-`forge_memory.py all` declares `--dbpedia-json`, echoes
-six steps, and runs five kinds of work: schema, reference,
-wikidata, conceptnet, geonames, embeddings. DBpedia has
+`forge_memory.py all` declared `--dbpedia-json`, echoed
+six steps, and ran five kinds of work: schema, reference,
+wikidata, conceptnet, geonames, embeddings. DBpedia had
 its own per-source command but **no step in `all`** — a
-user passing the file gets no error and no rows. This
-slice maps and pins the gap (the static checker fails if
-the option vanishes or a DBpedia step appears, so the
-fix updates the map in the open); TF-119 (ETL docs + the
-new-source recipe) owns wiring or striking the option,
-since either changes what the docs may promise.
+user passing the file got no error and no rows. TF-105
+mapped and pinned the gap (its static checker failed if
+the option vanished or a DBpedia step appeared, so the
+fix had to update the map in the open).
+
+TF-119 wired the step: `all` now echoes seven steps —
+1 schema, 2 reference, 3 wikidata, 4 conceptnet,
+5 geonames, **6 DBpedia (only when `--dbpedia-json` is
+passed; otherwise a skipped message naming the missing
+option)**, 7 embeddings + FTS rebuild (unless
+`--skip-embeddings`). The per-source `dbpedia` command
+and the `--dbpedia-json` option are unchanged. This
+map was updated in the open with the fix: the sources
+stage's `position_in_build_all` is steps 2–6, the
+embeddings stage's is step 7, the DBpedia builder's
+notes no longer claim it is unwired, the
+`ORCHESTRATION` steps list seven steps with the
+DBpedia gap removed from its gaps, the rule
+`build_all_never_ingests_dbpedia` is replaced by
+`build_all_ingests_dbpedia_when_passed`, and the
+static checker now **requires** `DBpediaETL` in
+`build_all`, between `GeoNamesETL` and
+`build_entity_embeddings`, in the filed order.
 
 ## 7. What this slice does not do
 

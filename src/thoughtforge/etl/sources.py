@@ -5,7 +5,7 @@ Sources:
   - ConceptNet 5       — commonsense relations (CSV)
   - GeoNames           — geographic entities (tab-delimited)
   - DBpedia            — Wikipedia-extracted entities (TTL/JSON)
-  - Reference Data     — built-in .md / .json / .jsonl / .yaml files (40 files)
+  - Reference Data     — built-in .md / .json / .jsonl / .yaml files (the built-in knowledge reference files: 215 root files + 17 SRD chapters, TF-007's measured census; TF-119, D-DATA-1)
 
 TF-108 (docs/architecture/SCHEMA_VALIDATION_GATE.md; the
 gate as data lives in etl/schema_gate.py): every record
@@ -624,8 +624,10 @@ class DBpediaETL:
 
 class ReferenceDataETL:
     """
-    Ingests the 40 built-in knowledge reference files from data/knowledge_reference/
+    Ingests the built-in knowledge reference files from data/knowledge_reference/
     into the reference_chunks table with chunked text for retrieval.
+    The library holds 215 root files + 17 SRD chapters (TF-007's
+    measured census; TF-119, D-DATA-1).
     """
 
     def __init__(self, db_path: Path | None = None) -> None:

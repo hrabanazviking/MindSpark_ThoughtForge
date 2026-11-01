@@ -36,9 +36,10 @@ Pinned here:
     (the D-SUBSET-1 regression), copies no embedding or
     label rows, and recreates none of the named indexes,
   * every builder raises FileNotFoundError on a missing
-    input, and D-ETL-1's shape is pinned (the orchestrator
-    accepts a dbpedia file option its all command never
-    ingests).
+    input, and D-ETL-1's fix is pinned (TF-119 updated
+    this map in the open: the orchestrator's all command
+    now ingests a dbpedia file when one is passed, as
+    step 6 of 7).
 
 All fixtures are synthetic (TF-017): tiny stand-in inputs
 in a temporary directory, never the real canon tree.
@@ -130,8 +131,8 @@ class TestMapData:
 
     def test_orchestration_filed(self) -> None:
         assert ORCHESTRATION["in_package_orchestrator"] is False
-        assert len(ORCHESTRATION["steps"]) == 6
-        assert len(ORCHESTRATION["gaps"]) == 3
+        assert len(ORCHESTRATION["steps"]) == 7
+        assert len(ORCHESTRATION["gaps"]) == 2
 
     def test_rules_unique(self) -> None:
         ids = [r["id"] for r in ETL_RULES]
