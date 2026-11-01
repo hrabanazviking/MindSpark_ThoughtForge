@@ -19,8 +19,9 @@ Pinned here:
 
   * the filing as data: format, doc, rules, profiles,
   * the index: nine entries at TF-121 (TF-122 registered a
-    tenth, the persona suite, and TF-123 an eleventh, the
-    memory suite — the pins below were updated in the open
+    tenth, the persona suite, TF-123 an eleventh, the
+    memory suite, and TF-124 a twelfth, the depth suite
+    — the pins below were updated in the open
     by those slices), every one bound to a real
     module / attribute / file; the locust fate filed as
     excluded; axis coverage depth + presence only,
@@ -128,9 +129,10 @@ class TestProfiles:
 class TestBenchmarkIndex:
     def test_entries_cover_the_estate(self) -> None:
         ids = [b["id"] for b in BENCHMARKS]
-        assert len(ids) == len(set(ids)) == 11  # 9 at TF-121 + persona_suite (TF-122) + memory_suite (TF-123), in the open
+        assert len(ids) == len(set(ids)) == 12  # 9 at TF-121 + persona_suite (TF-122) + memory_suite (TF-123) + depth_suite (TF-124), in the open
         for needed in ("persona_consistency", "profile_benchmark",
                        "locust_load_test", "persona_suite", "memory_suite",
+                       "depth_suite",
                        "retrieval_precision",
                        "scoring_honesty", "quant_quality",
                        "quality_marks", "determinism", "perf_tracker"):
@@ -168,7 +170,7 @@ class TestBenchmarkIndex:
 
 class TestFixtures:
     def test_fixtures_are_synthetic_and_bind_live(self) -> None:
-        assert len(FIXTURES) == 4  # 2 at TF-121 + persona_suite_corpus (TF-122) + memory_suite_corpus (TF-123), in the open
+        assert len(FIXTURES) == 5  # 2 at TF-121 + persona_suite_corpus (TF-122) + memory_suite_corpus (TF-123) + depth_suite_corpus (TF-124), in the open
         for fixture in FIXTURES:
             assert fixture["synthetic"] is True
             module = importlib.import_module(fixture["bind_module"])

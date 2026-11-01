@@ -161,6 +161,25 @@ the failing shapes filed as cases. All earlier
 pinned baselines stand exactly as filed (never
 re-pinned).
 
+**TF-124 update, in the open:** the depth suite is
+built (``benchmarks/depth_suite.py``) and registered
+below (``depth_suite``) with its own pinned baseline
+(``depth_suite_synthetic_v1``, measured live twice,
+identical): 36 scripted multi-step problems scored
+on both roads through TF-022's real selection table
+and TF-021 / TF-022's real prompt builders — OFF
+(single-pass) 0.4722, ON (scaffolded) 0.8056, the
+measured delta +0.3333, filed with its no-gain and
+scaffold-loss cases by name. TF-124's probes found
+and filed **D-BENCH-10** (scaffold value measured by
+nothing, and TF-022's core-execution wiring assigned
+in its doc without ever being numbered) and FIXED
+it in the measuring sense — the suite now scores
+the on/off delta mechanically; core-loop strategy
+execution is unchanged and NOT claimed. All earlier
+pinned baselines stand exactly as filed (never
+re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -183,6 +202,11 @@ Filed limits, stated plainly:
     TF-124..TF-125's suites, TF-129's regression
     gates, TF-134's baseline book and TF-137's
     one-command tool still stand as filed.
+    **TF-124 update:** the third suite (depth) now
+    exists and is registered below; TF-125's suite,
+    TF-129's regression gates, TF-134's baseline
+    book and TF-137's one-command tool still stand
+    as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -280,6 +304,13 @@ FIXTURES: tuple[dict[str, Any], ...] = (
      "subject": "TF-123's scripted memory corpora: 12 present "
                 "cases + 12 true cases + 12 explain cases "
                 "(36 scored cases) in TF-043's synthetic world"},
+    {"id": "depth_suite_corpus", "benchmark": "depth_suite",
+     "bind_module": "benchmarks.depth_suite",
+     "bind_attribute": "ALL_SUITE_CASES",
+     "synthetic": True,
+     "subject": "TF-124's scripted depth corpora: 12 chain "
+                "cases + 12 plan cases + 12 check cases "
+                "(36 scored problems, each on both roads)"},
 )
 
 
@@ -342,6 +373,23 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "36 scripted synthetic cases, per-axis scores + "
               "overall, PASS/REVIEW by filed thresholds, "
               "empty suite 0.0 / REVIEW"},
+    {"id": "depth_suite", "kind": "suite",
+     "status": "built_suite",
+     "bind_module": "benchmarks.depth_suite",
+     "bind_attribute": "run_depth_suite",
+     "fixture": "depth_suite_corpus",
+     "claims_axes": ("depth",),
+     "suite_slice": "TF-124 (depth suite — itself)",
+     "doc": "docs/architecture/DEPTH_SUITE.md",
+     "docket": ("D-BENCH-10 FIXED by TF-124 (measuring sense)",),
+     "notes": "TF-124's scored suite over TF-022's real "
+              "selection table and TF-021 / TF-022's real "
+              "prompt builders: multi-step reasoning with "
+              "scaffolds on/off — 36 scripted synthetic "
+              "problems, per-axis OFF / ON scores and the "
+              "measured delta, PASS/REVIEW by filed "
+              "thresholds + a positive delta, empty suite "
+              "0.0 / REVIEW"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -545,6 +593,60 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "legacy_name": "",
      "computes": "cases scored across the suite's three axes "
                  "(12 per axis, 36 in the filed corpus)"},
+    {"id": "chain_off_score", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted chain "
+                 "problems whose direct (scaffold OFF) answer "
+                 "equals the known answer (TF-124)"},
+    {"id": "chain_on_score", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted chain "
+                 "problems whose scaffolded (ON) run holds: "
+                 "the reasoning carries every filed "
+                 "intermediate and the final answer is exact "
+                 "(TF-124)"},
+    {"id": "plan_off_score", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted plan "
+                 "problems whose direct sequence equals the "
+                 "known order (TF-124)"},
+    {"id": "plan_on_score", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted plan "
+                 "problems whose scaffolded run holds: the "
+                 "plan carries the filed steps in order and "
+                 "the executed answer is exact (TF-124)"},
+    {"id": "check_off_score", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted check "
+                 "problems whose draft (scaffold OFF) equals "
+                 "the known answer (TF-124)"},
+    {"id": "check_on_score", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted check "
+                 "problems whose scaffolded run holds: the "
+                 "check names the filed error token (or its "
+                 "clean verdict) and the revised answer is "
+                 "exact (TF-124)"},
+    {"id": "overall_off_score", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "the mean of the suite's three axis OFF "
+                 "scores; 0.0 for an empty suite (TF-124)"},
+    {"id": "overall_on_score", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "the mean of the suite's three axis ON "
+                 "scores; 0.0 for an empty suite (TF-124)"},
+    {"id": "delta", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "overall_on_score minus overall_off_score "
+                 "— the measured scaffold value over the "
+                 "filed corpus, never an asserted one "
+                 "(TF-124)"},
+    {"id": "total_cases", "benchmark": "depth_suite",
+     "legacy_name": "",
+     "computes": "problems scored across the suite's three "
+                 "axes (12 per axis, 36 in the filed corpus, "
+                 "each on both roads)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -677,6 +779,46 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "run PASSes. This pins SCRIPTED fixtures through "
               "the real machinery — a live model's citation "
               "behaviour is NOT PROVEN (TF-125 / TF-126)"},
+    {"id": "depth_suite_synthetic_v1",
+     "benchmark": "depth_suite",
+     "fixture": "depth_suite_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-124's filed scripted "
+                    "problems through TF-022's real selection "
+                    "table and TF-021 / TF-022's real prompt "
+                    "builders, measured live twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "chain_off_score": 0.4166666666666667,
+         "chain_on_score": 0.8333333333333334,
+         "plan_off_score": 0.5,
+         "plan_on_score": 0.75,
+         "check_off_score": 0.5,
+         "check_on_score": 0.8333333333333334,
+         "overall_off_score": 0.47222222222222227,
+         "overall_on_score": 0.8055555555555557,
+         "delta": 0.3333333333333334,
+         "total_cases": 36,
+     },
+     "targets": {
+         "overall_on_score": {"target": 0.75, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the suite's scripted problems hold OFF 5/12 "
+              "chain, 6/12 plan, 6/12 check and ON 10/12 "
+              "chain, 9/12 plan, 10/12 check — the measured "
+              "delta is +0.3333, and the failures are filed, "
+              "not hidden: a reasoning slip and a plan "
+              "locking a wrong order and a check inventing a "
+              "problem are scaffold-LOSS cases (OFF holds, "
+              "ON fails), and transcription / missed-error / "
+              "missing-step cases fail on both roads; the "
+              "plan axis's ON score is the lowest, exactly "
+              "at the 0.75 threshold. This pins SCRIPTED "
+              "fixtures through the real scaffold machinery "
+              "— a live model's depth behaviour is NOT "
+              "PROVEN (TF-126), and the core loop does not "
+              "execute strategies automatically (TF-022's "
+              "filed limit; D-BENCH-10)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -839,11 +981,31 @@ def measure_memory_suite_baseline() -> dict[str, Any]:
     }
 
 
+def measure_depth_suite_baseline() -> dict[str, Any]:
+    """Run TF-124's filed suite corpora through the real machinery."""
+    from benchmarks.depth_suite import run_depth_suite
+
+    result = run_depth_suite()
+    return {
+        "chain_off_score": result.chain_off,
+        "chain_on_score": result.chain_on,
+        "plan_off_score": result.plan_off,
+        "plan_on_score": result.plan_on,
+        "check_off_score": result.check_off,
+        "check_on_score": result.check_on,
+        "overall_off_score": result.overall_off,
+        "overall_on_score": result.overall_on,
+        "delta": result.delta,
+        "total_cases": result.total_cases,
+    }
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
+    "depth_suite_synthetic_v1": measure_depth_suite_baseline,
 }
 
 
@@ -1093,6 +1255,7 @@ __all__ = [
     "baseline_problems",
     "harness_as_data",
     "harness_problems",
+    "measure_depth_suite_baseline",
     "measure_memory_suite_baseline",
     "measure_persona_baseline",
     "measure_persona_suite_baseline",
