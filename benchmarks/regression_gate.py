@@ -284,13 +284,27 @@ BASELINE_BOOK_BASELINE_ID = "baseline_book_synthetic_v1"
 #: by name.
 FLAKE_DISCIPLINE_BASELINE_ID = "flake_discipline_synthetic_v1"
 
+#: TF-136 update, in the open: TF-136 registered
+#: one further baseline after TF-135 — the
+#: public-claims audit's own pin. It is NOT one of
+#: the gated baselines either, by the same
+#: shape: the audit is a claims filing judged
+#: by its own module's checker
+#: (public_claims_problems()), and the gated
+#: set stays the nine TF-121..TF-128 baselines
+#: exactly as TF-129 filed it. The gated-set
+#: check below excludes all eight ungated pins
+#: by name.
+PUBLIC_CLAIMS_BASELINE_ID = "public_claims_synthetic_v1"
+
 #: The harness baselines that are not gated:
 #: the gate's own verdict row, TF-130's
 #: spot-check pin, TF-131's data-hygiene
 #: pin, TF-132's wyrd-panel pin,
 #: TF-133's cost-panel pin, TF-134's
-#: baseline-book pin, and TF-135's
-#: flake-discipline pin, each judged by its
+#: baseline-book pin, TF-135's
+#: flake-discipline pin, and TF-136's
+#: public-claims pin, each judged by its
 #: own module's checker.
 UNGATED_BASELINE_IDS: tuple[str, ...] = (
     GATE_BASELINE_ID,
@@ -300,6 +314,7 @@ UNGATED_BASELINE_IDS: tuple[str, ...] = (
     COST_PANEL_BASELINE_ID,
     BASELINE_BOOK_BASELINE_ID,
     FLAKE_DISCIPLINE_BASELINE_ID,
+    PUBLIC_CLAIMS_BASELINE_ID,
 )
 
 #: The baselines the gate gates: the nine pinned

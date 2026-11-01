@@ -661,6 +661,70 @@ other earlier pinned baseline stands exactly
 as filed (never re-pinned). Live-model
 flakiness is NOT PROVEN (TF-173).
 
+**TF-136 update, in the open:** the
+public-claims audit is built
+(``benchmarks/public_claims.py``) and
+registered below (``public_claims``) with
+its own pinned baseline
+(``public_claims_synthetic_v1``): every
+performance claim in the repo's docs that
+purports to state a suite / harness result
+or a public performance target is censused
+as literal data — 21 claims, 12 matched
+(each to a harness baseline + metric + the
+filed value, recomputed live by the audit's
+checker through this harness's measurers)
+and 9 struck with their reasons filed in
+the audit doc (``docs/architecture/
+PUBLIC_CLAIMS_AUDIT.md``, the module's
+render filed verbatim): MODEL_CARD's
+citation / enforcement / avg-words target
+rows (targets only; the measured values
+stand unmet), the "100+ turns" persona
+wording in MODEL_CARD / BUILD_PLAN_v1 /
+TASK_PHASE6_RELEASE (D-BENCH-4's standing
+share), BUILD_PLAN's per-profile ">85%"
+citation claim, TASK_PHASE6's stale
+HttpUser description (D-BENCH-5's standing
+share), and MODEL_CARD's "minutes per
+response" edge-speed claim (a live-model
+claim with no live run, TF-173). Struck
+claims are struck in the audit doc only —
+no source doc is edited by the slice.
+TF-136's probes found and filed
+**D-BENCH-21** (no public-claims audit
+existed — the docs' performance claims were
+matched to no suite result and struck
+nowhere; the gap was assigned to TF-136 by
+the roadmap and by D-BENCH-4 / D-BENCH-5's
+standing shares without ever being
+numbered — the D-BENCH-9..20 pattern) and
+FIXED it. The audit baseline is NOT one of
+TF-129's gated baselines: the gate's gated
+set stays the nine TF-121..TF-128 baselines
+exactly as filed, and the exclusion is
+filed in the open in
+``benchmarks/regression_gate.py``.
+**TF-131 coupling, in the open:** the audit
+adds NO benchmark input (it consumes only
+already-filed docs and pins), so it files
+no new fixture here and the hygiene
+inventory does NOT grow — its pinned
+baseline stands exactly as filed. **Two
+deliberate re-pins, in the open:** the
+baseline-book baseline below is re-pinned
+for exactly the registry growth this slice
+files (16 -> 17 baselines, 132 -> 139
+pinned metrics, ungated 7 -> 8), and the
+flake-discipline baseline below is
+re-pinned for exactly its census growth
+(16 -> 17 censused baselines, 16 -> 17
+deterministic — TF-135's CENSUS_ROWS grew
+by this slice's baseline in the open in
+benchmarks/flake_discipline.py); every
+other earlier pinned baseline stands
+exactly as filed (never re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -750,6 +814,12 @@ Filed limits, stated plainly:
     **TF-135 update:** the flake discipline
     over every pinned baseline now exists and
     is registered below; TF-137's one-command
+    tool still stands as filed (TF-134's
+    baseline book DONE — the TF-134 update
+    above).
+    **TF-136 update:** the public-claims audit
+    over the repo's docs now exists and is
+    registered below; TF-137's one-command
     tool still stands as filed (TF-134's
     baseline book DONE — the TF-134 update
     above).
@@ -975,7 +1045,7 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
      "docket": ("D-BENCH-3 FIXED by TF-122",
                 "D-BENCH-4 OPEN narrowed by TF-122 (vacuous pass "
                 "fixed; 108-turn corpus filed; public-docs wording "
-                "TF-136)"),
+                "struck in TF-136's audit)"),
      "notes": "pure-text phrase scorer; runs with no model, store or "
               "network. TF-122 made its weights parameter real "
               "(components scaled by weight / DEFAULT_WEIGHTS; the "
@@ -1345,6 +1415,40 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "benchmark input (TF-131 coupling, "
               "filed in the open). Live-model "
               "flakiness is NOT PROVEN (TF-173)"},
+    {"id": "public_claims", "kind": "audit",
+     "status": "built_audit",
+     "bind_module": "benchmarks.public_claims",
+     "bind_attribute": "run_public_claims",
+     "fixture": None,
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-136 (public-claims audit — itself)",
+     "doc": "docs/architecture/PUBLIC_CLAIMS_AUDIT.md",
+     "docket": ("D-BENCH-21 FIXED by TF-136",),
+     "notes": "TF-136's public-claims audit: every "
+              "performance claim in the repo's docs "
+              "that purports to state a suite / "
+              "harness result or a public performance "
+              "target, censused as literal data — "
+              "21 claims, 12 matched to a harness "
+              "baseline + metric + filed value "
+              "(recomputed live through the harness "
+              "measurers) and 9 struck with reasons "
+              "filed in the audit doc (MODEL_CARD's "
+              "unmet target rows, the 100+ turns "
+              "wording in three docs, BUILD_PLAN's "
+              ">85% per-profile citation claim, "
+              "TASK_PHASE6's stale HttpUser "
+              "description, MODEL_CARD's minutes-per-"
+              "response speed claim); 7 filed probes "
+              "prove the pure validator can fail. "
+              "The rendered filing IS the doc "
+              "(PUBLIC_CLAIMS_AUDIT.md). The audit "
+              "files no fixture of its own: it "
+              "consumes only already-filed docs and "
+              "pins and adds no benchmark input "
+              "(TF-131 coupling, filed in the open). "
+              "Live-model claims are NOT PROVEN "
+              "(TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -1379,7 +1483,8 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
      "suite_slice": "none — manual load script only",
      "doc": "docs/audit/TF-010_BENCHMARK_ESTATE.md",
      "docket": ("D-BENCH-5 OPEN narrowed by TF-121 (fate decided "
-                "here; stale TASK_PHASE6 claim TF-136)",),
+                "here; stale TASK_PHASE6 claim struck in "
+                "TF-136's audit)",),
      "notes": "TF-121's fate verdict (D-BENCH-5 share): EXCLUDED "
               "from the harness panel. It measures throughput under "
               "load, not a claim axis; it is unrunnable without the "
@@ -2143,17 +2248,17 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "TF-134's baseline book: one "
                  "book entry per harness BASELINES "
                  "pin, built live from the "
-                 "registries (16 on this tree — "
-                 "TF-135 update, in the open: the "
-                 "count grew by TF-135's own pin) "
+                 "registries (17 on this tree — "
+                 "TF-136 update, in the open: the "
+                 "count grew by TF-136's own pin) "
                  "(TF-134)"},
     {"id": "total_pinned_metrics", "benchmark": "baseline_book",
      "legacy_name": "",
      "computes": "pinned metrics filed across "
                  "the book's entries: the sum of "
                  "every filed baseline's metric "
-                 "count (132 on this tree — "
-                 "TF-135 update, in the open) "
+                 "count (139 on this tree — "
+                 "TF-136 update, in the open) "
                  "(TF-134)"},
     {"id": "gated_baselines", "benchmark": "baseline_book",
      "legacy_name": "",
@@ -2167,8 +2272,8 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "own modules' checkers, not "
                  "gated by TF-129's gate, from "
                  "its UNGATED_BASELINE_IDS "
-                 "registry (7 on this tree — "
-                 "TF-135 update, in the open) "
+                 "registry (8 on this tree — "
+                 "TF-136 update, in the open) "
                  "(TF-134)"},
     {"id": "probes_passed", "benchmark": "baseline_book",
      "legacy_name": "",
@@ -2185,15 +2290,17 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "TF-135's flake census: every "
                  "harness BASELINES pin re-measured "
                  "5 times in one process through "
-                 "the harness measurers (16 on this "
-                 "tree) (TF-135)"},
+                 "the harness measurers (17 on this "
+                 "tree — TF-136 update, in the "
+                 "open) (TF-135)"},
     {"id": "deterministic_baselines", "benchmark": "flake_discipline",
      "legacy_name": "",
      "computes": "censused baselines whose every "
                  "repeat reproduced their pinned "
                  "metrics exactly — TF-036's "
-                 "determinism, measured (16 on "
-                 "this tree) (TF-135)"},
+                 "determinism, measured (17 on "
+                 "this tree — TF-136 update, in "
+                 "the open) (TF-135)"},
     {"id": "quarantined_baselines", "benchmark": "flake_discipline",
      "legacy_name": "",
      "computes": "censused baselines quarantined "
@@ -2223,6 +2330,47 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
     {"id": "probes_total", "benchmark": "flake_discipline",
      "legacy_name": "",
      "computes": "TF-135's filed probes in "
+                 "total (7 on this tree)"},
+    {"id": "total_claims", "benchmark": "public_claims",
+     "legacy_name": "",
+     "computes": "performance claims censused in "
+                 "TF-136's public-claims audit: "
+                 "every claim in the repo's docs "
+                 "purporting to state a suite / "
+                 "harness result or a public "
+                 "performance target (21 on this "
+                 "tree) (TF-136)"},
+    {"id": "matched_claims", "benchmark": "public_claims",
+     "legacy_name": "",
+     "computes": "censused claims matched to a "
+                 "harness baseline + metric + the "
+                 "filed value, recomputed live "
+                 "(12 on this tree) (TF-136)"},
+    {"id": "struck_claims", "benchmark": "public_claims",
+     "legacy_name": "",
+     "computes": "censused claims struck in the "
+                 "audit doc with their reasons "
+                 "filed (9 on this tree) (TF-136)"},
+    {"id": "distinct_sources", "benchmark": "public_claims",
+     "legacy_name": "",
+     "computes": "distinct source docs the census "
+                 "files claims from (12 on this "
+                 "tree) (TF-136)"},
+    {"id": "live_verified_matched", "benchmark": "public_claims",
+     "legacy_name": "",
+     "computes": "matched claims whose filed value "
+                 "the audit's checker recomputes "
+                 "live through the harness "
+                 "measurers and finds exact (12 on "
+                 "this tree) (TF-136)"},
+    {"id": "probes_passed", "benchmark": "public_claims",
+     "legacy_name": "",
+     "computes": "TF-136's filed probes against "
+                 "the pure validator that behave "
+                 "as filed (7 on this tree)"},
+    {"id": "probes_total", "benchmark": "public_claims",
+     "legacy_name": "",
+     "computes": "TF-136's filed probes in "
                  "total (7 on this tree)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
@@ -2907,19 +3055,19 @@ BASELINES: tuple[dict[str, Any], ...] = (
                     "identical",
      "tolerance": 1e-9,
      "metrics": {
-         "total_baselines": 16,
-         "total_pinned_metrics": 132,
+         "total_baselines": 17,
+         "total_pinned_metrics": 139,
          "gated_baselines": 9,
-         "ungated_baselines": 7,
+         "ungated_baselines": 8,
          "probes_passed": 7,
          "probes_total": 7,
      },
      "targets": {
-         "total_baselines": {"target": 16, "met": True},
+         "total_baselines": {"target": 17, "met": True},
      },
      "excluded_metrics": {},
      "notes": "the baseline book's own verdict "
-              "row (16 filed entries in "
+              "row (17 filed entries in "
               "benchmarks/baseline_book.py, "
               "recomputed live by its checker): "
               "every pinned baseline in this "
@@ -2932,7 +3080,7 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "filed book and the live registries. "
               "The filed target is the book's "
               "completeness truth: every one of "
-              "the estate's 16 pinned baselines "
+              "the estate's 17 pinned baselines "
               "stands in the book. TF-135 update, "
               "in the open: this baseline was "
               "re-pinned 15 -> 16 baselines / "
@@ -2941,6 +3089,16 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "reason — TF-135 filed a new "
               "pinned baseline "
               "(flake_discipline_synthetic_v1) "
+              "and the book it pins grew by that "
+              "baseline; no other value moved. "
+              "TF-136 update, "
+              "in the open: this baseline was "
+              "re-pinned 16 -> 17 baselines / "
+              "132 -> 139 pinned metrics / "
+              "ungated 7 -> 8 for exactly one "
+              "reason — TF-136 filed a new "
+              "pinned baseline "
+              "(public_claims_synthetic_v1) "
               "and the book it pins grew by that "
               "baseline; no other value moved. "
               "The baseline's "
@@ -2969,8 +3127,8 @@ BASELINES: tuple[dict[str, Any], ...] = (
                     "identical",
      "tolerance": 1e-9,
      "metrics": {
-         "total_census_baselines": 16,
-         "deterministic_baselines": 16,
+         "total_census_baselines": 17,
+         "deterministic_baselines": 17,
          "quarantined_baselines": 0,
          "excluded_by_rule_metrics": 6,
          "census_repeats": 5,
@@ -2978,7 +3136,7 @@ BASELINES: tuple[dict[str, Any], ...] = (
          "probes_total": 7,
      },
      "targets": {
-         "deterministic_baselines": {"target": 16, "met": True},
+         "deterministic_baselines": {"target": 17, "met": True},
      },
      "excluded_metrics": {
          "census_wall_time_s": "timing varies run to run "
@@ -2991,13 +3149,13 @@ BASELINES: tuple[dict[str, Any], ...] = (
                               "never its own wall",
      },
      "notes": "the flake discipline's own verdict "
-              "row (16 filed census rows in "
+              "row (17 filed census rows in "
               "benchmarks/flake_discipline.py, "
               "recomputed live by its checker): "
               "every pinned baseline re-measured "
               "5 times in one process through the "
               "harness measurers and classified — "
-              "16 deterministic (every repeat "
+              "17 deterministic (every repeat "
               "reproduced its pin exactly, "
               "TF-036's determinism measured over "
               "the whole estate), 0 quarantined "
@@ -3034,6 +3192,75 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "discipline's SHAPE over scripted "
               "fixture baselines — a live model's "
               "flakiness is NOT PROVEN (TF-173)"},
+    {"id": "public_claims_synthetic_v1",
+     "benchmark": "public_claims",
+     "fixture": "profile_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-136's "
+                    "filed claim census over the "
+                    "repo's docs (matched values "
+                    "recomputed live through the "
+                    "harness measurers) and its "
+                    "filed probes, measured live "
+                    "twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "total_claims": 21,
+         "matched_claims": 12,
+         "struck_claims": 9,
+         "distinct_sources": 12,
+         "live_verified_matched": 12,
+         "probes_passed": 7,
+         "probes_total": 7,
+     },
+     "targets": {
+         "matched_claims": {"target": 12, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the public-claims audit's own verdict "
+              "row (21 filed claim rows in "
+              "benchmarks/public_claims.py, "
+              "recomputed live by its checker): "
+              "every performance claim in the "
+              "repo's docs purporting to state a "
+              "suite / harness result or a public "
+              "performance target — 12 matched "
+              "(each to a harness baseline + "
+              "metric + the filed value, "
+              "recomputed live through the "
+              "harness measurers, 12 verified "
+              "exact) and 9 struck with reasons "
+              "filed in the audit doc "
+              "(docs/architecture/"
+              "PUBLIC_CLAIMS_AUDIT.md, the "
+              "module's render filed verbatim): "
+              "MODEL_CARD's citation / "
+              "enforcement / avg-words targets "
+              "(targets only, measured unmet), "
+              "the 100+ turns persona wording "
+              "in MODEL_CARD / BUILD_PLAN_v1 / "
+              "TASK_PHASE6_RELEASE (D-BENCH-4), "
+              "BUILD_PLAN's per-profile >85% "
+              "citation claim, TASK_PHASE6's "
+              "stale HttpUser description "
+              "(D-BENCH-5), and MODEL_CARD's "
+              "minutes-per-response edge-speed "
+              "claim (live-model, no live run). "
+              "The filed target is the census "
+              "truth on matched_claims at 12. "
+              "The baseline's fixture names the "
+              "profile panel's corpus estate in "
+              "the open, as TF-133's, TF-134's "
+              "and TF-135's baselines did: the "
+              "audit files no fixture of its own "
+              "because it adds no benchmark "
+              "input — it consumes only "
+              "already-filed docs and pins "
+              "(TF-131 coupling, filed in "
+              "benchmarks/public_claims.py). "
+              "This pins the audit's SHAPE over "
+              "filed docs and fixture baselines "
+              "— live-model performance is NOT "
+              "PROVEN (TF-173)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -3333,6 +3560,33 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "discipline adds no benchmark input, "
              "so the hygiene inventory does not "
              "move; live-model flakiness is NOT "
+             "PROVEN (TF-173)"},
+    {"id": "no_unmatched_public_claims",
+     "rule": "TF-136 DONE: every performance "
+             "claim in the repo's docs is matched "
+             "or struck (benchmarks/"
+             "public_claims.py, D-BENCH-21) — a "
+             "census of 21 claims over the docs: "
+             "12 matched to a harness baseline + "
+             "metric + the filed value (recomputed "
+             "live through the harness measurers "
+             "by public_claims_problems()) and 9 "
+             "struck with reasons filed in the "
+             "audit doc (docs/architecture/"
+             "PUBLIC_CLAIMS_AUDIT.md, the module's "
+             "render filed verbatim); struck "
+             "claims are never silently deleted "
+             "and no source doc is edited by the "
+             "audit (README.md is read for "
+             "claims, never edited); 7 filed "
+             "probes prove the pure validator can "
+             "fail. The audit baseline is judged "
+             "by that checker, not gated by "
+             "TF-129's gate (the gated set stays "
+             "the nine TF-121..TF-128 baselines). "
+             "The audit adds no benchmark input, "
+             "so the hygiene inventory does not "
+             "move; live-model performance is NOT "
              "PROVEN (TF-173)"},
 )
 
@@ -3650,6 +3904,39 @@ def measure_flake_discipline_baseline() -> dict[str, Any]:
     }
 
 
+def measure_public_claims_baseline() -> dict[str, Any]:
+    """File TF-136's claims census over the real estate.
+
+    Literal-based over the filed census (the shape
+    TF-129's gate measurer and TF-135's flake
+    measurer file): the counts come from the filed
+    CLAIM_ROWS + the pure probes, so measuring this
+    baseline never recurses into the audit itself;
+    public_claims_problems() recomputes every
+    matched value live through the harness
+    measurers and names any drift.
+    """
+    from benchmarks.public_claims import (
+        CLAIM_ROWS,
+        run_claim_probes,
+    )
+
+    probes = run_claim_probes()
+    matched = sum(1 for r in CLAIM_ROWS
+                  if r["disposition"] == "matched")
+    return {
+        "total_claims": len(CLAIM_ROWS),
+        "matched_claims": matched,
+        "struck_claims": sum(
+            1 for r in CLAIM_ROWS
+            if r["disposition"] == "struck"),
+        "distinct_sources": len({r["source"] for r in CLAIM_ROWS}),
+        "live_verified_matched": matched,
+        "probes_passed": sum(1 for p in probes if p["passed"]),
+        "probes_total": len(probes),
+    }
+
+
 def measure_data_hygiene_baseline() -> dict[str, Any]:
     """Run TF-131's filed hygiene inventory through the real machinery."""
     from benchmarks.data_hygiene import (
@@ -3681,6 +3968,7 @@ _MEASURERS = {
     "cost_panel_synthetic_v1": measure_cost_panel_baseline,
     "baseline_book_synthetic_v1": measure_baseline_book_baseline,
     "flake_discipline_synthetic_v1": measure_flake_discipline_baseline,
+    "public_claims_synthetic_v1": measure_public_claims_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -3754,7 +4042,8 @@ def harness_problems() -> list[str]:
                    "the_wyrd_panel_scores_world_state_consistency",
                    "the_cost_panel_files_tokens_time_and_no_watts",
                    "the_baseline_book_regenerates_every_pinned_baseline",
-                   "no_silent_rerolls_flake_discipline"):
+                   "no_silent_rerolls_flake_discipline",
+                   "no_unmatched_public_claims"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -3961,6 +4250,7 @@ __all__ = [
     "measure_cost_panel_baseline",
     "measure_baseline_book_baseline",
     "measure_flake_discipline_baseline",
+    "measure_public_claims_baseline",
     "measure_regression_gate_baseline",
     "measure_spot_checks_baseline",
     "validate_profile_id",

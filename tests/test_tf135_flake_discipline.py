@@ -20,10 +20,10 @@ by this slice.
 
 Pinned here:
 
-  * the census: 16 baselines re-measured 5 times
+  * the census: 17 baselines re-measured 5 times
     in one process through the harness's own
     measurers (TF-129's NOISE_REPEATS widened to
-    the whole estate) — 16 deterministic,
+    the whole estate) — 17 deterministic,
     0 quarantined, 6 metrics excluded-by-rule
     (TF-121's unpinned latency / wall / power
     shapes, never flakes),
@@ -45,7 +45,7 @@ Pinned here:
     FAIL, partial and empty selections REVIEW
     (no vacuous pass),
   * the checker clean, the harness registration
-    (23 / 13 / 16 / 132, rules 16), the new
+    (24 / 13 / 17 / 139, rules 17), the new
     baseline re-measured live twice — with every
     earlier pinned baseline preserved exactly
     (one deliberate exception, filed in the
@@ -154,7 +154,7 @@ def _row(baseline_id: str):
 class TestCensus:
     def test_sixteen_baselines_all_deterministic_in_harness_order(
             self) -> None:
-        assert len(CENSUS_ROWS) == 16
+        assert len(CENSUS_ROWS) == 17
         assert [r["baseline"] for r in CENSUS_ROWS] == \
             [b["id"] for b in BASELINES]
         assert all(r["classification"] == "deterministic"
@@ -164,7 +164,7 @@ class TestCensus:
         assert all(r["max_abs_spread"] == 0.0
                    for r in CENSUS_ROWS)
         assert sum(r["metrics_measured"]
-                   for r in CENSUS_ROWS) == 132
+                   for r in CENSUS_ROWS) == 139
         # The quarantine registry files empty on
         # this tree: nothing differed, so nothing
         # is quarantined.
@@ -231,8 +231,8 @@ class TestLiveEvaluation:
         result = _full_result()
         assert result.verdict == "PASS"
         assert result.passes is True
-        assert result.total_baselines == 16
-        assert result.deterministic_baselines == 16
+        assert result.total_baselines == 17
+        assert result.deterministic_baselines == 17
         assert result.quarantined_baselines == 0
         assert result.excluded_metrics == 6
         assert result.overall_score == 1.0
@@ -391,7 +391,7 @@ class TestRenderAndDoc:
         doc_text = (REPO_ROOT / FLAKE_DISCIPLINE_DOC).read_text(
             encoding="utf-8")
         assert doc_text == render_flake_discipline_markdown()
-        assert "Baselines censused: 16" in doc_text
+        assert "Baselines censused: 17" in doc_text
         assert "no_silent_rerolls" in doc_text
         for row in CENSUS_ROWS:
             assert f"`{row['baseline']}`" in doc_text
@@ -411,7 +411,7 @@ class TestRenderAndDoc:
             cwd=REPO_ROOT, env=env, capture_output=True,
             text=True, timeout=300)
         assert completed.returncode == 0
-        assert "16 censused baselines" in completed.stdout
+        assert "17 censused baselines" in completed.stdout
         assert (REPO_ROOT / FLAKE_DISCIPLINE_DOC).read_bytes() \
             == before
 
@@ -441,12 +441,12 @@ class TestHarnessRegistration:
                     if b["id"] == FLAKE_DISCIPLINE_BASELINE_ID]
         assert len(baseline) == 1
         assert baseline[0]["metrics"][
-            "total_census_baselines"] == 16
+            "total_census_baselines"] == 17
         assert baseline[0]["metrics"][
-            "deterministic_baselines"] == 16
+            "deterministic_baselines"] == 17
         assert baseline[0]["targets"][
             "deterministic_baselines"] == {
-                "target": 16, "met": True}
+                "target": 17, "met": True}
         assert baseline[0]["excluded_metrics"] == {
             "census_wall_time_s":
                 baseline[0]["excluded_metrics"][
@@ -463,11 +463,11 @@ class TestHarnessRegistration:
                        "census_repeats",
                        "probes_passed", "probes_total"):
             assert ("flake_discipline", metric) in defined
-        assert len(BENCHMARKS) == 23
+        assert len(BENCHMARKS) == 24
         assert len(FIXTURES) == 13
-        assert len(BASELINES) == 16
-        assert len(METRIC_DEFINITIONS) == 132
-        assert len(HARNESS_RULES) == 16
+        assert len(BASELINES) == 17
+        assert len(METRIC_DEFINITIONS) == 139
+        assert len(HARNESS_RULES) == 17
         assert "no_silent_rerolls_flake_discipline" in {
             r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []
@@ -477,8 +477,8 @@ class TestHarnessRegistration:
         first = measure_flake_discipline_baseline()
         second = measure_flake_discipline_baseline()
         assert first == second
-        assert first["total_census_baselines"] == 16
-        assert first["deterministic_baselines"] == 16
+        assert first["total_census_baselines"] == 17
+        assert first["deterministic_baselines"] == 17
         assert first["quarantined_baselines"] == 0
         assert first["excluded_by_rule_metrics"] == 6
         assert first["census_repeats"] == 5
@@ -512,7 +512,7 @@ class TestHarnessRegistration:
         assert FLAKE_DISCIPLINE_BASELINE_ID in \
             UNGATED_BASELINE_IDS
         assert len(GATED_BASELINE_IDS) == 9
-        assert len(UNGATED_BASELINE_IDS) == 7
+        assert len(UNGATED_BASELINE_IDS) == 8
         assert run_regression_gate().verdict == "PASS"
 
 
@@ -537,9 +537,9 @@ class TestFilingAndChecker:
             assert needed in ids
         data = flake_discipline_as_data()
         assert data["format"] == FLAKE_DISCIPLINE_FORMAT
-        assert data["measured"]["total_baselines"] == 16
+        assert data["measured"]["total_baselines"] == 17
         assert data["measured"][
-            "deterministic_baselines"] == 16
+            "deterministic_baselines"] == 17
         assert data["measured"]["quarantined_baselines"] == 0
         assert data["measured"][
             "excluded_by_rule_metrics"] == 6
