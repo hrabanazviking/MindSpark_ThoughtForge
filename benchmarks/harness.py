@@ -143,6 +143,24 @@ TF-136), the suite is registered below
 (``persona_suite_synthetic_v1``), and the persona
 entry's suite-slice note now files TF-122 done.
 
+**TF-123 update, in the open:** the memory fidelity
+suite is built (``benchmarks/memory_suite.py``) and
+registered below (``memory_suite``) with its own
+pinned baseline (``memory_suite_synthetic_v1``,
+measured live twice, identical); the
+``retrieval_precision`` entry's suite-slice note now
+files TF-123 DONE — the suite consumes TF-043's
+corpus + pinned baseline mechanically. TF-123's
+probes found and filed **D-BENCH-9** (citation truth
+and the explain side scored by nothing: a
+cited-but-false claim passed TF-049's presence
+check identically to the true claim) and FIXED it
+in the scoring sense TF-049's doc assigned — the
+suite's truth + explain axes now score both, with
+the failing shapes filed as cases. All earlier
+pinned baselines stand exactly as filed (never
+re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -160,6 +178,11 @@ Filed limits, stated plainly:
     registered below; TF-123..TF-125's suites, TF-129's
     regression gates, TF-134's baseline book and
     TF-137's one-command tool still stand as filed.
+    **TF-123 update:** the second suite (memory
+    fidelity) now exists and is registered below;
+    TF-124..TF-125's suites, TF-129's regression
+    gates, TF-134's baseline book and TF-137's
+    one-command tool still stand as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -250,6 +273,13 @@ FIXTURES: tuple[dict[str, Any], ...] = (
      "subject": "TF-122's scripted persona corpora: 36 identity "
                 "turns + 36 voice turns + 36 pressure turns "
                 "(108 scored turns) in TF-030's synthetic world"},
+    {"id": "memory_suite_corpus", "benchmark": "memory_suite",
+     "bind_module": "benchmarks.memory_suite",
+     "bind_attribute": "ALL_SUITE_CASES",
+     "synthetic": True,
+     "subject": "TF-123's scripted memory corpora: 12 present "
+                "cases + 12 true cases + 12 explain cases "
+                "(36 scored cases) in TF-043's synthetic world"},
 )
 
 
@@ -297,6 +327,21 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "synthetic turns, per-axis scores + overall, "
               "PASS/REVIEW by filed thresholds, empty suite "
               "0.0 / REVIEW"},
+    {"id": "memory_suite", "kind": "suite",
+     "status": "built_suite",
+     "bind_module": "benchmarks.memory_suite",
+     "bind_attribute": "run_memory_suite",
+     "fixture": "memory_suite_corpus",
+     "claims_axes": ("depth",),
+     "suite_slice": "TF-123 (memory fidelity suite — itself)",
+     "doc": "docs/architecture/MEMORY_FIDELITY_SUITE.md",
+     "docket": ("D-BENCH-9 FIXED by TF-123",),
+     "notes": "TF-123's scored suite over TF-049's real "
+              "check_citations / matcher and TF-043's corpus: "
+              "citations present, citations true, explain — "
+              "36 scripted synthetic cases, per-axis scores + "
+              "overall, PASS/REVIEW by filed thresholds, "
+              "empty suite 0.0 / REVIEW"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -335,13 +380,17 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
      "bind_attribute": "evaluate_retrieval",
      "fixture": None,
      "claims_axes": ("depth",),
-     "suite_slice": "TF-123 (memory fidelity suite consumes it)",
+     "suite_slice": "TF-123 DONE (memory fidelity suite "
+                    "consumes it: benchmarks/memory_suite.py)",
      "doc": "docs/architecture/RETRIEVAL_PRECISION.md",
      "docket": (),
      "notes": "TF-043's known-answer retrieval fixture + its own "
               "pinned BASELINE (that module's filing, bound here, "
               "not re-pinned): the shape this harness's baselines "
-              "follow"},
+              "follow. TF-123 consumes it mechanically: the "
+              "suite's records are built from its corpus rows "
+              "and its checker re-runs evaluate_retrieval "
+              "against the pinned baseline live"},
     {"id": "scoring_honesty", "kind": "neighbour_scorer",
      "status": "bound_neighbour",
      "bind_module": "thoughtforge.knowledge.scoring_honesty",
@@ -467,6 +516,35 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "legacy_name": "",
      "computes": "turns scored across the suite's three axes "
                  "(36 per axis, 108 in the filed corpus)"},
+    {"id": "present_score", "benchmark": "memory_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted memory-claim "
+                 "cases TF-049's check_citations passes: every "
+                 "matched claim cited in-claim, nothing uncited, "
+                 "no foreign marker (TF-123)"},
+    {"id": "true_score", "benchmark": "memory_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted cited cases "
+                 "where every citation resolves to a retrieved "
+                 "record matching the citing claim (TF-049's "
+                 "matcher) and the claim carries the cited "
+                 "fact's filed required phrases with no filed "
+                 "breaking phrase (TF-123)"},
+    {"id": "explain_score", "benchmark": "memory_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted non-memory "
+                 "cases that own themselves: no stored record "
+                 "matched (TF-049), no citation marker carried, "
+                 "and a filed ownership phrase present (TF-123)"},
+    {"id": "overall_score", "benchmark": "memory_suite",
+     "legacy_name": "",
+     "computes": "the mean of the suite's three axis scores "
+                 "(present, true, explain); 0.0 for an empty "
+                 "suite (TF-123)"},
+    {"id": "total_cases", "benchmark": "memory_suite",
+     "legacy_name": "",
+     "computes": "cases scored across the suite's three axes "
+                 "(12 per axis, 36 in the filed corpus)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -568,6 +646,37 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "This pins SCRIPTED fixtures through the real "
               "scorers — a live model's 100+ turn behaviour is "
               "NOT PROVEN (TF-125 / TF-126)"},
+    {"id": "memory_suite_synthetic_v1",
+     "benchmark": "memory_suite",
+     "fixture": "memory_suite_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-123's filed scripted "
+                    "cases through the real TF-049 checker / "
+                    "matcher over TF-043's corpus records, "
+                    "measured live twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "present_score": 0.8333333333333334,
+         "true_score": 0.75,
+         "explain_score": 0.8333333333333334,
+         "overall_score": 0.8055555555555557,
+         "total_cases": 36,
+     },
+     "targets": {
+         "overall_score": {"target": 0.75, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the suite's scripted answers hold 10/12 present "
+              "cases (a missing citation and a wrong-sentence "
+              "citation fail, by design), 9/12 true cases (a "
+              "cited-but-false value, a fabricated citation and "
+              "a wrong-record citation fail, by design — the "
+              "truth axis is the hardest, at the threshold), "
+              "and 10/12 explain cases (an unowned assertion "
+              "and a disguised memory claim fail); every axis "
+              "is at or above the 0.75 threshold, so the filed "
+              "run PASSes. This pins SCRIPTED fixtures through "
+              "the real machinery — a live model's citation "
+              "behaviour is NOT PROVEN (TF-125 / TF-126)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -716,10 +825,25 @@ def measure_persona_suite_baseline() -> dict[str, Any]:
     }
 
 
+def measure_memory_suite_baseline() -> dict[str, Any]:
+    """Run TF-123's filed suite corpora through the real machinery."""
+    from benchmarks.memory_suite import run_memory_suite
+
+    result = run_memory_suite()
+    return {
+        "present_score": result.present_score,
+        "true_score": result.true_score,
+        "explain_score": result.explain_score,
+        "overall_score": result.overall_score,
+        "total_cases": result.total_cases,
+    }
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
+    "memory_suite_synthetic_v1": measure_memory_suite_baseline,
 }
 
 
@@ -969,6 +1093,7 @@ __all__ = [
     "baseline_problems",
     "harness_as_data",
     "harness_problems",
+    "measure_memory_suite_baseline",
     "measure_persona_baseline",
     "measure_persona_suite_baseline",
     "measure_profile_baseline",

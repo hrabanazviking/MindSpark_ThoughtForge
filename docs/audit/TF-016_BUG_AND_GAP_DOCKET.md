@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 123 entries — 35 OPEN, 1 OPEN-ENVIRONMENT, 84 FIXED
+**Totals: 124 entries — 35 OPEN, 1 OPEN-ENVIRONMENT, 85 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -35,11 +35,13 @@ D-OFFLINE-1, D-OFFLINE-2 and D-OFFLINE-3 by TF-117 in Part VI;
 D-DATA-4, D-REF-2 and D-REF-3 by TF-118 in Part VI;
 D-ETL-1, D-ETL-2 and D-DATA-1 by TF-119 in Part VI;
 D-PROF-1 by TF-056 + TF-069 + TF-110 across Parts III–VI;
-D-BENCH-2 and D-BENCH-6 by TF-121 in Part VII), 3
+D-BENCH-2 and D-BENCH-6 by TF-121 in Part VII;
+D-BENCH-3 by TF-122 in Part VII; D-BENCH-9 by TF-123
+in Part VII), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
 Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 36 ·
-Part VII 7 · Part VIII 1 · Part IX 2 · Part X 10.
+Part VII 8 · Part VIII 1 · Part IX 2 · Part X 10.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
 nothing found stays unnumbered. Entries D-EMB-1 and D-EMB-2 were
@@ -715,6 +717,41 @@ facts, voice, and values under pressure against
 TF-030's FIXTURE_EXPECTATION, reused, never copied.
 Totals after TF-122: 123 entries.
 
+TF-123 added one entry in Part VII and fixed it in
+the same slice — D-BENCH-9 was found by that slice's
+live probes: against TF-043's real timetable chunk
+(stored fact: a dawn departure), TF-049's
+`check_citations` passed the cited-but-false claim
+"…departs at midnight [ref:4301]" identically to the
+true dawn claim, and an unowned non-memory answer
+passed every citation check in the estate — citation
+truth and the explain side were scored by nothing,
+a gap TF-049's doc (§5) had assigned to TF-123
+without numbering it. It is fixed in the scoring
+sense assigned: `benchmarks/memory_suite.py` files
+36 scripted cases over TF-043's corpus (records
+reused, never copied) scored by TF-049's real
+checker / matcher — present 10/12 (0.8333), true
+9/12 (0.75; the cited-but-false, fabricated and
+wrong-record cases fail by design), explain 10/12
+(0.8333), overall 0.8056, PASS — with a pinned
+harness baseline (`memory_suite_synthetic_v1`,
+measured live twice identical; the estate now files
+11 benchmarks / 4 fixtures / 4 baselines / 26 metric
+definitions, every earlier baseline preserved
+exactly). Enforcement is unchanged: no gate yet
+blocks a cited-but-false answer at generation time,
+and that wiring is not claimed. Counting note: the
+header totals and a row-level recount disagreed
+before this slice (D-LIC-2 counted FIXED in the
+header while its row reads OPEN-narrowed; the
+primary-owner part counts summed to 121 against
+123) — both mismatches are pre-existing and are
+preserved in shape, not silently repaired (parts
+now sum 122 against 124, D-BENCH-9's owner part
+VII counted).
+Totals after TF-123: 124 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -783,6 +820,7 @@ Totals after TF-122: 123 entries.
 | D-BENCH-6 | Benchmark estate decay bundle (TF-010): `quality_tiers` declared and never populated (always `{}`); warm-up turns are drawn from the measured set; the p95 index picks ~p90 at n=10 (printed below the mean); nothing is persisted — no baseline exists to regress against; the persona CLI cannot reach the module's own `generate_report()` | TF-121 (harness architecture starts from zero, per TF-010) | VII | **FIXED by TF-121** (all five items, re-probed live at the slice: a fresh run still filed `quality_tiers == {}` and the CLI printed avg 8ms with "p95: 2ms"): `quality_tiers` is populated from each successful turn's score tier (TurnResult carries `quality_tier`; the empty-store baseline now files `{"weak": 10}`); warm-up runs the dedicated `WARM_UP_QUERY`, never a measured query; p95 is nearest-rank (`ceil(0.95 * n) - 1`; a filed 1..10 latency set now files p95 10.0, not 9.0); the estate's first pinned baselines are filed as data in `benchmarks/harness.py` (`BASELINES`, re-measured live by `baseline_problems()` — the persistence TF-134's baseline book will regenerate); and the persona CLI reaches `generate_report()` via `--report` (proven live: the markdown report prints) |
 | D-BENCH-7 | Two unconnected latency systems: `utils/perf.py`'s tracker is wired into the core, but no benchmark consumes it — `ProfileBenchmark` times turns with its own `perf_counter` calls (TF-010) | TF-121 + TF-133 (cost panel) | VII | OPEN — **narrowed by TF-121**: both systems are now filed in one index with their roles stated (`benchmarks/harness.py`: the `perf_tracker` entry, kind instrument, status `instrumentation_not_a_scorer`, bound to `thoughtforge.utils.perf.PerfTracker`; the harness's turn timing is filed as ProfileBenchmark's own perf_counter). The consumption share stands exactly as filed for TF-133's cost panel — no benchmark consumes the tracker yet, and none is claimed to |
 | D-BENCH-8 | The `PYTHONPATH=src` requirement (package not pip-installed) is stated in no usage doc — without it the benchmark run-tests fail 3× with ModuleNotFoundError (TF-010 method note) | TF-182 (developer docs) | X | OPEN |
+| D-BENCH-9 | Citation truth and the explain side scored by nothing: TF-049's `check_citations` judges presence only — probed live by TF-123, the claim "the lantern hollow ferry departs at midnight [ref:4301]" (citing TF-043's chunk, whose stored fact is a dawn departure) PASSED identically to the true dawn claim; and an answer matching no stored fact with no citation and no own-reasoning ownership passed every citation check in the estate (TF-049's on-no-match pass, carried by TF-093). TF-049's doc (§5) assigned the scoring to TF-123 without numbering the gap (found by TF-123) | TF-123 | VII | **FIXED by TF-123** (in the scoring sense TF-049 assigned): `benchmarks/memory_suite.py` files the memory fidelity suite as data (RECORDS built from TF-043's corpus rows, reused never copied; MEMORY_FACTS 6 with required/breaking phrases; 36 scripted cases — PRESENT 12 / TRUE 12 / EXPLAIN 12 — including the filed failing shapes: missing citation, wrong-sentence citation, cited-but-false, fabricated, wrong-record, unowned, disguised) scored by TF-049's real `check_citations` / `match_claim_to_record` — present 0.8333, true 0.75, explain 0.8333, overall 0.8056 PASS, empty suite 0.0 / REVIEW — registered in `benchmarks/harness.py` in the open with pinned baseline `memory_suite_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned); its checker also re-runs TF-043's `evaluate_retrieval` against its pinned baseline live. Filed limit: enforcement is unchanged — the suite scores cited-but-false behaviour, no gate yet blocks it at generation time; that wiring is not claimed and stands as future work for the Part V / TF-129 line to take or refuse openly |
 | D-DEAD-1 | `utils/validators.py`: 5 of its 6 public functions are never called anywhere (`sanitise_system_prompt`, `validate_config`, `validate_model_path`, `validate_api_key`, `validate_jsonl_line`) — a validation layer that guards nothing (TF-011) | Wire-or-retire verdict per function: TF-032 (config surface) / TF-094 (policy configuration) | II | OPEN — **TF-032's share ruled**: `validate_config` is NOT wired into the cognition config surface — it requires the user_config `backend` key (it validates a backend dict, the wrong shape for a cognition config; the surface validates its own selections itself). Its wire-or-retire verdict, and the other four functions', belong to TF-094 / TF-065 — **TF-094's share ruled**: `validate_config` is NOT wired into the policy configuration surface either — it validates a backend dict, the wrong shape for a strictness level; that surface validates its own selections itself. The remaining functions are not policy configuration and their verdicts stand with TF-065 / the ingestion line; entry stays OPEN |
 | D-DEAD-2 | Scalar `cosine_similarity` (etl/embeddings.py:84) is dead while its batch sibling is live (TF-011) | TF-053 (embedding discipline) | III | **FIXED by TF-053** (retirement): the scalar function is removed from `etl/embeddings.py`; `batch_cosine_similarity` is the live path and its identity case is exercised by TF-053's checker and tests |
 | D-DEAD-3 | `utils/paths.py:get_embeddings_dir` has never been called (TF-011) | TF-053 / TF-110 era | III | **FIXED by TF-053** (wiring): `get_embeddings_dir()` is now called by `etl/embedding_discipline.onnx_artefact_status()` — the embeddings directory is the named ONNX artefact home the per-profile availability report checks |
