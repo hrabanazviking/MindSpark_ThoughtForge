@@ -13,6 +13,20 @@ Usage:
   from thoughtforge.etl.wikidata import WikidataETL
   etl = WikidataETL()
   etl.build(dump_path="/path/to/latest-all.json.gz")
+
+TF-107 hardening (docs/architecture/WIKIDATA_PIPELINE.md;
+the rules as data live in etl/wikidata_pipeline.py): the
+build is checkpointed (a commit + an atomic sidecar
+checkpoint every DEFAULT_CHECKPOINT_EVERY stream items,
+under synchronous = FULL), resumable (a later build with
+the same dump + config fingerprint continues from the
+checkpoint's stream position; a different ask raises
+CheckpointMismatchError), idempotent (re-processing an
+item duplicates no row — statements already stored are
+not inserted again), rate-cappable
+(max_items_per_second), and honest on failure (the build
+connection is closed before the failure is logged, so
+the original error is never masked by a locked log).
 """
 
 from __future__ import annotations
@@ -22,12 +36,26 @@ import json
 import logging
 import sqlite3
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
 from tqdm import tqdm
 
 from thoughtforge.etl.schema import get_connection, initialize_schema
+from thoughtforge.etl.wikidata_pipeline import (
+    DEFAULT_CHECKPOINT_EVERY,
+    STATUS_COMPLETE,
+    STATUS_IN_PROGRESS,
+    CheckpointMismatchError,
+    RatePacer,
+    checkpoint_mismatches,
+    config_fingerprint,
+    discard_checkpoint,
+    dump_fingerprint,
+    read_checkpoint,
+    write_checkpoint,
+)
 from thoughtforge.utils.paths import get_knowledge_db_path
 
 logger = logging.getLogger(__name__)
@@ -35,7 +63,6 @@ logger = logging.getLogger(__name__)
 # ── Configuration ──────────────────────────────────────────────────────────────
 
 DEFAULT_BATCH_SIZE: int = 2000
-COMMIT_EVERY_N: int = 50_000        # commit every N entities
 MEMORY_CHECK_EVERY_N: int = 10_000  # check RAM usage every N entities
 
 # Entity types to exclude (redirects, disambiguation pages, etc.)
@@ -62,16 +89,32 @@ class WikidataETL:
         limit: int | None = None,
         languages: list[str] | None = None,
         instance_of_filter: set[str] | None = None,
+        checkpoint_every: int = DEFAULT_CHECKPOINT_EVERY,
+        resume: bool = True,
+        max_items_per_second: float | None = None,
     ) -> dict[str, int]:
         """
-        Stream the Wikidata dump into SQLite.
+        Stream the Wikidata dump into SQLite (TF-107 hardened).
 
         Args:
             dump_path:            Path to latest-all.json.gz (or .json)
             batch_size:           Entities per insert batch
-            limit:                Stop after this many entities (useful for testing)
+            limit:                Stop after this many entities in
+                                  total (a resumed run counts the
+                                  checkpoint's entities toward it)
             languages:            Language codes to load labels for (default: ["en"])
             instance_of_filter:   If set, only include entities with these P31 values
+            checkpoint_every:     Stream items between checkpointed
+                                  commits (bounds the work an
+                                  interruption can lose)
+            resume:               Continue from the stored checkpoint
+                                  when its dump + config fingerprints
+                                  match this ask (a mismatch raises
+                                  CheckpointMismatchError); False
+                                  discards any checkpoint and starts
+                                  from the first item
+            max_items_per_second: Optional hard rate cap over items
+                                  processed by this call (RatePacer)
 
         Returns:
             Dict with entity/statement/label counts.
@@ -81,24 +124,111 @@ class WikidataETL:
 
         if not dump_path.exists():
             raise FileNotFoundError(f"Wikidata dump not found: {dump_path}")
+        if checkpoint_every < 1:
+            raise ValueError(
+                f"checkpoint_every must be >= 1, got {checkpoint_every!r}")
 
         logger.info("Initializing schema")
         initialize_schema(self.db_path)
 
+        dump_fp = dump_fingerprint(dump_path)
+        config_fp = config_fingerprint(languages, instance_of_filter, limit)
+        stats: dict[str, int] = {"entities": 0, "statements": 0,
+                                 "labels": 0, "skipped": 0}
+        skip_items = 0
+        last_qid: str | None = None
+
+        if resume:
+            record = read_checkpoint(self.db_path)
+            if record is not None:
+                mismatches = checkpoint_mismatches(
+                    record, dump_fp, config_fp)
+                if mismatches:
+                    raise CheckpointMismatchError(
+                        "stored checkpoint does not describe this "
+                        "build; refusing to resume (start fresh with "
+                        "resume=False): " + "; ".join(mismatches))
+                if record["status"] == STATUS_COMPLETE:
+                    logger.info(
+                        "Wikidata build already complete for this "
+                        "dump + config; returning checkpoint stats")
+                    return {key: int(record["stats"].get(key, 0))
+                            for key in stats}
+                stats = {key: int(record["stats"].get(key, 0))
+                         for key in stats}
+                skip_items = int(record["items_seen"])
+                last_qid = record.get("last_qid")
+                logger.info("Resuming Wikidata build at item %d "
+                            "(%d entities already landed)",
+                            skip_items, stats["entities"])
+        else:
+            discard_checkpoint(self.db_path)
+
+        pacer = (RatePacer(max_items_per_second)
+                 if max_items_per_second is not None else None)
+
+        def _checkpoint(status: str, items_seen: int) -> None:
+            write_checkpoint(self.db_path, {
+                "source": "wikidata",
+                "status": status,
+                "items_seen": items_seen,
+                "stats": dict(stats),
+                "last_qid": last_qid,
+                "dump": dump_fp,
+                "config": config_fp,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            })
+
         log_id = self._start_log("wikidata")
-        stats: dict[str, int] = {"entities": 0, "statements": 0, "labels": 0, "skipped": 0}
+        conn: sqlite3.Connection | None = None
 
         try:
             conn = get_connection(self.db_path)
-            # Disable synchronous during bulk load for speed; WAL mode keeps it safe
-            conn.execute("PRAGMA synchronous = OFF")
+            # TF-107 (D-WIKI-2): checkpoint commits must survive
+            # power loss, so the load runs WAL + synchronous FULL
+            # (the TF-054 posture), never the old OFF.
+            conn.execute("PRAGMA synchronous = FULL")
             conn.execute("PRAGMA journal_mode = WAL")
 
             entity_batch: list[tuple[Any, ...]] = []
             statement_batch: list[tuple[Any, ...]] = []
             label_batch: list[tuple[Any, ...]] = []
 
+            def _flush_all() -> None:
+                if entity_batch:
+                    self._flush_entities(conn, entity_batch)
+                    entity_batch.clear()
+                if statement_batch:
+                    self._flush_statements(conn, statement_batch)
+                    statement_batch.clear()
+                if label_batch:
+                    self._flush_labels(conn, label_batch)
+                    label_batch.clear()
+
             t_start = time.time()
+            stream_pos = 0
+            processed_this_run = 0
+
+            def _tick() -> None:
+                # Checkpointed commit: flush, commit durably,
+                # then — and only then — file the checkpoint
+                # that describes that commit. Runs for accepted
+                # and skipped items alike, so the cadence is
+                # over stream items as filed.
+                if stream_pos % checkpoint_every == 0:
+                    _flush_all()
+                    conn.commit()
+                    _checkpoint(STATUS_IN_PROGRESS, stream_pos)
+                    elapsed = time.time() - t_start
+                    rate = processed_this_run / elapsed if elapsed > 0 else 0
+                    logger.info(
+                        "Progress: %d entities | %d statements | %.0f ent/s (checkpoint at item %d)",
+                        stats["entities"], stats["statements"], rate, stream_pos,
+                    )
+                # Rate cap: a set cap is a hard ceiling over
+                # the items this call has processed.
+                if pacer is not None:
+                    pacer.wait_for(processed_this_run)
 
             for item in tqdm(
                 self._stream_entities(dump_path),
@@ -106,12 +236,21 @@ class WikidataETL:
                 unit=" entities",
                 mininterval=5.0,
             ):
+                if stream_pos < skip_items:
+                    stream_pos += 1
+                    continue
+                stream_pos += 1
+
                 if limit and stats["entities"] >= limit:
                     break
 
                 qid = item.get("id", "")
+                if qid:
+                    last_qid = qid
                 if not qid.startswith("Q"):
                     stats["skipped"] += 1
+                    processed_this_run += 1
+                    _tick()
                     continue
 
                 # Parse entity fields
@@ -124,6 +263,8 @@ class WikidataETL:
                 # Skip excluded types
                 if EXCLUDED_INSTANCE_OF.intersection(instance_of.split(",") if instance_of else []):
                     stats["skipped"] += 1
+                    processed_this_run += 1
+                    _tick()
                     continue
 
                 # Apply optional instance_of filter
@@ -131,6 +272,8 @@ class WikidataETL:
                     entity_types = set(instance_of.split(",")) if instance_of else set()
                     if not entity_types.intersection(instance_of_filter):
                         stats["skipped"] += 1
+                        processed_this_run += 1
+                        _tick()
                         continue
 
                 entity_batch.append((qid, label_en, desc_en, aliases_en, instance_of, popularity))
@@ -157,6 +300,8 @@ class WikidataETL:
                         statement_batch.append((qid, pid, obj_value, obj_type, qualifiers, refs))
                         stats["statements"] += 1
 
+                processed_this_run += 1
+
                 # Batch flush
                 if len(entity_batch) >= batch_size:
                     self._flush_entities(conn, entity_batch)
@@ -168,38 +313,40 @@ class WikidataETL:
                     self._flush_labels(conn, label_batch)
                     label_batch.clear()
 
-                # Periodic commit
-                if stats["entities"] % COMMIT_EVERY_N == 0:
-                    conn.commit()
-                    elapsed = time.time() - t_start
-                    rate = stats["entities"] / elapsed if elapsed > 0 else 0
-                    logger.info(
-                        "Progress: %d entities | %d statements | %.0f ent/s",
-                        stats["entities"], stats["statements"], rate,
-                    )
+                _tick()
 
                 # RAM check (if psutil available)
-                if stats["entities"] % MEMORY_CHECK_EVERY_N == 0:
+                if stats["entities"] and stats["entities"] % MEMORY_CHECK_EVERY_N == 0:
                     self._check_memory(conn)
 
-            # Final flush
-            if entity_batch:
-                self._flush_entities(conn, entity_batch)
-            if statement_batch:
-                self._flush_statements(conn, statement_batch)
-            if label_batch:
-                self._flush_labels(conn, label_batch)
-
+            # Final flush + commit, then the complete checkpoint.
+            _flush_all()
             conn.commit()
+            _checkpoint(STATUS_COMPLETE, stream_pos)
             conn.close()
+            conn = None
 
             logger.info("ETL complete: %s", stats)
             self._finish_log(log_id, stats["entities"], "complete")
 
         except Exception as e:
+            # TF-107 (D-WIKI-3): close the build connection FIRST
+            # (rolling back the uncommitted tail — the checkpoint
+            # on disk is the truth), so the failure log below can
+            # actually be written and the original error survives.
+            if conn is not None:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                conn.close()
+                conn = None
             logger.error("Wikidata ETL failed: %s", e)
             self._finish_log(log_id, stats.get("entities", 0), f"failed: {e}")
             raise
+        finally:
+            if conn is not None:
+                conn.close()
 
         return stats
 
@@ -289,12 +436,41 @@ class WikidataETL:
 
     @staticmethod
     def _flush_statements(conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:
-        conn.executemany(
-            "INSERT INTO statements "
-            "(subject_qid, property_pid, object_value, object_type, qualifiers, refs, source) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'wikidata')",
-            batch,
-        )
+        # TF-107 (D-WIKI-1): statements are idempotent — a row
+        # whose full stored tuple is already present (because
+        # this entity was processed by an earlier run, or by
+        # this run before an interruption) is not inserted
+        # again. The schema stores no claim id, so exact-tuple
+        # identity is the fidelity the table itself offers;
+        # changed facts are TF-114's update-ingestion road.
+        if not batch:
+            return
+        subjects = sorted({row[0] for row in batch})
+        placeholders = ", ".join("?" * len(subjects))
+        existing = {
+            tuple(row)
+            for row in conn.execute(
+                "SELECT subject_qid, property_pid, object_value, "
+                "object_type, qualifiers, refs FROM statements "
+                "WHERE source = 'wikidata' AND subject_qid IN "
+                f"({placeholders})",
+                subjects,
+            )
+        }
+        fresh: list[tuple[Any, ...]] = []
+        seen_in_batch: set[tuple[Any, ...]] = set()
+        for row in batch:
+            if row in existing or row in seen_in_batch:
+                continue
+            seen_in_batch.add(row)
+            fresh.append(row)
+        if fresh:
+            conn.executemany(
+                "INSERT INTO statements "
+                "(subject_qid, property_pid, object_value, object_type, qualifiers, refs, source) "
+                "VALUES (?, ?, ?, ?, ?, ?, 'wikidata')",
+                fresh,
+            )
 
     @staticmethod
     def _flush_labels(conn: sqlite3.Connection, batch: list[tuple[Any, ...]]) -> None:

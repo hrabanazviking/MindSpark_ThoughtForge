@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 93 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 46 FIXED
+**Totals: 96 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 49 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -22,10 +22,10 @@ D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
 Part IV; D-QUANT-1 by TF-068 in Part IV; D-ONNX-1 by
 TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
 TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
-D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV; D-HON-1 by TF-084 in Part IV; D-GUIDE-1 by TF-085 in Part IV; D-SALV-2 by TF-088 in Part V; D-SALV-3 by TF-096 in Part V; D-TRACE-1 by TF-097 in Part V; D-PROF-4 by TF-037 (floor share) + TF-098 in Part V; D-COST-1 by TF-098 in Part V; D-SUBSET-1 by TF-105 in Part VI; D-LIC-2 and D-DATA-3 by TF-106 in Part VI), 3
+D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV; D-HON-1 by TF-084 in Part IV; D-GUIDE-1 by TF-085 in Part IV; D-SALV-2 by TF-088 in Part V; D-SALV-3 by TF-096 in Part V; D-TRACE-1 by TF-097 in Part V; D-PROF-4 by TF-037 (floor share) + TF-098 in Part V; D-COST-1 by TF-098 in Part V; D-SUBSET-1 by TF-105 in Part VI; D-LIC-2 and D-DATA-3 by TF-106 in Part VI; D-WIKI-1, D-WIKI-2 and D-WIKI-3 by TF-107 in Part VI), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 9 ·
+Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 12 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -358,6 +358,20 @@ external sets' provenance is recorded there too, not
 only in code comments. Totals after TF-106:
 93 entries.
 
+Entries D-WIKI-1, D-WIKI-2 and D-WIKI-3 were added by
+TF-107 in Part VI under the same rule — all three found
+by that slice's live probes of the unhardened wikidata
+builder (a second run duplicating statements 7 -> 14;
+no checkpoint/resume/throttle anywhere, commits every
+50,000 entities under synchronous OFF; a mid-dump
+failure masking itself behind a locked ingestion_log
+write) and fixed in scope by the same slice
+(checkpointed commits + fingerprint resume + FULL
+posture, statement-flush idempotence, failure path
+closing its connection before logging). TF-107 also
+discharged D-COV-2's wikidata-depth share. Totals
+after TF-107: 96 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -366,10 +380,13 @@ only in code comments. Totals after TF-106:
 | D-TEST-1 | `test_yaml_present` asserts the whole dependency set, not YAML — stale-test naming smell (TF-004) | TF-187 (regression armour review) or any slice touching phase8 tests | X | OPEN |
 | D-CI-1 | `.github/workflows/ci.yml` auto-triggered on push/PR, violating Volmarr's manual-only-workflows law (TF-003) | Fixed by the campaign itself: commit `2b1201c` (workflow_dispatch only), banked locally, not pushed | I | **FIXED** |
 | D-COV-1 | `knowledge/forge.py` — the retrieval heart — has no direct test import; coverage is indirect via core (TF-002) | TF-043 (retrieval precision fixtures exercise it directly) | III | OPEN |
-| D-COV-2 | ETL `sources.py`, `wikidata.py`, `embeddings.py` have no direct test imports (TF-002) | TF-107 / TF-112 (Part VI owns, per TF-002) | VI | OPEN — **narrowed by TF-105**: `tests/test_tf105_etl_map.py` now imports and runs all five builders (wikidata / conceptnet / geonames / dbpedia / reference), both embedding builders (through a fake model in the real cache), and the subset builder directly on synthetic inputs. The entry stays OPEN for its owners' depth (TF-107's wikidata hardening, TF-112's dry-run reports), no longer for first direct coverage |
+| D-COV-2 | ETL `sources.py`, `wikidata.py`, `embeddings.py` have no direct test imports (TF-002) | TF-107 / TF-112 (Part VI owns, per TF-002) | VI | OPEN — **narrowed by TF-105**: `tests/test_tf105_etl_map.py` now imports and runs all five builders (wikidata / conceptnet / geonames / dbpedia / reference), both embedding builders (through a fake model in the real cache), and the subset builder directly on synthetic inputs. The entry stays OPEN for TF-112's dry-run depth, no longer for first direct coverage — **narrowed again by TF-107**: `tests/test_tf107_wikidata_pipeline.py` now exercises the wikidata builder directly and in depth (checkpoint IO, pacing, interruption + resume, idempotence, fingerprint refusal), discharging the wikidata share; TF-112's dry-run reports are the remainder |
 | D-SUBSET-1 | The subset's reference-chunk copy ordered by `retrieval_score`, a column the schema has never carried (grep: its only occurrence in `src/` was the query itself): every limited build raised OperationalError, filed it as a note, copied ZERO reference chunks, and still returned success — probed live by TF-105 (pi_zero build of a store holding one chunk: copied 0, success True, note `reference_chunks skipped: no such column: retrieval_score`); the phase-5 tests never asserted a limited build's chunk count (found by TF-105) | TF-105 | VI | **FIXED by TF-105**: the copy orders by `chunk_id` (insertion order — the schema carries no per-chunk value score to order by); TF-105's live checker + regression tests prove a pi_zero subset of the synthetic store now keeps its chunk (copied 1, no skipped note), and the map's static checker pins the fix (the DESC ordering returning turns it red). TF-110 owns subset craft beyond this repair |
 | D-ETL-1 | `forge_memory.py all` accepts `--dbpedia-json` and never ingests it: its steps run schema, reference, wikidata (if dump), conceptnet (if csv), geonames (if txt), embeddings — DBpedia has a per-source command but no `all` step, so passing the file silently yields no rows (measured by TF-105 from the command's own source) | TF-119 (wire the step or strike the option; either changes what the ETL docs may promise) | VI | OPEN — filed by TF-105; the map's static checker pins the gap's exact shape (option present, no DBpedia step in `all`), so the fix updates the map in the open |
 | D-ETL-2 | The builders ingest without consulting the TF-106 source registry: a quarantined source (the reference library as a whole) or an unregistered new source has no build-time gate — the registry's gate (`check_source_use`) is enforced at the registry surface only, and nothing in `etl/sources.py` or `etl/wikidata.py` imports it (measured by TF-106; its static checker pins that shape, so wiring a builder turns it red until this entry updates in the open) | TF-112 (dry-run consults the registry first) + TF-119 (new-source recipe files a source before documenting it) | VI | OPEN — filed by TF-106 |
+| D-WIKI-1 | Re-running the wikidata build duplicated statements: entities/labels flush INSERT OR REPLACE but statements flushed a plain INSERT into an AUTOINCREMENT table — probed live by TF-107 (a 7-entity synthetic dump built twice: statements 7 -> 14, entities/labels unchanged), so the only interruption recovery the old shape offered corrupted the store | TF-107 | VI | **FIXED by TF-107**: `_flush_statements` guards on the stored tuple (subject, property, object, type, qualifiers, refs, source) — a row already present is never inserted again; the live checker + tests pin a completed re-run and a resume=False re-run at 7 statements. Changed facts still append; TF-114 owns update ingestion |
+| D-WIKI-2 | The wikidata build had no checkpoint, no resume and no pacing, and ran `synchronous = OFF`: commits only every 50,000 entities and at the end, so an interruption (kill / crash / power loss) discarded all uncommitted work since the last 50k boundary, under the posture SQLite warns can corrupt on power loss (measured by TF-107: no checkpoint/resume/throttle anywhere in the builder) | TF-107 | VI | **FIXED by TF-107**: checkpointed commits every 1000 stream items (flush -> commit -> atomic sidecar checkpoint, in that order only) under WAL + synchronous = FULL; resume continues at the checkpoint's stream position only when the dump fingerprint (path + size + mtime_ns) and config fingerprint (languages, filter, limit) match — a mismatch or a corrupt checkpoint raises by name; a completed checkpoint returns its filed stats without streaming; `max_items_per_second` is a hard RatePacer ceiling when set (no default, filed plainly: the dump is a local file, no upstream limit exists) |
+| D-WIKI-3 | The wikidata failure path masked its own error: the build connection was never closed on exception, so `_finish_log` on a fresh connection raised `sqlite3.OperationalError: database is locked` — the original exception was replaced by the lock error and no failure row reached ingestion_log (probed live by TF-107 with a stream raising mid-dump) | TF-107 | VI | **FIXED by TF-107**: on error the build connection rolls back and closes BEFORE the failure is logged, and the original exception re-raises unchanged; the interrupted-run test finds the `failed:` row in ingestion_log and the simulated error in the caller's hand, with the last landed checkpoint intact as the resume point |
 | D-COV-3 | `utils/paths.py` and `utils/logging_setup.py` have no direct test imports (TF-002) | TF-038 (logging_setup) + TF-069 (paths, via profile loading) | II | OPEN — **narrowed by TF-038** (logging_setup share): `tests/test_tf038_traces.py` now imports and pins `setup_logging` directly (one-shot configuration, level honoured + unknown level → INFO fallback, console/file switches, the rotating file's shape). The `paths` share stands untouched for TF-069 |
 | D-WING-1 | The research wing cannot import: the entire `wyrdforge.models` subpackage was never committed; its 2 test files error at collection, 0 run (TF-006) | Verdicts TF-139–TF-142; any ADOPT budgets rebuilding the models from the 14 JSON schemas (TF-143); tests TF-149 | VIII | OPEN |
 | D-LIC-1 | The project's own licence contradicts itself: CC BY 4.0 (permits commercial use) vs a "non-commercial" classifier; no LICENSE file in the repo; a content licence applied to code (TF-008) | TF-190 — with Volmarr's word; the licence choice is his | X | OPEN |

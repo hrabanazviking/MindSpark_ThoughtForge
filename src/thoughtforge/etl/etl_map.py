@@ -57,11 +57,13 @@ Filed limits the map states plainly:
   * Only the wikidata builder writes the ``ingestion_log``;
     the other four leave no run record in the store.
   * Bulk loads run with ``synchronous = OFF`` (conceptnet,
-    geonames, dbpedia, wikidata) except the reference builder
-    (the schema's NORMAL) and the embeddings builders (FULL,
+    geonames, dbpedia) except the reference builder (the
+    schema's NORMAL) and the embeddings builders (FULL,
     TF-054's hardening) — one pipeline, three durability
-    postures, mapped not harmonised (TF-107/TF-111 own any
-    change).
+    postures, mapped not harmonised (TF-111 owns any further
+    change). TF-107 moved the wikidata builder out of the
+    OFF leg to FULL: its checkpoint commits must survive
+    power loss, so the map's wikidata row now files FULL.
   * The subset copies exactly three tables' rows (entities,
     statements, reference chunks). Labels, both embedding
     tables, conceptnet edges, geonames places, dbpedia
@@ -149,10 +151,10 @@ SOURCE_BUILDERS: tuple[dict[str, Any], ...] = (
     {"id": "wikidata", "class": "WikidataETL", "module": "etl/wikidata.py",
      "input": "Wikidata JSON dump (.json or .json.gz), streamed via ijson",
      "tables": ("entities", "statements", "labels"),
-     "write_mode": "entities/labels INSERT OR REPLACE; statements plain INSERT (append)",
+     "write_mode": "entities/labels INSERT OR REPLACE; statements INSERT skipping rows already stored (TF-107 idempotence)",
      "batch_default": 2000, "stats_keys": ("entities", "statements", "labels", "skipped"),
-     "logs_ingestion": True, "synchronous": "OFF during the load",
-     "notes": "commits every 50000 entities; checks host memory every 10000 and commits early above 85% (psutil optional); excludes 6 instance_of types; deprecated-rank claims skipped"},
+     "logs_ingestion": True, "synchronous": "FULL (TF-107; was OFF during the load)",
+     "notes": "TF-107 hardened: checkpointed commit + atomic sidecar checkpoint every 1000 stream items (etl/wikidata_pipeline.py), resumable by dump+config fingerprint, optional max_items_per_second rate cap; checks host memory every 10000 entities and commits early above 85% (psutil optional); excludes 6 instance_of types; deprecated-rank claims skipped"},
     {"id": "conceptnet", "class": "ConceptNetETL", "module": "etl/sources.py",
      "input": "ConceptNet assertions CSV (.csv or .csv.gz), tab-delimited, 5+ columns",
      "tables": ("conceptnet_edges",),
