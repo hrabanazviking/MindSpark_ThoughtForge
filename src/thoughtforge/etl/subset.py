@@ -318,9 +318,17 @@ class EdgeSubsetBuilder:
                 chunk_limit = max(1000, entity_limit // 10)
 
             if chunk_limit > 0:
+                # TF-105 (D-SUBSET-1, fixed): this query used to
+                # ORDER BY retrieval_score — a column the schema
+                # has never carried — so every limited build raised
+                # OperationalError, landed in the except below, and
+                # copied ZERO reference chunks while still reporting
+                # success. There is no per-chunk value score in the
+                # schema to order by; chunk_id (insertion order) is
+                # the honest deterministic order that stands.
                 rows = src.execute(
                     "SELECT * FROM reference_chunks "
-                    "ORDER BY retrieval_score DESC "
+                    "ORDER BY chunk_id "
                     f"LIMIT {chunk_limit}"
                 ).fetchall()
             else:

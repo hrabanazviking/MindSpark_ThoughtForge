@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 90 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 43 FIXED
+**Totals: 92 entries — 44 OPEN, 1 OPEN-ENVIRONMENT, 44 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -22,10 +22,10 @@ D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
 Part IV; D-QUANT-1 by TF-068 in Part IV; D-ONNX-1 by
 TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
 TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
-D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV; D-HON-1 by TF-084 in Part IV; D-GUIDE-1 by TF-085 in Part IV; D-SALV-2 by TF-088 in Part V; D-SALV-3 by TF-096 in Part V; D-TRACE-1 by TF-097 in Part V; D-PROF-4 by TF-037 (floor share) + TF-098 in Part V; D-COST-1 by TF-098 in Part V), 3
+D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV; D-HON-1 by TF-084 in Part IV; D-GUIDE-1 by TF-085 in Part IV; D-SALV-2 by TF-088 in Part V; D-SALV-3 by TF-096 in Part V; D-TRACE-1 by TF-097 in Part V; D-PROF-4 by TF-037 (floor share) + TF-098 in Part V; D-COST-1 by TF-098 in Part V; D-SUBSET-1 by TF-105 in Part VI), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 6 ·
+Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 8 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -331,6 +331,18 @@ surface (TF-096) to TF-122 + TF-151, genericness
 beyond hard phrases (TF-093) to TF-185 + TF-192.
 Totals unchanged at the gate: 90 entries.
 
+Entries D-SUBSET-1 and D-ETL-1 were added by TF-105
+in Part VI under the same rule — D-SUBSET-1 found by
+that slice's probes (a limited subset build copied
+zero reference chunks while reporting success: the
+copy ordered by a column the schema has never
+carried) and fixed in scope; D-ETL-1 measured by
+that slice (the orchestrator's `all` command accepts
+a DBpedia file it never ingests) and assigned to
+TF-119, whose docs and new-source recipe own what
+the command may promise. Totals after TF-105:
+92 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -339,7 +351,9 @@ Totals unchanged at the gate: 90 entries.
 | D-TEST-1 | `test_yaml_present` asserts the whole dependency set, not YAML — stale-test naming smell (TF-004) | TF-187 (regression armour review) or any slice touching phase8 tests | X | OPEN |
 | D-CI-1 | `.github/workflows/ci.yml` auto-triggered on push/PR, violating Volmarr's manual-only-workflows law (TF-003) | Fixed by the campaign itself: commit `2b1201c` (workflow_dispatch only), banked locally, not pushed | I | **FIXED** |
 | D-COV-1 | `knowledge/forge.py` — the retrieval heart — has no direct test import; coverage is indirect via core (TF-002) | TF-043 (retrieval precision fixtures exercise it directly) | III | OPEN |
-| D-COV-2 | ETL `sources.py`, `wikidata.py`, `embeddings.py` have no direct test imports (TF-002) | TF-107 / TF-112 (Part VI owns, per TF-002) | VI | OPEN |
+| D-COV-2 | ETL `sources.py`, `wikidata.py`, `embeddings.py` have no direct test imports (TF-002) | TF-107 / TF-112 (Part VI owns, per TF-002) | VI | OPEN — **narrowed by TF-105**: `tests/test_tf105_etl_map.py` now imports and runs all five builders (wikidata / conceptnet / geonames / dbpedia / reference), both embedding builders (through a fake model in the real cache), and the subset builder directly on synthetic inputs. The entry stays OPEN for its owners' depth (TF-107's wikidata hardening, TF-112's dry-run reports), no longer for first direct coverage |
+| D-SUBSET-1 | The subset's reference-chunk copy ordered by `retrieval_score`, a column the schema has never carried (grep: its only occurrence in `src/` was the query itself): every limited build raised OperationalError, filed it as a note, copied ZERO reference chunks, and still returned success — probed live by TF-105 (pi_zero build of a store holding one chunk: copied 0, success True, note `reference_chunks skipped: no such column: retrieval_score`); the phase-5 tests never asserted a limited build's chunk count (found by TF-105) | TF-105 | VI | **FIXED by TF-105**: the copy orders by `chunk_id` (insertion order — the schema carries no per-chunk value score to order by); TF-105's live checker + regression tests prove a pi_zero subset of the synthetic store now keeps its chunk (copied 1, no skipped note), and the map's static checker pins the fix (the DESC ordering returning turns it red). TF-110 owns subset craft beyond this repair |
+| D-ETL-1 | `forge_memory.py all` accepts `--dbpedia-json` and never ingests it: its steps run schema, reference, wikidata (if dump), conceptnet (if csv), geonames (if txt), embeddings — DBpedia has a per-source command but no `all` step, so passing the file silently yields no rows (measured by TF-105 from the command's own source) | TF-119 (wire the step or strike the option; either changes what the ETL docs may promise) | VI | OPEN — filed by TF-105; the map's static checker pins the gap's exact shape (option present, no DBpedia step in `all`), so the fix updates the map in the open |
 | D-COV-3 | `utils/paths.py` and `utils/logging_setup.py` have no direct test imports (TF-002) | TF-038 (logging_setup) + TF-069 (paths, via profile loading) | II | OPEN — **narrowed by TF-038** (logging_setup share): `tests/test_tf038_traces.py` now imports and pins `setup_logging` directly (one-shot configuration, level honoured + unknown level → INFO fallback, console/file switches, the rotating file's shape). The `paths` share stands untouched for TF-069 |
 | D-WING-1 | The research wing cannot import: the entire `wyrdforge.models` subpackage was never committed; its 2 test files error at collection, 0 run (TF-006) | Verdicts TF-139–TF-142; any ADOPT budgets rebuilding the models from the 14 JSON schemas (TF-143); tests TF-149 | VIII | OPEN |
 | D-LIC-1 | The project's own licence contradicts itself: CC BY 4.0 (permits commercial use) vs a "non-commercial" classifier; no LICENSE file in the repo; a content licence applied to code (TF-008) | TF-190 — with Volmarr's word; the licence choice is his | X | OPEN |
