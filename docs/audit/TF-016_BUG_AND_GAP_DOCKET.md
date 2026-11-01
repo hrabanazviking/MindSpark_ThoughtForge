@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 126 entries — 35 OPEN, 1 OPEN-ENVIRONMENT, 87 FIXED
+**Totals: 127 entries — 35 OPEN, 1 OPEN-ENVIRONMENT, 88 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -39,11 +39,12 @@ D-BENCH-2 and D-BENCH-6 by TF-121 in Part VII;
 D-BENCH-3 by TF-122 in Part VII; D-BENCH-9 by TF-123
 in Part VII; D-BENCH-10 by TF-124 in Part VII —
 measuring sense; D-BENCH-11 by TF-125 in Part VII —
+measuring sense; D-BENCH-12 by TF-126 in Part VII —
 measuring sense), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
 Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 36 ·
-Part VII 10 · Part VIII 1 · Part IX 2 · Part X 10.
+Part VII 11 · Part VIII 1 · Part IX 2 · Part X 10.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
 nothing found stays unnumbered. Entries D-EMB-1 and D-EMB-2 were
@@ -843,6 +844,53 @@ sum 124 against 126, D-BENCH-11's owner part VII
 counted), and noted rather than silently repaired.
 Totals after TF-125: 126 entries.
 
+TF-126 added one entry in Part VII and fixed it in
+the same slice, in the measuring sense — D-BENCH-12
+was found by that slice's live probes: the four
+Part VII suites had never been run across model
+sizes (each suite's pinned baseline measured its
+filed corpus once, at no size; nothing in the
+estate filed a per-size row, so "where the forge
+helps most" was asserted by nobody and measured by
+nothing). The gap had been assigned to TF-126 by
+TF-122..TF-125's filed limits without ever being
+numbered here — the D-BENCH-9 / D-BENCH-10 /
+D-BENCH-11 pattern. It is fixed in the measuring
+sense the roadmap assigned to TF-126:
+`benchmarks/honesty_panel.py` files four size
+tiers anchored live to catalogue models
+(reference 14B / mid 8B / small 3B / tiny 1.1B),
+degrades the four suites' own filed corpora by
+each tier's filed transforms, and scores every
+cell through the suites' real runners — OFF
+(degraded) against ON (degraded + the filed
+per-suite forge repairs) — 16 cells published as
+literal data recomputed live by its checker, with
+a pinned harness baseline
+(`honesty_panel_synthetic_v1`, measured live twice
+identical; the estate now files 14 benchmarks /
+7 fixtures / 7 baselines / 54 metric definitions,
+every earlier baseline preserved exactly). The
+measured headline: the forge helps most at the
+mid tier overall (tier means OFF 0.5933 → ON
+0.8333, delta +0.2400), then small (+0.1289),
+reference (+0.1150) and tiny (+0.0591); per suite,
+persona is helped most at tiny (+0.1531), memory
+at small (+0.6111), depth and presence at mid;
+depth's small-tier delta is negative (-0.1944),
+filed by name. Live per-size behaviour of real
+models is NOT PROVEN — no GGUF / llama_cpp on
+this VM (TF-078); TF-173 owns the real-hardware
+road. Counting note, in TF-125's manner: the
+header-vs-row mismatches (D-LIC-2's row reading
+OPEN-narrowed while the header counts it FIXED;
+the primary-owner part counts summing 124 against
+126 before this slice) are pre-existing, preserved
+in shape (parts now sum 125 against 127,
+D-BENCH-12's owner part VII counted), and noted
+rather than silently repaired.
+Totals after TF-126: 127 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -914,6 +962,7 @@ Totals after TF-125: 126 entries.
 | D-BENCH-9 | Citation truth and the explain side scored by nothing: TF-049's `check_citations` judges presence only — probed live by TF-123, the claim "the lantern hollow ferry departs at midnight [ref:4301]" (citing TF-043's chunk, whose stored fact is a dawn departure) PASSED identically to the true dawn claim; and an answer matching no stored fact with no citation and no own-reasoning ownership passed every citation check in the estate (TF-049's on-no-match pass, carried by TF-093). TF-049's doc (§5) assigned the scoring to TF-123 without numbering the gap (found by TF-123) | TF-123 | VII | **FIXED by TF-123** (in the scoring sense TF-049 assigned): `benchmarks/memory_suite.py` files the memory fidelity suite as data (RECORDS built from TF-043's corpus rows, reused never copied; MEMORY_FACTS 6 with required/breaking phrases; 36 scripted cases — PRESENT 12 / TRUE 12 / EXPLAIN 12 — including the filed failing shapes: missing citation, wrong-sentence citation, cited-but-false, fabricated, wrong-record, unowned, disguised) scored by TF-049's real `check_citations` / `match_claim_to_record` — present 0.8333, true 0.75, explain 0.8333, overall 0.8056 PASS, empty suite 0.0 / REVIEW — registered in `benchmarks/harness.py` in the open with pinned baseline `memory_suite_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned); its checker also re-runs TF-043's `evaluate_retrieval` against its pinned baseline live. Filed limit: enforcement is unchanged — the suite scores cited-but-false behaviour, no gate yet blocks it at generation time; that wiring is not claimed and stands as future work for the Part V / TF-129 line to take or refuse openly |
 | D-BENCH-10 | Scaffold value measured by nothing: no scorer anywhere in the estate compared a scaffolded multi-step reasoning run against the single-pass road — TF-022's strategy purposes asserted the value ("so order and completeness come from the plan step rather than from improvisation") and measured it nowhere; and TF-022's doc (§1) assigned wiring strategy execution into `ThoughtForgeCore.think` to the slices owning those surfaces without the gap ever being numbered here (probed live by TF-124: TF-021 files 10 intent scaffolds / 8 candidate modes, TF-022 exactly three strategies over six intents with `select_strategy` None for light intents by design, an OFF candidate prompt carries no "Working so far" while a prior-consuming step prompt carries one, a later step run cold raises ValueError, and no core code path calls `build_strategy_prompt` — TF-032 landed per-conversation selectability only, `core.selected_strategy`) (found by TF-124) | TF-124 | VII | **FIXED by TF-124** (in the measuring sense the roadmap assigned): `benchmarks/depth_suite.py` files the depth suite as data (36 scripted synthetic known-answer problems — CHAIN 12 / PLAN 12 / CHECK 12, one axis per TF-022 strategy, every case scored on both roads; ON holds only when the working material carries the filed intermediates — in order on the plan axis — and the final answer is exactly correct) scored through TF-022's real `select_strategy` and TF-021 / TF-022's real prompt builders (the checker runs `scaffold_prompts_for()` over every case) — chain OFF 0.4167 / ON 0.8333, plan OFF 0.5 / ON 0.75, check OFF 0.5 / ON 0.8333, overall OFF 0.4722 / ON 0.8056, measured delta +0.3333, PASS, empty suite 0.0 / REVIEW — registered in `benchmarks/harness.py` in the open with pinned baseline `depth_suite_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned); the failing shapes are filed by name, including scaffold-LOSS cases (a reasoning slip, a plan locking a wrong order, a check inventing a problem — OFF holds, ON fails) and no-gain cases on both roads. Filed limit: the execution share is unchanged — the core loop still does not run strategies automatically (TF-022's filed limit; its owners keep it), the suite scores the prompt-level machinery over scripted fixtures, and a live model's depth behaviour is NOT PROVEN (TF-126) |
 | D-BENCH-11 | Presence and will follow-through scored by nothing in the benchmarks estate: TF-029's steering line existed and the core injected it into every later turn's scaffold, but no scorer ever judged a conversation's answers against the ledger — whether a standing goal actually steered, was dropped or contradicted, or kept steering after it closed was asserted by design and measured nowhere; and long-conversation coherence stood as TF-028's Part II fixture, its Part VII consumption assigned to TF-125 in TF-028's own doc. TF-121's harness filed the will gap as a rule (`the_will_axis_has_no_scorer_yet`, TF-125 its owner) without the gap ever being numbered here (probed live by TF-125: `benchmarks/` held no presence/coherence/will scorer; TF-028's scorer re-measured coherent 1.000 / PASS and onset-15 drift 0.700 / REVIEW; TF-063's 100-turn proof measures the store channel, not presence or will) (found by TF-125) | TF-125 | VII | **FIXED by TF-125** (in the measuring sense the roadmap assigned): `benchmarks/presence_suite.py` files the presence suite as data (36 scripted synthetic sagas — COHERENCE 12 over TF-028's filed script / STEERING 12 / CLOSURE 12 over TF-029's ledger — including the filed failing shapes: coherence breaks at onsets 15 and 16 and in a truncated drifting saga, a goal dropped, a goal contradicted, and abandoned / completed / superseded goals still steered) scored by TF-028's real `score_conversation` (a saga holds at whole-saga mean ≥ TF-028's PASS_LATE_MIN 0.80) and TF-029's real `GoalLedger` replayed over the filed user turns (the checker also runs TF-028's fixture engine and TF-029's `inject_will` live) — coherence 0.75, steering 0.8333, closure 0.75, overall 0.7778, PASS, empty suite 0.0 / REVIEW — registered in `benchmarks/harness.py` in the open with pinned baseline `presence_suite_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned) and the harness's will-gap rule discharged (`the_will_axis_is_scored_by_tf125`). Filed limits: the coherence hold is the whole-saga mean — TF-028's stricter verdict (late window + drift + zero contradictions) is carried per saga and disagrees on six filed sagas, named in the suite doc; the sagas' answers are scripted, so a live model's presence and follow-through are NOT PROVEN (TF-126) |
+| D-BENCH-12 | The suites never run across model sizes: TF-122..TF-125 each built one suite with one pinned baseline over its filed corpus — measured once, at no model size — and each filed the same limit (a live model's behaviour NOT PROVEN, the across-sizes run assigned to TF-126) without the gap ever being numbered here; no per-size row existed anywhere in the estate, so where the forge helps most was measured by nothing (probed live by TF-126: `benchmarks/` held exactly the four suite modules + harness, all checkers clean, the four baselines re-measured exactly — persona 0.8454, memory 0.8056, depth OFF 0.4722 / ON 0.8056, presence 0.7778 — and no module, panel or row ran any suite at more than one size; every suite runner accepts an explicit corpus, probed) (found by TF-126) | TF-126 | VII | **FIXED by TF-126** (in the measuring sense the roadmap assigned): `benchmarks/honesty_panel.py` files the small-model honesty panel as data (MODEL_TIERS 4 anchored live to ModelBrowser.CURATED_MODELS filenames — Qwen2.5-14B / Llama-3.1-8B / Llama-3.2-3B / TinyLlama-1.1B, params from params_from_name, the tiny tier's 1.1 from its filename's own token since that reader returns None for it; TRANSFORMS 4 filed degradation transforms — citation_drop, terse_first_sentence, generic_closer, fact_swap — plus the filed coherence drift shift; the per-suite forge repairs from real machinery: memory's TF-048 marker re-attachment via citation_for_record (citation axes only), persona's generic strip over GENERIC_PHRASES, presence's will repair via a real GoalLedger replay, depth's native scaffold road, coherence filed with NO repair) scored by the four suites' real run_*_suite runners — 16 cells published as PANEL_ROWS literal data recomputed live by `honesty_panel_problems()` (TF-067's CURVE precedent), reference tier reproducing all four pinned baselines EXACTLY, PASS, empty panel 0.0 / REVIEW — registered in `benchmarks/harness.py` in the open with pinned baseline `honesty_panel_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned). The measured finding, filed whatever it was: the forge helps most at the MID tier overall (mean delta +0.2400; small +0.1289, reference +0.1150, tiny +0.0591), per suite persona most at tiny (+0.1531), memory most at small (+0.6111), depth and presence most at mid, and depth's small-tier delta is NEGATIVE (-0.1944 — the terse degradation truncates the scaffold's numbered working, so ON falls below OFF), filed by name. Filed limit: the tiers are filed degradation profiles over scripted synthetic corpora, NOT live model runs — live per-size behaviour is NOT PROVEN (no GGUF in the tree, no llama_cpp on this VM, TF-078); TF-173 owns the real-hardware road |
 | D-DEAD-1 | `utils/validators.py`: 5 of its 6 public functions are never called anywhere (`sanitise_system_prompt`, `validate_config`, `validate_model_path`, `validate_api_key`, `validate_jsonl_line`) — a validation layer that guards nothing (TF-011) | Wire-or-retire verdict per function: TF-032 (config surface) / TF-094 (policy configuration) | II | OPEN — **TF-032's share ruled**: `validate_config` is NOT wired into the cognition config surface — it requires the user_config `backend` key (it validates a backend dict, the wrong shape for a cognition config; the surface validates its own selections itself). Its wire-or-retire verdict, and the other four functions', belong to TF-094 / TF-065 — **TF-094's share ruled**: `validate_config` is NOT wired into the policy configuration surface either — it validates a backend dict, the wrong shape for a strictness level; that surface validates its own selections itself. The remaining functions are not policy configuration and their verdicts stand with TF-065 / the ingestion line; entry stays OPEN |
 | D-DEAD-2 | Scalar `cosine_similarity` (etl/embeddings.py:84) is dead while its batch sibling is live (TF-011) | TF-053 (embedding discipline) | III | **FIXED by TF-053** (retirement): the scalar function is removed from `etl/embeddings.py`; `batch_cosine_similarity` is the live path and its identity case is exercised by TF-053's checker and tests |
 | D-DEAD-3 | `utils/paths.py:get_embeddings_dir` has never been called (TF-011) | TF-053 / TF-110 era | III | **FIXED by TF-053** (wiring): `get_embeddings_dir()` is now called by `etl/embedding_discipline.onnx_artefact_status()` — the embeddings directory is the named ONNX artefact home the per-profile availability report checks |

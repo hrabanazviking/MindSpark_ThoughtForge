@@ -133,10 +133,10 @@ class TestProfiles:
 class TestBenchmarkIndex:
     def test_entries_cover_the_estate(self) -> None:
         ids = [b["id"] for b in BENCHMARKS]
-        assert len(ids) == len(set(ids)) == 13  # 9 at TF-121 + persona_suite (TF-122) + memory_suite (TF-123) + depth_suite (TF-124) + presence_suite (TF-125), in the open
+        assert len(ids) == len(set(ids)) == 14  # 9 at TF-121 + persona_suite (TF-122) + memory_suite (TF-123) + depth_suite (TF-124) + presence_suite (TF-125) + honesty_panel (TF-126), in the open
         for needed in ("persona_consistency", "profile_benchmark",
                        "locust_load_test", "persona_suite", "memory_suite",
-                       "depth_suite", "presence_suite",
+                       "depth_suite", "presence_suite", "honesty_panel",
                        "retrieval_precision",
                        "scoring_honesty", "quant_quality",
                        "quality_marks", "determinism", "perf_tracker"):
@@ -176,7 +176,7 @@ class TestBenchmarkIndex:
 
 class TestFixtures:
     def test_fixtures_are_synthetic_and_bind_live(self) -> None:
-        assert len(FIXTURES) == 6  # 2 at TF-121 + persona_suite_corpus (TF-122) + memory_suite_corpus (TF-123) + depth_suite_corpus (TF-124) + presence_suite_corpus (TF-125), in the open
+        assert len(FIXTURES) == 7  # 2 at TF-121 + persona_suite_corpus (TF-122) + memory_suite_corpus (TF-123) + depth_suite_corpus (TF-124) + presence_suite_corpus (TF-125) + honesty_panel_corpus (TF-126), in the open
         for fixture in FIXTURES:
             assert fixture["synthetic"] is True
             module = importlib.import_module(fixture["bind_module"])

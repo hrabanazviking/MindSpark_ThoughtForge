@@ -201,6 +201,38 @@ D-BENCH-9 / D-BENCH-10 pattern) and FIXED it in
 the measuring sense. All earlier pinned baselines
 stand exactly as filed (never re-pinned).
 
+**TF-126 update, in the open:** the small-model
+honesty panel is built
+(``benchmarks/honesty_panel.py``) and registered
+below (``honesty_panel``) with its own pinned
+baseline (``honesty_panel_synthetic_v1``, measured
+live twice, identical): the four suites' filed
+corpora degraded by four filed size tiers
+(reference 14B / mid 8B / small 3B / tiny 1.1B,
+each anchored live to a catalogue model) and
+scored through the suites' real runners, OFF
+(degraded) against ON (degraded + the filed
+per-suite forge repairs) — 16 cells, published as
+literal data recomputed live by its checker. The
+forge helps most at the mid tier overall (mean
+delta +0.2400), not the smallest: per suite,
+persona is helped most at tiny (+0.1531), memory
+at small (+0.6111), depth and presence at mid —
+and depth's delta goes negative at small
+(-0.1944), filed by name. TF-126's probes found
+and filed **D-BENCH-12** (the suites never run
+across model sizes; the gap assigned to TF-126
+by TF-122..TF-125's filed limits without ever
+being numbered — the D-BENCH-9 / D-BENCH-10 /
+D-BENCH-11 pattern) and FIXED it in the measuring
+sense. The four suites' baseline notes below now
+file TF-126 DONE in the measuring sense; live
+per-size behaviour of real models stays NOT
+PROVEN — no GGUF / llama_cpp on this VM (TF-078);
+TF-173 owns the real-hardware road. All earlier
+pinned baselines stand exactly as filed (never
+re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -218,7 +250,11 @@ Filed limits, stated plainly:
     the ``presence_suite`` entry below carries the
     will claims axis, and the rule below files
     TF-125 DONE. A live model's will follow-through
-    is NOT PROVEN (TF-126).
+    is NOT PROVEN (TF-126). **TF-126 update:** the
+    honesty panel now runs the will axes across
+    filed size tiers in the measuring sense; a live
+    model's follow-through is still NOT PROVEN
+    (TF-173).
   * No suite in Part VII existed at TF-121: TF-122..
     TF-125 build them. **TF-122 update:** the first
     suite (persona consistency) now exists and is
@@ -239,6 +275,11 @@ Filed limits, stated plainly:
     now exists and is registered below; TF-129's
     regression gates, TF-134's baseline book and
     TF-137's one-command tool still stand as filed.
+    **TF-126 update:** the honesty panel over the
+    four suites now exists and is registered below;
+    TF-129's regression gates, TF-134's baseline
+    book and TF-137's one-command tool still stand
+    as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -350,6 +391,15 @@ FIXTURES: tuple[dict[str, Any], ...] = (
      "subject": "TF-125's scripted presence corpora: 12 "
                 "coherence sagas + 12 will-steering sagas + "
                 "12 will-closure sagas (36 scored sagas)"},
+    {"id": "honesty_panel_corpus", "benchmark": "honesty_panel",
+     "bind_module": "benchmarks.honesty_panel",
+     "bind_attribute": "MODEL_TIERS",
+     "synthetic": True,
+     "subject": "TF-126's filed size tiers: 4 tiers "
+                "(reference 14B / mid 8B / small 3B / "
+                "tiny 1.1B) anchored to catalogue models, "
+                "degrading the four suites' own filed "
+                "corpora (16 scored cells)"},
 )
 
 
@@ -446,6 +496,27 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "PASS/REVIEW by filed thresholds, empty "
               "suite 0.0 / REVIEW. This entry carries the "
               "will claims axis TF-121 filed as scoreless"},
+    {"id": "honesty_panel", "kind": "panel",
+     "status": "built_panel",
+     "bind_module": "benchmarks.honesty_panel",
+     "bind_attribute": "run_honesty_panel",
+     "fixture": "honesty_panel_corpus",
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-126 (small-model honesty panel — itself)",
+     "doc": "docs/architecture/HONESTY_PANEL.md",
+     "docket": ("D-BENCH-12 FIXED by TF-126 (measuring sense)",),
+     "notes": "TF-126's panel over the four suites' real "
+              "runners: their filed corpora degraded by "
+              "four filed size tiers anchored live to "
+              "catalogue models (reference 14B / mid 8B / "
+              "small 3B / tiny 1.1B), scored OFF (degraded) "
+              "against ON (degraded + the filed per-suite "
+              "forge repairs) — 16 cells published as "
+              "literal data, recomputed live; the forge "
+              "helps most at the mid tier overall. A tier "
+              "is a degradation profile, never a live "
+              "model run: live per-size behaviour is NOT "
+              "PROVEN (TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -734,6 +805,81 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "legacy_name": "",
      "computes": "sagas scored across the suite's three "
                  "axes (12 per axis, 36 in the filed corpus)"},
+    {"id": "reference_off_score", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "the reference (14B) tier's mean OFF score "
+                 "across the four suites: their filed corpora "
+                 "undegraded, scored by their real runners "
+                 "(TF-126)"},
+    {"id": "reference_on_score", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "the reference tier's mean ON score across "
+                 "the four suites (undegraded + the filed "
+                 "per-suite forge repairs) (TF-126)"},
+    {"id": "reference_delta", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "reference_on_score minus "
+                 "reference_off_score — the measured forge "
+                 "gain at the reference tier (TF-126)"},
+    {"id": "mid_off_score", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "the mid (8B) tier's mean OFF score across "
+                 "the four suites: their filed corpora "
+                 "degraded by citation_drop, scored by their "
+                 "real runners (TF-126)"},
+    {"id": "mid_on_score", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "the mid tier's mean ON score across the "
+                 "four suites (degraded + the filed "
+                 "per-suite forge repairs) (TF-126)"},
+    {"id": "mid_delta", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "mid_on_score minus mid_off_score — the "
+                 "measured forge gain at the mid tier; the "
+                 "panel's largest tier mean delta (TF-126)"},
+    {"id": "small_off_score", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "the small (3B) tier's mean OFF score "
+                 "across the four suites: their filed corpora "
+                 "degraded by citation_drop + "
+                 "terse_first_sentence (and the coherence "
+                 "drift shift), scored by their real "
+                 "runners (TF-126)"},
+    {"id": "small_on_score", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "the small tier's mean ON score across "
+                 "the four suites (degraded + the filed "
+                 "per-suite forge repairs) (TF-126)"},
+    {"id": "small_delta", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "small_on_score minus small_off_score — "
+                 "the measured forge gain at the small "
+                 "tier, carrying depth's negative cell "
+                 "delta by name (TF-126)"},
+    {"id": "tiny_off_score", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "the tiny (1.1B) tier's mean OFF score "
+                 "across the four suites: their filed "
+                 "corpora degraded by all four filed "
+                 "transforms (and the coherence drift "
+                 "shift), scored by their real runners "
+                 "(TF-126)"},
+    {"id": "tiny_on_score", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "the tiny tier's mean ON score across the "
+                 "four suites (degraded + the filed "
+                 "per-suite forge repairs) (TF-126)"},
+    {"id": "tiny_delta", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "tiny_on_score minus tiny_off_score — "
+                 "the measured forge gain at the tiny "
+                 "tier, the panel's smallest tier mean "
+                 "delta (TF-126)"},
+    {"id": "total_cells", "benchmark": "honesty_panel",
+     "legacy_name": "",
+     "computes": "panel cells measured (4 filed tiers x "
+                 "4 suites, 16 in the filed panel) "
+                 "(TF-126)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -834,7 +980,12 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "above the 0.75 threshold, so the filed run PASSes. "
               "This pins SCRIPTED fixtures through the real "
               "scorers — a live model's 100+ turn behaviour is "
-              "NOT PROVEN (TF-125 / TF-126)"},
+              "NOT PROVEN (TF-125 / TF-126). TF-126 update, in "
+              "the open: the honesty panel now runs this suite "
+              "across filed size tiers in the measuring sense "
+              "(benchmarks/honesty_panel.py, D-BENCH-12) — a "
+              "live model's behaviour at those sizes is still "
+              "NOT PROVEN (TF-173)"},
     {"id": "memory_suite_synthetic_v1",
      "benchmark": "memory_suite",
      "fixture": "memory_suite_corpus",
@@ -865,7 +1016,12 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "is at or above the 0.75 threshold, so the filed "
               "run PASSes. This pins SCRIPTED fixtures through "
               "the real machinery — a live model's citation "
-              "behaviour is NOT PROVEN (TF-125 / TF-126)"},
+              "behaviour is NOT PROVEN (TF-125 / TF-126). "
+              "TF-126 update, in the open: the honesty panel "
+              "now runs this suite across filed size tiers in "
+              "the measuring sense (benchmarks/honesty_panel.py, "
+              "D-BENCH-12) — a live model's behaviour at those "
+              "sizes is still NOT PROVEN (TF-173)"},
     {"id": "depth_suite_synthetic_v1",
      "benchmark": "depth_suite",
      "fixture": "depth_suite_corpus",
@@ -905,7 +1061,12 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "— a live model's depth behaviour is NOT "
               "PROVEN (TF-126), and the core loop does not "
               "execute strategies automatically (TF-022's "
-              "filed limit; D-BENCH-10)"},
+              "filed limit; D-BENCH-10). TF-126 update, in "
+              "the open: the honesty panel now runs this "
+              "suite across filed size tiers in the "
+              "measuring sense (benchmarks/honesty_panel.py, "
+              "D-BENCH-12) — a live model's behaviour at "
+              "those sizes is still NOT PROVEN (TF-173)"},
     {"id": "presence_suite_synthetic_v1",
      "benchmark": "presence_suite",
      "fixture": "presence_suite_corpus",
@@ -938,7 +1099,61 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "the real machinery — a live model's presence "
               "over real long conversations is NOT PROVEN "
               "(TF-126), and the core loop's live answers "
-              "are not scored here (D-BENCH-11)"},
+              "are not scored here (D-BENCH-11). TF-126 "
+              "update, in the open: the honesty panel now "
+              "runs this suite across filed size tiers in "
+              "the measuring sense (benchmarks/honesty_panel.py, "
+              "D-BENCH-12) — a live model's behaviour at "
+              "those sizes is still NOT PROVEN (TF-173)"},
+    {"id": "honesty_panel_synthetic_v1",
+     "benchmark": "honesty_panel",
+     "fixture": "honesty_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-126's filed "
+                    "size tiers degrading the four suites' "
+                    "filed corpora through their real "
+                    "runners, measured live twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "reference_off_score": 0.7252314814814815,
+         "reference_on_score": 0.8402777777777779,
+         "reference_delta": 0.1150462962962963,
+         "mid_off_score": 0.5932870370370371,
+         "mid_on_score": 0.8333333333333335,
+         "mid_delta": 0.24004629629629637,
+         "small_off_score": 0.5840277777777778,
+         "small_on_score": 0.712962962962963,
+         "small_delta": 0.12893518518518515,
+         "tiny_off_score": 0.40847222222222224,
+         "tiny_on_score": 0.4675925925925926,
+         "tiny_delta": 0.05912037037037035,
+         "total_cells": 16,
+     },
+     "targets": {
+         "reference_off_score": {"target": 0.7252314814814815,
+                                 "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the panel's per-tier means over the four "
+              "suites (16 cells, filed as literal rows in "
+              "benchmarks/honesty_panel.py and recomputed "
+              "live by its checker): the forge helps most "
+              "at the mid tier overall (mean delta "
+              "+0.2400), then small (+0.1289), reference "
+              "(+0.1150), tiny (+0.0591) — per suite, "
+              "persona is helped most at tiny, memory at "
+              "small, depth and presence at mid, and "
+              "depth's small-tier cell delta is negative "
+              "(-0.1944), filed by name. The filed target "
+              "is the reference-reproduction truth: the "
+              "reference tier's OFF cells reproduce the "
+              "four suites' pinned baselines exactly, so "
+              "its mean OFF is pinned at the value those "
+              "baselines imply. This pins FILED DEGRADATION "
+              "PROFILES over scripted fixtures through the "
+              "real machinery — live models' per-size "
+              "behaviour is NOT PROVEN (no GGUF / "
+              "llama_cpp on this VM, TF-078; TF-173 owns "
+              "the real-hardware road)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -1141,6 +1356,22 @@ def measure_presence_suite_baseline() -> dict[str, Any]:
     }
 
 
+def measure_honesty_panel_baseline() -> dict[str, Any]:
+    """Run TF-126's filed panel through the real machinery."""
+    from benchmarks.honesty_panel import MODEL_TIERS, run_honesty_panel
+
+    result = run_honesty_panel()
+    measured: dict[str, Any] = {"total_cells": result.total_cells}
+    means = {m["tier"]: m for m in result.tier_means}
+    for tier in MODEL_TIERS:
+        prefix = tier["prefix"]
+        mean = means[tier["id"]]
+        measured[f"{prefix}_off_score"] = mean["mean_off"]
+        measured[f"{prefix}_on_score"] = mean["mean_on"]
+        measured[f"{prefix}_delta"] = mean["mean_delta"]
+    return measured
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
@@ -1148,6 +1379,7 @@ _MEASURERS = {
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
     "presence_suite_synthetic_v1": measure_presence_suite_baseline,
+    "honesty_panel_synthetic_v1": measure_honesty_panel_baseline,
 }
 
 
@@ -1402,6 +1634,7 @@ __all__ = [
     "harness_as_data",
     "harness_problems",
     "measure_depth_suite_baseline",
+    "measure_honesty_panel_baseline",
     "measure_memory_suite_baseline",
     "measure_persona_baseline",
     "measure_presence_suite_baseline",

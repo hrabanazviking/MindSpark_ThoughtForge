@@ -329,10 +329,10 @@ class TestHarnessRegistration:
         for metric in ("present_score", "true_score", "explain_score",
                        "overall_score", "total_cases"):
             assert ("memory_suite", metric) in defined
-        assert len(BENCHMARKS) == 13  # + depth_suite (TF-124) + presence_suite (TF-125), in the open
-        assert len(FIXTURES) == 6  # + depth_suite_corpus (TF-124) + presence_suite_corpus (TF-125), in the open
-        assert len(BASELINES) == 6  # + depth_suite_synthetic_v1 (TF-124) + presence_suite_synthetic_v1 (TF-125), in the open
-        assert len(METRIC_DEFINITIONS) == 41  # + 10 depth_suite metrics (TF-124) + 5 presence_suite metrics (TF-125), in the open
+        assert len(BENCHMARKS) == 14  # + depth_suite (TF-124) + presence_suite (TF-125) + honesty_panel (TF-126), in the open
+        assert len(FIXTURES) == 7  # + depth_suite_corpus (TF-124) + presence_suite_corpus (TF-125) + honesty_panel_corpus (TF-126), in the open
+        assert len(BASELINES) == 7  # + depth_suite_synthetic_v1 (TF-124) + presence_suite_synthetic_v1 (TF-125) + honesty_panel_synthetic_v1 (TF-126), in the open
+        assert len(METRIC_DEFINITIONS) == 54  # + 10 depth_suite metrics (TF-124) + 5 presence_suite metrics (TF-125) + 13 honesty_panel metrics (TF-126), in the open
 
     def test_harness_checker_stays_clean(self) -> None:
         assert harness.harness_problems() == []
