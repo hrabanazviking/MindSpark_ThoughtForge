@@ -114,7 +114,7 @@ class TestMeasuredNoise:
             "regression_gate_synthetic_v1"
         assert GATE_BASELINE_ID not in GATED_BASELINE_IDS
         harness_ids = [b["id"] for b in BASELINES
-                       if b["id"] != GATE_BASELINE_ID]
+                       if b["id"] not in gate.UNGATED_BASELINE_IDS]
         assert list(GATED_BASELINE_IDS) == harness_ids
         for row in NOISE_ROWS:
             assert row["repeats"] == NOISE_REPEATS == 5
@@ -410,11 +410,11 @@ class TestHarnessRegistration:
                        "max_noise_spread", "gate_failures",
                        "probes_passed", "probes_total"):
             assert ("regression_gate", metric) in defined
-        assert len(BENCHMARKS) == 17
-        assert len(FIXTURES) == 10
-        assert len(BASELINES) == 10
-        assert len(METRIC_DEFINITIONS) == 89
-        assert len(HARNESS_RULES) == 10
+        assert len(BENCHMARKS) == 18
+        assert len(FIXTURES) == 11
+        assert len(BASELINES) == 11
+        assert len(METRIC_DEFINITIONS) == 95
+        assert len(HARNESS_RULES) == 11
         assert "regression_gates_fail_on_moved_baselines" in {
             r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []

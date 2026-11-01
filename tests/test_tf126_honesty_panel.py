@@ -476,10 +476,10 @@ class TestHarnessRegistration:
             for kind in ("off_score", "on_score", "delta"):
                 assert ("honesty_panel", f"{prefix}_{kind}") in defined
         assert ("honesty_panel", "total_cells") in defined
-        assert len(BENCHMARKS) == 17  # + quant_panel (TF-127) + profile_panel (TF-128) + regression_gate (TF-129), in the open
-        assert len(FIXTURES) == 10  # + quant_panel_corpus (TF-127) + profile_panel_corpus (TF-128) + regression_gate_corpus (TF-129), in the open
-        assert len(BASELINES) == 10  # + quant_panel_synthetic_v1 (TF-127) + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129), in the open
-        assert len(METRIC_DEFINITIONS) == 89  # + 16 quant_panel metrics (TF-127) + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129), in the open
+        assert len(BENCHMARKS) == 18  # + quant_panel (TF-127) + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130), in the open
+        assert len(FIXTURES) == 11  # + quant_panel_corpus (TF-127) + profile_panel_corpus (TF-128) + regression_gate_corpus (TF-129) + spot_checks_corpus (TF-130), in the open
+        assert len(BASELINES) == 11  # + quant_panel_synthetic_v1 (TF-127) + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129) + spot_checks_synthetic_v1 (TF-130), in the open
+        assert len(METRIC_DEFINITIONS) == 95  # + 16 quant_panel metrics (TF-127) + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129) + 6 spot_checks metrics (TF-130), in the open
         assert harness.harness_problems() == []
 
 

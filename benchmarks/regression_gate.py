@@ -204,6 +204,29 @@ from benchmarks.harness import BASELINES  # noqa: E402
 #: own verdict row; its checker judges it).
 GATE_BASELINE_ID = "regression_gate_synthetic_v1"
 
+#: TF-130 update, in the open: TF-130 registered
+#: one further baseline after this gate was
+#: filed — the human-shaped spot-check set's own
+#: pin. It is NOT one of the gated baselines
+#: either, by the same shape as the gate's own
+#: baseline: the spot-check set is a
+#: human-judgement artefact judged by its own
+#: module's checker (spot_checks_problems()),
+#: and the gated set stays the nine
+#: TF-121..TF-128 baselines exactly as TF-129
+#: filed it. The gated-set check below excludes
+#: both ungated pins by name.
+SPOT_CHECKS_BASELINE_ID = "spot_checks_synthetic_v1"
+
+#: The harness baselines that are not gated:
+#: the gate's own verdict row and TF-130's
+#: spot-check pin, each judged by its own
+#: module's checker.
+UNGATED_BASELINE_IDS: tuple[str, ...] = (
+    GATE_BASELINE_ID,
+    SPOT_CHECKS_BASELINE_ID,
+)
+
 #: The baselines the gate gates: the nine pinned
 #: by TF-121..TF-128, in harness filing order.
 GATED_BASELINE_IDS: tuple[str, ...] = (
@@ -906,7 +929,7 @@ def regression_gate_problems() -> list[str]:
 
     # Shape: gated set, repeats, totals, rules.
     harness_ids = [b["id"] for b in BASELINES
-                   if b["id"] != GATE_BASELINE_ID]
+                   if b["id"] not in UNGATED_BASELINE_IDS]
     if list(GATED_BASELINE_IDS) != harness_ids:
         problems.append(
             f"GATED_BASELINE_IDS {list(GATED_BASELINE_IDS)} != "
@@ -1104,9 +1127,11 @@ __all__ = [
     "NOISE_ROWS",
     "REGRESSION_GATE_DOC",
     "REGRESSION_GATE_FORMAT",
+    "SPOT_CHECKS_BASELINE_ID",
     "TOLERANCES",
     "TOLERANCE_FLOOR",
     "TOTAL_PINNED_METRICS",
+    "UNGATED_BASELINE_IDS",
     "RegressionGateResult",
     "compute_noise_rows",
     "direction_for",

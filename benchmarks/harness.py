@@ -357,6 +357,46 @@ openly in TF-129's doc). All earlier pinned
 baselines stand exactly as filed (never
 re-pinned).
 
+**TF-130 update, in the open:** the human-shaped
+spot checks are built
+(``benchmarks/spot_checks.py``) and registered
+below (``spot_checks``) with their own pinned
+baseline (``spot_checks_synthetic_v1``,
+measured live twice, identical): eight filed
+transcripts assembled live from the real filed
+corpora of the persona / memory / depth /
+presence suites and TF-067's quant estate —
+no corpus or scorer copied; every turn is the
+suite's own case data rendered verbatim and
+every machine score is recomputed by that
+suite's real per-case scorer. Four transcripts
+hold and four do not, as filed; each carries
+its score + verdict beside a human-judgement
+prompt (what Volmarr should look for), and the
+rendered set IS the doc
+(``docs/architecture/SPOT_CHECKS.md``) — the
+numbers' sanity anchor, checked verbatim by
+``spot_checks_problems()``. TF-130's probes
+found and filed **D-BENCH-15** (the suites'
+numbers existed as pinned baselines, but no
+artefact ever assembled suite cases into
+transcripts a human could read and judge —
+assigned to TF-130 by the roadmap without ever
+being numbered, the D-BENCH-9..14 pattern) and
+FIXED it in the measuring sense. The
+spot-check baseline is NOT one of TF-129's
+gated baselines: the gate's gated set stays
+the nine TF-121..TF-128 baselines exactly as
+filed, and the exclusion is filed in the open
+in ``benchmarks/regression_gate.py`` (the
+shape TF-129 filed for its own baseline — a
+verdict row judged by its own module's
+checker). No human judgement is recorded yet
+— the set is the instrument; live-model
+transcripts are NOT PROVEN (TF-173). All
+earlier pinned baselines stand exactly as
+filed (never re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -412,6 +452,10 @@ Filed limits, stated plainly:
     **TF-129 update:** the regression gates over
     the nine pinned baselines now exist and are
     registered below; TF-134's baseline book and
+    TF-137's one-command tool still stand as filed.
+    **TF-130 update:** the human-shaped spot
+    checks over the suites' own filed corpora now
+    exist and are registered below; TF-134's baseline book and
     TF-137's one-command tool still stand as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
@@ -570,6 +614,20 @@ FIXTURES: tuple[dict[str, Any], ...] = (
                 "tree), bound in place — the "
                 "baselines stay the harness's, "
                 "never copied"},
+    {"id": "spot_checks_corpus", "benchmark": "spot_checks",
+     "bind_module": "benchmarks.spot_checks",
+     "bind_attribute": "TRANSCRIPT_SPECS",
+     "synthetic": True,
+     "subject": "TF-130's filed transcript specs: "
+                "8 transcripts located in the real "
+                "filed corpora of the persona / "
+                "memory / depth / presence suites "
+                "and TF-067's quant estate (56 "
+                "turns; 4 holding, 4 not), bound in "
+                "place — the corpora stay the "
+                "suites', never copied; the "
+                "transcripts are assembled live by "
+                "build_spot_checks()"},
 )
 
 
@@ -771,6 +829,31 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "fixture baselines only — no live "
               "model (TF-173), no CI wiring, no "
               "generation-time blocking"},
+    {"id": "spot_checks", "kind": "panel",
+     "status": "built_panel",
+     "bind_module": "benchmarks.spot_checks",
+     "bind_attribute": "run_spot_checks",
+     "fixture": "spot_checks_corpus",
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-130 (human-shaped spot checks — itself)",
+     "doc": "docs/architecture/SPOT_CHECKS.md",
+     "docket": ("D-BENCH-15 FIXED by TF-130 (measuring sense)",),
+     "notes": "TF-130's human-shaped spot checks: "
+              "8 transcripts assembled live from "
+              "the real filed corpora of the "
+              "persona / memory / depth / presence "
+              "suites and TF-067's quant estate — "
+              "every turn verbatim suite case data, "
+              "every machine score recomputed by "
+              "that suite's real per-case scorer, "
+              "each transcript carrying its score "
+              "+ verdict beside a human-judgement "
+              "prompt. Four hold and four do not, "
+              "as filed. The rendered set IS the "
+              "doc (SPOT_CHECKS.md). No human "
+              "judgement is recorded yet — the set "
+              "is the instrument; live-model "
+              "transcripts are NOT PROVEN (TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -1347,6 +1430,48 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "changed dict metric, an "
                  "inside-tolerance move and a missing "
                  "baseline (7 on this tree) (TF-129)"},
+    {"id": "total_transcripts", "benchmark": "spot_checks",
+     "legacy_name": "",
+     "computes": "transcripts in TF-130's filed "
+                 "spot-check set, each one a real "
+                 "case from a real suite's filed "
+                 "corpus (8 on this tree) (TF-130)"},
+    {"id": "total_turns", "benchmark": "spot_checks",
+     "legacy_name": "",
+     "computes": "verbatim turns across the filed "
+                 "spot-check transcripts, counted "
+                 "live from the assembled set (56 on "
+                 "this tree: the 20-turn coherence "
+                 "saga files 40 of them) (TF-130)"},
+    {"id": "suites_covered", "benchmark": "spot_checks",
+     "legacy_name": "",
+     "computes": "distinct suite anchors the set "
+                 "draws from: persona_suite, "
+                 "memory_suite, depth_suite, "
+                 "presence_suite and TF-067's "
+                 "quant_quality estate (5 on this "
+                 "tree) (TF-130)"},
+    {"id": "holding_transcripts", "benchmark": "spot_checks",
+     "legacy_name": "",
+     "computes": "transcripts whose recomputed "
+                 "score holds under their own "
+                 "suite's real scorer, as filed in "
+                 "their expectations (4 on this "
+                 "tree) (TF-130)"},
+    {"id": "failing_transcripts", "benchmark": "spot_checks",
+     "legacy_name": "",
+     "computes": "transcripts whose recomputed "
+                 "score does not hold — the failing "
+                 "shapes filed by name beside the "
+                 "passes (4 on this tree) (TF-130)"},
+    {"id": "mean_score", "benchmark": "spot_checks",
+     "legacy_name": "",
+     "computes": "the descriptive mean of the "
+                 "set's per-transcript scores across "
+                 "five different scorers (0.625 on "
+                 "this tree) — a summary only; the "
+                 "anchor is the per-transcript "
+                 "reading, never the mean (TF-130)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -1776,6 +1901,53 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "pins the gate over SYNTHETIC fixture "
               "baselines — no live model is gated, "
               "live behaviour NOT PROVEN (TF-173)"},
+    {"id": "spot_checks_synthetic_v1",
+     "benchmark": "spot_checks",
+     "fixture": "spot_checks_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-130's "
+                    "filed spot-check set assembled "
+                    "live from the suites' own filed "
+                    "corpora through their real "
+                    "per-case scorers, measured "
+                    "live twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "total_transcripts": 8,
+         "total_turns": 56,
+         "suites_covered": 5,
+         "holding_transcripts": 4,
+         "failing_transcripts": 4,
+         "mean_score": 0.625,
+     },
+     "targets": {
+         "holding_transcripts": {"target": 4, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the spot-check set's reproduction "
+              "row (8 filed transcripts / 56 "
+              "verbatim turns over 5 suite anchors, "
+              "recomputed live by "
+              "benchmarks/spot_checks.py's checker): "
+              "persona identity 1.0 holds, persona "
+              "voice generic slip 0.3 does not, "
+              "memory citation present+true 1.0 "
+              "holds, memory citation present but "
+              "false 0.0 does not, depth chain "
+              "scaffolded 1.0 holds (direct 0.0), "
+              "presence coherence break mean 0.7 "
+              "does not, presence will steering 1.0 "
+              "holds, quant fare_maths at q4_k_m "
+              "0.0 does not — 4 holding / 4 not, "
+              "mean 0.625 filed as a descriptive "
+              "summary across five scorers only. "
+              "The filed target is the set's "
+              "balance truth: half the anchor must "
+              "show failures or it anchors nothing. "
+              "This pins SCRIPTED fixture "
+              "transcripts — no live model was "
+              "read, live behaviour NOT PROVEN "
+              "(TF-173), and no human judgement is "
+              "recorded yet"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -1901,6 +2073,30 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "in-house, not a CI wiring, and it "
              "gates fixture baselines only (no live "
              "model, TF-173)"},
+    {"id": "spot_checks_anchor_the_numbers_in_human_judgement",
+     "rule": "TF-130 DONE: the estate's numbers "
+             "have a human-shaped anchor "
+             "(benchmarks/spot_checks.py, "
+             "D-BENCH-15) — 8 transcripts assembled "
+             "live from the suites' own filed "
+             "corpora (no corpus or scorer copied), "
+             "every turn verbatim, every machine "
+             "score recomputed by its suite's real "
+             "per-case scorer, each transcript "
+             "carrying its score + verdict beside "
+             "a human-judgement prompt, 4 holding "
+             "and 4 not as filed; the rendered set "
+             "IS the doc "
+             "(docs/architecture/SPOT_CHECKS.md), "
+             "checked verbatim by "
+             "spot_checks_problems(). The "
+             "spot-check baseline is judged by that "
+             "checker, not gated by TF-129's gate "
+             "(the gated set stays the nine "
+             "TF-121..TF-128 baselines). No human "
+             "judgement is recorded yet and "
+             "live-model transcripts are NOT "
+             "PROVEN (TF-173)"},
 )
 
 
@@ -2078,11 +2274,27 @@ def measure_regression_gate_baseline() -> dict[str, Any]:
     }
 
 
+def measure_spot_checks_baseline() -> dict[str, Any]:
+    """Run TF-130's filed spot-check set through the real machinery."""
+    from benchmarks.spot_checks import run_spot_checks
+
+    result = run_spot_checks()
+    return {
+        "total_transcripts": result.total_transcripts,
+        "total_turns": result.total_turns,
+        "suites_covered": result.suites_covered,
+        "holding_transcripts": result.holding,
+        "failing_transcripts": result.failing,
+        "mean_score": result.mean_score,
+    }
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
     "profile_panel_synthetic_v1": measure_profile_panel_baseline,
     "regression_gate_synthetic_v1": measure_regression_gate_baseline,
+    "spot_checks_synthetic_v1": measure_spot_checks_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -2150,7 +2362,8 @@ def harness_problems() -> list[str]:
                    "metric_names_state_what_they_compute",
                    "an_unknown_profile_is_named_never_run",
                    "the_will_axis_is_scored_by_tf125",
-                   "regression_gates_fail_on_moved_baselines"):
+                   "regression_gates_fail_on_moved_baselines",
+                   "spot_checks_anchor_the_numbers_in_human_judgement"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -2353,5 +2566,6 @@ __all__ = [
     "measure_profile_panel_baseline",
     "measure_quant_panel_baseline",
     "measure_regression_gate_baseline",
+    "measure_spot_checks_baseline",
     "validate_profile_id",
 ]

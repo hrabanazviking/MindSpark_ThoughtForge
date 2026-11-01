@@ -340,10 +340,10 @@ class TestHarnessRegistration:
             assert ("profile_panel",
                     f"{profile}_bench_avg_words") in defined
         assert ("profile_panel", "total_cells") in defined
-        assert len(BENCHMARKS) == 17  # + regression_gate (TF-129), in the open
-        assert len(FIXTURES) == 10  # + regression_gate_corpus (TF-129), in the open
-        assert len(BASELINES) == 10  # + regression_gate_synthetic_v1 (TF-129), in the open
-        assert len(METRIC_DEFINITIONS) == 89  # + 6 regression_gate metrics (TF-129), in the open
+        assert len(BENCHMARKS) == 18  # + regression_gate (TF-129) + spot_checks (TF-130), in the open
+        assert len(FIXTURES) == 11  # + regression_gate_corpus (TF-129) + spot_checks_corpus (TF-130), in the open
+        assert len(BASELINES) == 11  # + regression_gate_synthetic_v1 (TF-129) + spot_checks_synthetic_v1 (TF-130), in the open
+        assert len(METRIC_DEFINITIONS) == 95  # + 6 regression_gate metrics (TF-129) + 6 spot_checks metrics (TF-130), in the open
         assert harness.harness_problems() == []
 
 
