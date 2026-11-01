@@ -631,6 +631,33 @@ shape standing as TF-106 filed it, stated plainly
 and not claimed fixed).
 Totals after TF-119: 123 entries.
 
+The TF-120 Part VI gate ruled on every share assigned
+to it (docs/architecture/TF-120_PART_VI_GATE.md §3),
+on the evidence of a fresh live round-trip probe —
+synthetic fixtures only, never `data/` — that carried
+provenance intact at every hop (registry → dry-run →
+real builders → stored rows → TF-111 embeddings →
+KnowledgeForge retrieval with TF-048 citation
+payloads): D-LIC-2's Part VI share stands discharged
+(the data-source licences recorded by TF-106 were
+re-verified live at the gate — `check_source_use`
+returned each entry's provenance + licence, and the
+quarantined reference library still states no licence
+and refuses redistribution); the entry stays OPEN on
+its TF-190 shares alone (final re-verification of the
+SRD in-tree copy, the DBpedia export shape, and the
+embedding-model card). D-DATA-2 stays OPEN on its one
+remaining share — the duplicate files inside `data/`
+stand untouched, canon handling is Volmarr's word,
+nothing moved or deleted by the gate (its store-level
+share stands FIXED by TF-109). D-EMB-4 stays OPEN,
+assigned to TF-177's upgrade path (the gate's
+embedding leg ran one model, as filed; multi-model
+coexistence is NOT claimed). No entry closes at this
+gate — every other Part VI entry was fixed by its own
+slice — and no new entry was added: the probe found
+no defect. Totals unchanged at the gate: 123 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
