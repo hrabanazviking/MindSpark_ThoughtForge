@@ -446,6 +446,53 @@ opened; live-model benchmark data is NOT
 PROVEN (TF-173). All earlier pinned baselines
 stand exactly as filed (never re-pinned).
 
+**TF-132 update, in the open:** the WYRD-shaped
+panel is built (``benchmarks/wyrd_panel.py``)
+and registered below (``wyrd_panel``) with its
+own pinned baseline
+(``wyrd_panel_synthetic_v1``, measured live
+twice, identical): a small synthetic invented
+world filed as data (Emberwick — 8 entities
+with attributes, locations and relations, and
+a timeline of 6 state changes, replayed purely
+by ``world_state_at()``) and 18 filed question
+cases over six axes (state at a point, state
+after a change, relations, counts,
+contradiction probes, the unanswerable), each
+judged by the panel's own scorer against the
+replayed state — 9 consistent, 8 contradicted,
+1 honest-unanswerable, overall 0.5556, with
+the failing shapes (stale pre-change answers,
+both-at-once contradictions, an invented
+colour) filed by name. No neighbour scorer
+judges answers against a replayed timeline, so
+the scorer is the panel's own, filed plainly
+in its module. TF-132's probes found and filed
+**D-BENCH-17** (no world-state consistency
+panel existed — nothing filed a world with a
+timeline or judged an answer against a stated
+state; the gap was assigned to TF-132 by the
+roadmap without ever being numbered — the
+D-BENCH-9..16 pattern) and FIXED it in the
+measuring sense. The panel feeds Part VIII's
+WYRD boundary doc (TF-145) with evidence; it
+does not decide it. The wyrd baseline is NOT
+one of TF-129's gated baselines: the gate's
+gated set stays the nine TF-121..TF-128
+baselines exactly as filed, and the exclusion
+is filed in the open in
+``benchmarks/regression_gate.py``. **TF-131
+coupling, in the open:** the new fixture is
+filed as a hygiene row, so the hygiene
+inventory grows 20 -> 21 inputs (14 -> 15
+synthetic, 6 derived, all clean) and the
+hygiene pinned baseline below is re-pinned
+for exactly that reason — the estate grew by
+one filed synthetic input; every other
+earlier pinned baseline stands exactly as
+filed (never re-pinned). Live world-state
+behaviour is NOT PROVEN (TF-173).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -510,6 +557,10 @@ Filed limits, stated plainly:
     hygiene inventory over every benchmark
     input in the estate now exists and is
     registered below; TF-134's baseline book and
+    TF-137's one-command tool still stand as filed.
+    **TF-132 update:** the WYRD-shaped panel
+    over its filed synthetic world now exists
+    and is registered below; TF-134's baseline book and
     TF-137's one-command tool still stand as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
@@ -687,13 +738,28 @@ FIXTURES: tuple[dict[str, Any], ...] = (
      "bind_attribute": "HYGIENE_ROWS",
      "synthetic": True,
      "subject": "TF-131's filed hygiene "
-                "inventory: 20 rows over every "
+                "inventory: 21 rows over every "
                 "benchmark input in the estate "
-                "(14 synthetic-invented, 0 "
+                "(15 synthetic-invented, 0 "
                 "licensed, 6 derived-live), "
                 "bound in place — the rows bind "
                 "the real modules / symbols / "
                 "files, never copy a corpus"},
+    {"id": "wyrd_panel_corpus", "benchmark": "wyrd_panel",
+     "bind_module": "benchmarks.wyrd_panel",
+     "bind_attribute": "PANEL_CASES",
+     "synthetic": True,
+     "subject": "TF-132's filed WYRD panel: a "
+                "synthetic invented world "
+                "(Emberwick — 8 entities, 6 "
+                "timeline changes) and 18 filed "
+                "question cases over six axes "
+                "(9 consistent, 8 contradicted, "
+                "1 honest-unanswerable as filed), "
+                "bound in place — the world and "
+                "cases stay the panel's, scored "
+                "by its own scorer against the "
+                "replayed timeline"},
 )
 
 
@@ -930,7 +996,7 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
      "doc": "docs/architecture/BENCHMARK_DATA_HYGIENE.md",
      "docket": ("D-BENCH-16 FIXED by TF-131 (measuring sense)",),
      "notes": "TF-131's data hygiene inventory "
-              "over every benchmark input: 20 "
+              "over every benchmark input: 21 "
               "filed rows (the harness fixtures "
               "and suite / panel corpora, the "
               "bound src neighbour corpora, the "
@@ -940,7 +1006,7 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "derived with its proof, bindings "
               "resolved live, the benchmark code "
               "estate scanned with TF-017's "
-              "guard shapes — 14 synthetic, 0 "
+              "guard shapes — 15 synthetic, 0 "
               "licensed, 6 derived, all clean, "
               "7 filed probes proving the "
               "checker can fail. Proof is marker "
@@ -948,6 +1014,39 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "content is never opened and "
               "live-model benchmark data is NOT "
               "PROVEN (TF-173)"},
+    {"id": "wyrd_panel", "kind": "panel",
+     "status": "built_panel",
+     "bind_module": "benchmarks.wyrd_panel",
+     "bind_attribute": "run_wyrd_panel",
+     "fixture": "wyrd_panel_corpus",
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-132 (the WYRD-shaped panel — itself)",
+     "doc": "docs/architecture/WYRD_PANEL.md",
+     "docket": ("D-BENCH-17 FIXED by TF-132 (measuring sense)",),
+     "notes": "TF-132's WYRD-shaped panel: a "
+              "synthetic invented world "
+              "(Emberwick — 8 entities with "
+              "attributes, locations and "
+              "relations, 6 timeline changes "
+              "replayed purely) and 18 filed "
+              "question cases over six axes "
+              "(state at a point, after a "
+              "change, relations, counts, "
+              "contradiction probes, the "
+              "unanswerable), each judged by "
+              "the panel's own scorer against "
+              "the replayed state — 9 "
+              "consistent, 8 contradicted, 1 "
+              "honest-unanswerable, overall "
+              "0.5556; stale pre-change "
+              "answers, both-at-once "
+              "contradictions and an invented "
+              "colour filed by name. The panel "
+              "feeds TF-145's WYRD boundary "
+              "with evidence; it does not "
+              "decide it. Live world-state "
+              "behaviour is NOT PROVEN "
+              "(TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -1570,12 +1669,12 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "legacy_name": "",
      "computes": "benchmark inputs carrying a "
                  "filed hygiene row in TF-131's "
-                 "inventory (20 on this tree)"},
+                 "inventory (21 on this tree)"},
     {"id": "synthetic_inputs", "benchmark": "data_hygiene",
      "legacy_name": "",
      "computes": "filed inputs classified "
                  "synthetic-invented, each with "
-                 "its proof checked live (14 on "
+                 "its proof checked live (15 on "
                  "this tree) (TF-131)"},
     {"id": "licensed_inputs", "benchmark": "data_hygiene",
      "legacy_name": "",
@@ -1598,7 +1697,7 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "data_hygiene_problems(): "
                  "binding resolved, proof in "
                  "order, no canon-access shape "
-                 "in the bound source (20 on "
+                 "in the bound source (21 on "
                  "this tree) (TF-131)"},
     {"id": "probes_passed", "benchmark": "data_hygiene",
      "legacy_name": "",
@@ -1608,6 +1707,51 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
     {"id": "probes_total", "benchmark": "data_hygiene",
      "legacy_name": "",
      "computes": "TF-131's filed probes in "
+                 "total (7 on this tree)"},
+    {"id": "total_cases", "benchmark": "wyrd_panel",
+     "legacy_name": "",
+     "computes": "filed question cases in "
+                 "TF-132's WYRD panel over its "
+                 "synthetic invented world (18 on "
+                 "this tree) (TF-132)"},
+    {"id": "consistent_cases", "benchmark": "wyrd_panel",
+     "legacy_name": "",
+     "computes": "cases whose scripted claim "
+                 "equals the replayed world value "
+                 "at the case's timeline point "
+                 "(9 on this tree) (TF-132)"},
+    {"id": "contradicted_cases", "benchmark": "wyrd_panel",
+     "legacy_name": "",
+     "computes": "cases whose claim contradicts "
+                 "the replayed world — stale "
+                 "pre-change answers, both-at-"
+                 "once probes, a wrong relation, "
+                 "a wrong count and an invented "
+                 "value for an unfiled fact (8 on "
+                 "this tree) (TF-132)"},
+    {"id": "honest_unanswerable_cases", "benchmark": "wyrd_panel",
+     "legacy_name": "",
+     "computes": "cases asking what the world "
+                 "files no fact for, answered "
+                 "honestly (the record does not "
+                 "say) with nothing asserted (1 "
+                 "on this tree) (TF-132)"},
+    {"id": "overall_score", "benchmark": "wyrd_panel",
+     "legacy_name": "",
+     "computes": "the mean per-case score over "
+                 "the filed set: consistent and "
+                 "honest-unanswerable cases score "
+                 "1.0, contradicted cases 0.0 "
+                 "(10/18 = 0.5556 on this tree) "
+                 "(TF-132)"},
+    {"id": "probes_passed", "benchmark": "wyrd_panel",
+     "legacy_name": "",
+     "computes": "TF-132's filed probes against "
+                 "the pure scorer parts that "
+                 "behave as filed (7 on this tree)"},
+    {"id": "probes_total", "benchmark": "wyrd_panel",
+     "legacy_name": "",
+     "computes": "TF-132's filed probes in "
                  "total (7 on this tree)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
@@ -2097,20 +2241,20 @@ BASELINES: tuple[dict[str, Any], ...] = (
                     "twice, identical",
      "tolerance": 1e-9,
      "metrics": {
-         "total_inputs": 20,
-         "synthetic_inputs": 14,
+         "total_inputs": 21,
+         "synthetic_inputs": 15,
          "licensed_inputs": 0,
          "derived_inputs": 6,
-         "clean_inputs": 20,
+         "clean_inputs": 21,
          "probes_passed": 7,
          "probes_total": 7,
      },
      "targets": {
-         "clean_inputs": {"target": 20, "met": True},
+         "clean_inputs": {"target": 21, "met": True},
      },
      "excluded_metrics": {},
      "notes": "the hygiene inventory's verdict "
-              "row (20 filed inputs over the "
+              "row (21 filed inputs over the "
               "whole benchmark estate, recomputed "
               "live by "
               "benchmarks/data_hygiene.py's "
@@ -2119,13 +2263,13 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "bound src neighbour corpora "
               "(TF-043 / TF-067 / TF-030), the "
               "hardware-profile files and the "
-              "tests/fixtures estate — 14 "
+              "tests/fixtures estate — 15 "
               "synthetic-invented, 0 licensed "
               "(no benchmark input is licensed "
               "material on this tree; the class "
               "is enforced by rule + probe), 6 "
               "derived-live from other filed "
-              "rows, all 20 clean, and all 7 "
+              "rows, all 21 clean, and all 7 "
               "filed probes behave against the "
               "pure checker parts. The filed "
               "target is the hygiene truth: "
@@ -2134,7 +2278,71 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "marker / path / provenance — "
               "canon content was never opened, "
               "and live-model benchmark data is "
-              "NOT PROVEN (TF-173)"},
+              "NOT PROVEN (TF-173). TF-132 "
+              "update, in the open: this baseline "
+              "was re-pinned 20 -> 21 inputs "
+              "(14 -> 15 synthetic, clean 20 -> "
+              "21) for exactly one reason — "
+              "TF-132 filed a new synthetic "
+              "hygiene row (wyrd_panel_corpus) "
+              "and the inventory it pins grew "
+              "by that row; no other value moved"},
+    {"id": "wyrd_panel_synthetic_v1",
+     "benchmark": "wyrd_panel",
+     "fixture": "wyrd_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-132's "
+                    "filed synthetic world + cases "
+                    "through the panel's own "
+                    "scorer over the replayed "
+                    "timeline, measured live "
+                    "twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "total_cases": 18,
+         "consistent_cases": 9,
+         "contradicted_cases": 8,
+         "honest_unanswerable_cases": 1,
+         "overall_score": 0.5555555555555556,
+         "probes_passed": 7,
+         "probes_total": 7,
+     },
+     "targets": {
+         "consistent_cases": {"target": 9, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the WYRD panel's verdict row (18 "
+              "filed cases over the invented "
+              "Emberwick world — 8 entities, 6 "
+              "timeline changes — recomputed "
+              "live by "
+              "benchmarks/wyrd_panel.py's "
+              "checker): state at a point 3 "
+              "consistent / 1 contradicted, "
+              "after a change 2 / 2 (the stale "
+              "wheel and bell), relations 2 / 1, "
+              "counts 2 / 1, contradiction "
+              "probes 0 / 2 (a ferry in two "
+              "places, a wheel turning and "
+              "stopped), the unanswerable 1 "
+              "honest / 1 fabricated — 9 "
+              "consistent, 8 contradicted, 1 "
+              "honest-unanswerable, overall "
+              "10/18, and all 7 filed probes "
+              "behave against the pure scorer "
+              "parts. The filed target is the "
+              "panel's balance truth: the "
+              "consistent count is pinned at "
+              "its measured 9 beside the 8 "
+              "filed contradictions — a panel "
+              "that only showed consistency "
+              "would prove nothing. This pins "
+              "SCRIPTED synthetic answers "
+              "through the panel's own scorer "
+              "— no live model was read, live "
+              "world-state behaviour is NOT "
+              "PROVEN (TF-173), and the panel "
+              "feeds TF-145's boundary with "
+              "evidence without deciding it"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -2298,8 +2506,8 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "resolved, TF-017 markers where "
              "the policy files them, the "
              "benchmark code estate scanned "
-             "with TF-017's guard shapes): 20 "
-             "inputs, 14 synthetic, 0 licensed, "
+             "with TF-017's guard shapes): 21 "
+             "inputs, 15 synthetic, 0 licensed, "
              "6 derived, all clean, and 7 filed "
              "probes prove the checker can "
              "fail. Canon is never a benchmark "
@@ -2312,6 +2520,32 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "content is never opened, and "
              "live-model benchmark data is NOT "
              "PROVEN (TF-173)"},
+    {"id": "the_wyrd_panel_scores_world_state_consistency",
+     "rule": "TF-132 DONE: world-state "
+             "consistency has a panel "
+             "(benchmarks/wyrd_panel.py, "
+             "D-BENCH-17) — a synthetic invented "
+             "world filed as data (Emberwick: 8 "
+             "entities, 6 timeline changes, "
+             "replayed purely by "
+             "world_state_at()) and 18 filed "
+             "question cases over six axes, "
+             "each judged by the panel's own "
+             "scorer against the replayed state "
+             "with its claim bound to its "
+             "answer text: 9 consistent, 8 "
+             "contradicted, 1 honest-"
+             "unanswerable, overall 0.5556, 7 "
+             "filed probes proving the scorer "
+             "can fail. The wyrd baseline is "
+             "judged by that checker, not gated "
+             "by TF-129's gate (the gated set "
+             "stays the nine TF-121..TF-128 "
+             "baselines). The panel feeds "
+             "TF-145's WYRD boundary with "
+             "evidence, it does not decide it; "
+             "live world-state behaviour is "
+             "NOT PROVEN (TF-173)"},
 )
 
 
@@ -2504,6 +2738,27 @@ def measure_spot_checks_baseline() -> dict[str, Any]:
     }
 
 
+def measure_wyrd_panel_baseline() -> dict[str, Any]:
+    """Run TF-132's filed panel through its own scorer."""
+    from benchmarks.wyrd_panel import (
+        run_panel_probes,
+        run_wyrd_panel,
+    )
+
+    result = run_wyrd_panel()
+    probes = run_panel_probes()
+    return {
+        "total_cases": result.total_cases,
+        "consistent_cases": result.consistent_cases,
+        "contradicted_cases": result.contradicted_cases,
+        "honest_unanswerable_cases":
+            result.honest_unanswerable_cases,
+        "overall_score": result.overall_score,
+        "probes_passed": sum(1 for p in probes if p["passed"]),
+        "probes_total": len(probes),
+    }
+
+
 def measure_data_hygiene_baseline() -> dict[str, Any]:
     """Run TF-131's filed hygiene inventory through the real machinery."""
     from benchmarks.data_hygiene import (
@@ -2531,6 +2786,7 @@ _MEASURERS = {
     "regression_gate_synthetic_v1": measure_regression_gate_baseline,
     "spot_checks_synthetic_v1": measure_spot_checks_baseline,
     "data_hygiene_synthetic_v1": measure_data_hygiene_baseline,
+    "wyrd_panel_synthetic_v1": measure_wyrd_panel_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -2600,7 +2856,8 @@ def harness_problems() -> list[str]:
                    "the_will_axis_is_scored_by_tf125",
                    "regression_gates_fail_on_moved_baselines",
                    "spot_checks_anchor_the_numbers_in_human_judgement",
-                   "benchmark_inputs_are_synthetic_or_licensed_never_canon"):
+                   "benchmark_inputs_are_synthetic_or_licensed_never_canon",
+                   "the_wyrd_panel_scores_world_state_consistency"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -2803,6 +3060,7 @@ __all__ = [
     "measure_profile_panel_baseline",
     "measure_quant_panel_baseline",
     "measure_data_hygiene_baseline",
+    "measure_wyrd_panel_baseline",
     "measure_regression_gate_baseline",
     "measure_spot_checks_baseline",
     "validate_profile_id",

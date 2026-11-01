@@ -18,7 +18,7 @@ the measuring sense.
 
 Pinned here:
 
-  * the filed inventory: 20 inputs — 14
+  * the filed inventory: 21 inputs — 15
     synthetic-invented, 0 licensed, 6
     derived-live — every harness fixture
     covered exactly, every binding resolving
@@ -34,8 +34,13 @@ Pinned here:
   * the probes: 7/7 against the pure checker
     parts, proving the checker can fail,
   * the checker clean, the harness
-    registration (19 / 12 / 12 / 102, rules
-    12), the new baseline re-measured live
+    registration (20 / 13 / 13 / 109, rules
+    13 — counts moved in the open by TF-132,
+    whose new synthetic fixture grew this
+    inventory 20 -> 21 inputs, 14 -> 15
+    synthetic, and re-pinned this baseline in
+    the open for exactly that reason), the new
+    baseline re-measured live
     twice — with every earlier pinned
     baseline preserved exactly and TF-129's
     gated set untouched (the hygiene baseline
@@ -102,13 +107,13 @@ def _by_id(rows):
 
 
 class TestFiledInventory:
-    def test_twenty_inputs_classified_14_0_6(self) -> None:
-        assert TOTAL_INPUTS == 20
-        assert len(HYGIENE_ROWS) == 20
+    def test_twentyone_inputs_classified_15_0_6(self) -> None:
+        assert TOTAL_INPUTS == 21
+        assert len(HYGIENE_ROWS) == 21
         ids = [r["id"] for r in HYGIENE_ROWS]
         assert len(ids) == len(set(ids))
         classes = [r["origin_class"] for r in HYGIENE_ROWS]
-        assert classes.count("synthetic") == 14
+        assert classes.count("synthetic") == 15
         assert classes.count("licensed") == 0
         assert classes.count("derived") == 6
         assert set(classes) <= set(ORIGIN_CLASSES)
@@ -139,7 +144,7 @@ class TestFiledInventory:
                  if r["harness_fixture"] is not None]
         assert coverage_problems(
             filed, [f["id"] for f in FIXTURES]) == []
-        assert len(filed) == len(FIXTURES) == 12
+        assert len(filed) == len(FIXTURES) == 13
 
 
 # ── Live evaluation ─────────────────────────────────────────────────────────
@@ -150,11 +155,11 @@ class TestLiveEvaluation:
         result = run_data_hygiene()
         assert result.verdict == "PASS"
         assert result.passes is True
-        assert result.total_inputs == 20
-        assert result.synthetic_inputs == 14
+        assert result.total_inputs == 21
+        assert result.synthetic_inputs == 15
         assert result.licensed_inputs == 0
         assert result.derived_inputs == 6
-        assert result.clean_inputs == 20
+        assert result.clean_inputs == 21
         assert result.failures == []
 
     def test_bindings_resolve_to_the_real_things(self) -> None:
@@ -269,11 +274,11 @@ class TestHarnessRegistration:
         baseline = [b for b in BASELINES
                     if b["id"] == "data_hygiene_synthetic_v1"]
         assert len(baseline) == 1
-        assert baseline[0]["metrics"]["total_inputs"] == 20
-        assert baseline[0]["metrics"]["clean_inputs"] == 20
+        assert baseline[0]["metrics"]["total_inputs"] == 21
+        assert baseline[0]["metrics"]["clean_inputs"] == 21
         assert baseline[0]["metrics"]["licensed_inputs"] == 0
         assert baseline[0]["targets"]["clean_inputs"] == {
-            "target": 20, "met": True}
+            "target": 21, "met": True}
         assert not any("latency" in m for m in baseline[0]["metrics"])
 
     def test_new_metrics_are_defined_and_counts_moved(self) -> None:
@@ -284,11 +289,11 @@ class TestHarnessRegistration:
                        "clean_inputs", "probes_passed",
                        "probes_total"):
             assert ("data_hygiene", metric) in defined
-        assert len(BENCHMARKS) == 19
-        assert len(FIXTURES) == 12
-        assert len(BASELINES) == 12
-        assert len(METRIC_DEFINITIONS) == 102
-        assert len(HARNESS_RULES) == 12
+        assert len(BENCHMARKS) == 20
+        assert len(FIXTURES) == 13
+        assert len(BASELINES) == 13
+        assert len(METRIC_DEFINITIONS) == 109
+        assert len(HARNESS_RULES) == 13
         assert "benchmark_inputs_are_synthetic_or_licensed_never_canon" \
             in {r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []
@@ -297,11 +302,11 @@ class TestHarnessRegistration:
         first = measure_data_hygiene_baseline()
         second = measure_data_hygiene_baseline()
         assert first == second
-        assert first["total_inputs"] == 20
-        assert first["synthetic_inputs"] == 14
+        assert first["total_inputs"] == 21
+        assert first["synthetic_inputs"] == 15
         assert first["licensed_inputs"] == 0
         assert first["derived_inputs"] == 6
-        assert first["clean_inputs"] == 20
+        assert first["clean_inputs"] == 21
         assert first["probes_passed"] == 7
         assert first["probes_total"] == 7
         assert baseline_problems(
@@ -352,8 +357,8 @@ class TestFilingAndChecker:
         data = data_hygiene_as_data()
         assert data["format"] == DATA_HYGIENE_FORMAT
         assert data["measured"]["verdict"] == "PASS"
-        assert data["measured"]["total_inputs"] == 20
-        assert data["measured"]["clean_inputs"] == 20
+        assert data["measured"]["total_inputs"] == 21
+        assert data["measured"]["clean_inputs"] == 21
         assert data["measured"]["probes_passed"] == 7
 
     def test_the_doc_files_every_inventory_row(self) -> None:
@@ -391,6 +396,6 @@ class TestCanonGuard:
             self) -> None:
         data = data_hygiene_as_data()
         assert data["measured"]["licensed_inputs"] == 0
-        assert len(data["rows"]) == 20
+        assert len(data["rows"]) == 21
         assert {r["origin_class"] for r in data["rows"]} == {
             "synthetic", "derived"}

@@ -365,10 +365,10 @@ class TestHarnessRegistration:
         for kind in PANEL_KINDS:
             assert ("quant_panel", f"{kind}_mean_score") in defined
         assert ("quant_panel", "total_cells") in defined
-        assert len(BENCHMARKS) == 19  # + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130) + data_hygiene (TF-131), in the open
-        assert len(FIXTURES) == 12  # + profile_panel_corpus (TF-128) + regression_gate_corpus (TF-129) + spot_checks_corpus (TF-130) + data_hygiene_corpus (TF-131), in the open
-        assert len(BASELINES) == 12  # + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129) + spot_checks_synthetic_v1 (TF-130) + data_hygiene_synthetic_v1 (TF-131), in the open
-        assert len(METRIC_DEFINITIONS) == 102  # + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129) + 6 spot_checks metrics (TF-130) + 7 data_hygiene metrics (TF-131), in the open
+        assert len(BENCHMARKS) == 20  # + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130) + data_hygiene (TF-131) + wyrd_panel (TF-132), in the open
+        assert len(FIXTURES) == 13  # + profile_panel_corpus (TF-128) + regression_gate_corpus (TF-129) + spot_checks_corpus (TF-130) + data_hygiene_corpus (TF-131) + wyrd_panel_corpus (TF-132), in the open
+        assert len(BASELINES) == 13  # + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129) + spot_checks_synthetic_v1 (TF-130) + data_hygiene_synthetic_v1 (TF-131) + wyrd_panel_synthetic_v1 (TF-132), in the open
+        assert len(METRIC_DEFINITIONS) == 109  # + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129) + 6 spot_checks metrics (TF-130) + 7 data_hygiene metrics (TF-131) + 7 wyrd_panel metrics (TF-132), in the open
         assert harness.harness_problems() == []
 
 

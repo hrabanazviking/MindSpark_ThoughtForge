@@ -72,7 +72,7 @@ What this module files, as verifiable data:
     rows bind the real modules / symbols /
     files and the checker inspects them live.
   * The measured classification on this tree:
-    20 inputs — 14 synthetic-invented, 6
+    21 inputs — 15 synthetic-invented, 6
     derived-live from other filed rows, and
     **0 licensed**: no benchmark input in the
     estate is licensed or public-domain
@@ -133,6 +133,23 @@ TF-128 baselines exactly as filed; the
 exclusion is filed in the open in
 ``benchmarks/regression_gate.py``, the shape
 TF-129 / TF-130 filed for their own baselines).
+
+**TF-132 update, in the open:** TF-132 filed
+one new benchmark input after this inventory
+was built — the WYRD-shaped panel's corpus
+(``benchmarks/wyrd_panel.py``: the invented
+Emberwick world + its 18 filed cases). It is
+filed below as the row ``wyrd_panel_corpus``
+(synthetic-invented, harness fixture
+``wyrd_panel_corpus``), so the inventory grows
+20 -> 21 inputs and the classification moves
+14 -> 15 synthetic-invented (0 licensed, 6
+derived-live unchanged), all 21 clean. The
+pinned hygiene baseline in the harness is
+re-pinned in the open for exactly that reason
+— the estate grew by one filed synthetic
+input; no classification of any earlier row
+changed.
 
 Filed limits, stated plainly:
 
@@ -650,6 +667,28 @@ HYGIENE_ROWS: tuple[dict[str, Any], ...] = (
                 "filed for the tests/fixtures "
                 "census; consumed by the chaos "
                 "tests, NOT by any benchmark"},
+    {"id": "wyrd_panel_corpus",
+     "benchmark": "wyrd_panel",
+     "bind_kind": "module",
+     "bind_module": "benchmarks.wyrd_panel",
+     "bind_attribute": "PANEL_CASES",
+     "also_attributes": ("WORLD_ENTITIES", "WORLD_EVENTS",
+                         "PANEL_PROBES"),
+     "files": (),
+     "origin_class": "synthetic",
+     "licence_or_source": _SYNTHETIC_SRC + " — "
+                "TF-132's invented Emberwick "
+                "world, written for this estate "
+                "in TF-043's Lantern Hollow style",
+     "derived_from": (),
+     "proof_kind": "harness_fixture",
+     "harness_fixture": "wyrd_panel_corpus",
+     "subject": "TF-132's filed WYRD panel "
+                "corpus: a synthetic invented "
+                "world (8 entities, 6 timeline "
+                "changes) and 18 filed "
+                "world-state consistency cases "
+                "scored by the panel's own scorer"},
     {"id": "data_hygiene_corpus",
      "benchmark": "data_hygiene",
      "bind_kind": "module",
@@ -1112,7 +1151,7 @@ HYGIENE_RULES: tuple[dict[str, Any], ...] = (
              "is itself unclean, by name"},
     {"id": "pass_needs_the_full_inventory_clean",
      "rule": "the verdict is PASS only when "
-             "all 20 filed inputs evaluate "
+             "all 21 filed inputs evaluate "
              "classified and clean; a partial "
              "selection files REVIEW however it "
              "scores and an empty selection "
@@ -1151,19 +1190,19 @@ def data_hygiene_problems() -> list[str]:
     row_ids = [r["id"] for r in HYGIENE_ROWS]
     if len(row_ids) != len(set(row_ids)):
         problems.append("duplicate HYGIENE_ROWS ids")
-    if TOTAL_INPUTS != 20 or len(HYGIENE_ROWS) != 20:
+    if TOTAL_INPUTS != 21 or len(HYGIENE_ROWS) != 21:
         problems.append(
             f"the filed inventory files "
-            f"{len(HYGIENE_ROWS)} inputs, not 20")
+            f"{len(HYGIENE_ROWS)} inputs, not 21")
     classes = [r["origin_class"] for r in HYGIENE_ROWS]
     if (classes.count("synthetic"), classes.count("licensed"),
-            classes.count("derived")) != (14, 0, 6):
+            classes.count("derived")) != (15, 0, 6):
         problems.append(
             f"the filed classification is "
             f"{classes.count('synthetic')} synthetic / "
             f"{classes.count('licensed')} licensed / "
             f"{classes.count('derived')} derived, "
-            f"not 14 / 0 / 6")
+            f"not 15 / 0 / 6")
     known = set(row_ids)
     for row in HYGIENE_ROWS:
         for source_id in row["derived_from"]:
@@ -1211,11 +1250,11 @@ def data_hygiene_problems() -> list[str]:
             f"the live inventory does not file PASS: "
             f"{result.verdict} ({len(result.failures)} "
             f"failures: {result.failures[:3]})")
-    if result.total_inputs != 20 or result.clean_inputs != 20:
+    if result.total_inputs != 21 or result.clean_inputs != 21:
         problems.append(
             f"the live inventory files "
             f"{result.total_inputs} inputs / "
-            f"{result.clean_inputs} clean, not 20 / 20")
+            f"{result.clean_inputs} clean, not 21 / 21")
     empty = run_data_hygiene(row_ids=())
     if empty.total_inputs != 0 or empty.verdict != "REVIEW" \
             or empty.passes:

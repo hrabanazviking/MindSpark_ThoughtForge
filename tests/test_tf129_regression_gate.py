@@ -410,11 +410,11 @@ class TestHarnessRegistration:
                        "max_noise_spread", "gate_failures",
                        "probes_passed", "probes_total"):
             assert ("regression_gate", metric) in defined
-        assert len(BENCHMARKS) == 19
-        assert len(FIXTURES) == 12
-        assert len(BASELINES) == 12
-        assert len(METRIC_DEFINITIONS) == 102
-        assert len(HARNESS_RULES) == 12
+        assert len(BENCHMARKS) == 20
+        assert len(FIXTURES) == 13
+        assert len(BASELINES) == 13
+        assert len(METRIC_DEFINITIONS) == 109
+        assert len(HARNESS_RULES) == 13
         assert "regression_gates_fail_on_moved_baselines" in {
             r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []

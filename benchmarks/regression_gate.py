@@ -232,15 +232,29 @@ SPOT_CHECKS_BASELINE_ID = "spot_checks_synthetic_v1"
 #: ungated pins by name.
 DATA_HYGIENE_BASELINE_ID = "data_hygiene_synthetic_v1"
 
+#: TF-132 update, in the open: TF-132 registered
+#: one further baseline after TF-131 — the
+#: WYRD-shaped panel's own pin. It is NOT one of
+#: the gated baselines either, by the same
+#: shape: the panel is a world-state filing
+#: judged by its own module's checker
+#: (wyrd_panel_problems()), and the gated set
+#: stays the nine TF-121..TF-128 baselines
+#: exactly as TF-129 filed it. The gated-set
+#: check below excludes all four ungated pins
+#: by name.
+WYRD_PANEL_BASELINE_ID = "wyrd_panel_synthetic_v1"
+
 #: The harness baselines that are not gated:
 #: the gate's own verdict row, TF-130's
-#: spot-check pin, and TF-131's data-hygiene
-#: pin, each judged by its own module's
-#: checker.
+#: spot-check pin, TF-131's data-hygiene
+#: pin, and TF-132's wyrd-panel pin, each
+#: judged by its own module's checker.
 UNGATED_BASELINE_IDS: tuple[str, ...] = (
     GATE_BASELINE_ID,
     SPOT_CHECKS_BASELINE_ID,
     DATA_HYGIENE_BASELINE_ID,
+    WYRD_PANEL_BASELINE_ID,
 )
 
 #: The baselines the gate gates: the nine pinned
@@ -1148,6 +1162,7 @@ __all__ = [
     "TOLERANCE_FLOOR",
     "TOTAL_PINNED_METRICS",
     "UNGATED_BASELINE_IDS",
+    "WYRD_PANEL_BASELINE_ID",
     "RegressionGateResult",
     "compute_noise_rows",
     "direction_for",

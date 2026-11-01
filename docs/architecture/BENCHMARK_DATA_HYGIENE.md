@@ -57,6 +57,7 @@ checker inspects them live.
 | profile_panel_corpus | benchmarks.profile_panel `PANEL_ROWS` | derived-live | derives from the query + suite + hardware-profile rows |
 | regression_gate_corpus | benchmarks.regression_gate `NOISE_ROWS` | derived-live | derives from the nine gated baselines' rows |
 | spot_checks_corpus | benchmarks.spot_checks `TRANSCRIPT_SPECS` | derived-live | derives from the suite + TF-067 rows |
+| wyrd_panel_corpus | benchmarks.wyrd_panel `PANEL_CASES` (+ `WORLD_ENTITIES` / `WORLD_EVENTS` / `PANEL_PROBES`) | synthetic-invented | harness fixture, filed synthetic — TF-132's invented Emberwick world (added in the open by TF-132; see §5) |
 | data_hygiene_corpus | benchmarks.data_hygiene `HYGIENE_ROWS` | derived-live | this registry itself, derived from every other row |
 | tf043_retrieval_fixture_corpus | thoughtforge.knowledge.retrieval_precision `FIXTURE_ENTITIES` (+ chunks / edges / place rows / queries) | synthetic-invented | the module's own filing: a synthetic corpus in TF-017's invented Lantern Hollow world (the ConceptNet / GeoNames shapes are record shapes; every row is invented, no external dataset is read) |
 | tf030_persona_fixture | thoughtforge.cognition.persona `FIXTURE_EXPECTATION` (+ `PERSONA_FIXTURE_TURNS`) | synthetic-invented | the module's own synthetic filing |
@@ -75,8 +76,13 @@ the chaos corpus is consumed by the chaos tests,
 not by any benchmark. That is filed on the rows
 themselves, not smoothed over.
 
-**The classification, measured: 20 inputs — 14
+**The classification, measured: 21 inputs — 15
 synthetic-invented, 0 licensed, 6 derived-live.**
+(TF-132 update, in the open: the inventory
+stood 20 inputs — 14 synthetic — at TF-131's
+banking; TF-132 filed one new synthetic input,
+the WYRD panel's corpus, and the counts moved
+for exactly that reason.)
 No benchmark input in the estate is licensed or
 public-domain material, so the licensed class
 files no rows; its rule (a licensed row must
@@ -142,9 +148,12 @@ every benchmark input now carries a hygiene row
 judged live by `data_hygiene_problems()`,
 registered in the harness in the open with the
 pinned baseline `data_hygiene_synthetic_v1`
-(20 / 14 / 0 / 6 / 20 clean, probes 7/7; target
-is the hygiene truth on clean_inputs at 20,
-met). The baseline is NOT gated by TF-129's
+(21 / 15 / 0 / 6 / 21 clean, probes 7/7; target
+is the hygiene truth on clean_inputs at 21,
+met — re-pinned in the open by TF-132 from
+20 / 14 / 0 / 6 / 20, target 20, for exactly
+one reason: TF-132's new synthetic row grew
+the inventory by one input). The baseline is NOT gated by TF-129's
 regression gate — the exclusion is filed in the
 open in `benchmarks/regression_gate.py` as
 `UNGATED_BASELINE_IDS`, the shape TF-129 /
