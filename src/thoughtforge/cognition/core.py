@@ -1871,6 +1871,11 @@ class ThoughtForgeCore:
             # TF-036: one seeded draw per compose for the salvage
             # refine passes (None when determinism mode is off).
             generation_seed=self._next_generation_seed(),
+            # TF-096: the persona in force, so salvage's
+            # selection and refine adoption guard the voice
+            # (None when no persona is loaded — the guard is
+            # inert and every leg is as before).
+            persona_expectation=self._persona_expectation,
         )
 
         # Run EnforcementGate — TF-049: with the bundle's

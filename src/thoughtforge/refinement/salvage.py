@@ -34,6 +34,18 @@ from thoughtforge.utils.common import split_sentences as _split_sentences
 # is specified in refinement/salvage_safety.py.
 from thoughtforge.refinement.salvage_safety import fabrication_problems
 
+# TF-096 (D-SALV-3): the persona-voice guard — when the
+# caller supplies the persona in force, selection must
+# not choose a flattened draft over an in-voice one at
+# hand, and a refine pass is adopted only when it
+# introduces no new persona avoid violation (TF-030's
+# checkable subset) against the current best text. The
+# judgement is specified in refinement/persona_voice.py.
+from thoughtforge.refinement.persona_voice import (
+    persona_violations,
+    voice_problems,
+)
+
 if TYPE_CHECKING:
     from thoughtforge.cognition.prompt_builder import PromptBuilder
     from thoughtforge.knowledge.models import (
@@ -110,6 +122,7 @@ class FragmentSalvage:
         scaffold: "CognitionScaffold | None" = None,
         max_passes: int = _MAX_REFINE_PASSES,
         generation_seed: int | None = None,
+        persona_expectation: Any | None = None,
     ) -> SalvageResult:
         """
         Score candidates and attempt fragment-based refinement.
@@ -125,6 +138,13 @@ class FragmentSalvage:
             generation_seed: TF-036 — per-pass sampling seed base
                 for the refine generations (pass i uses base + i);
                 None = unseeded, the standing behaviour.
+            persona_expectation: TF-096 — the persona in force
+                (a PersonaExpectation), when the caller has one.
+                Given, selection ranks only persona-consistent
+                drafts when at least one is at hand and a refine
+                pass introducing a new avoid violation is never
+                adopted. None (the default) = every leg
+                byte-identical to before TF-096.
 
         Returns:
             SalvageResult with best text, citations, confidence.
@@ -146,6 +166,20 @@ class FragmentSalvage:
         # Step 1: Score all drafts
         scored = [self._score_draft(c, retrieved_qids) for c in candidates]
         scored.sort(key=lambda s: s.composite, reverse=True)
+        # TF-096 (D-SALV-3): with a persona in force, a
+        # persona-consistent draft at hand outranks any
+        # flattened rival — the composite rewards length and
+        # cannot see voice, so the consistent drafts (score
+        # order kept within them) become the ranked list.
+        # When none is consistent the full ranking stands:
+        # the guard restricts choice, it invents no voice.
+        if persona_expectation is not None:
+            consistent = [
+                s for s in scored
+                if not persona_violations(persona_expectation, s.text)
+            ]
+            if consistent:
+                scored = consistent
         best = scored[0]
 
         logger.debug(
@@ -170,6 +204,7 @@ class FragmentSalvage:
                 scaffold=scaffold,
                 max_passes=max_passes,
                 generation_seed=generation_seed,
+                persona_expectation=persona_expectation,
             )
             if result is not None:
                 return result
@@ -275,6 +310,7 @@ class FragmentSalvage:
         scaffold: "CognitionScaffold",
         max_passes: int,
         generation_seed: int | None = None,
+        persona_expectation: Any | None = None,
     ) -> SalvageResult | None:
         """
         Attempt up to max_passes refine generations using salvaged fragments.
@@ -344,11 +380,28 @@ class FragmentSalvage:
                      *(rec.cue for rec in
                        bundle.activated_records)],
                     refined_text, retrieved_qids)
+                # TF-096 (D-SALV-3): the voice gate, beside
+                # TF-088's — with a persona in force, a pass
+                # introducing a new avoid violation against
+                # the current best text is never adopted,
+                # however well it scores; the attempt still
+                # counts in passes_used (TF-087 naming).
+                voice_new = (
+                    voice_problems(
+                        persona_expectation, current_best_text,
+                        refined_text)
+                    if persona_expectation is not None else []
+                )
                 if safety_problems:
                     logger.warning(
                         "FragmentSalvage refine pass %d rejected "
                         "as fabrication: %s",
                         pass_num, safety_problems)
+                elif voice_new:
+                    logger.warning(
+                        "FragmentSalvage refine pass %d rejected "
+                        "as voice-breaking: %s",
+                        pass_num, voice_new)
                 elif scored_refined > current_best_score:
                     current_best_text = refined_text
                     current_best_score = scored_refined
