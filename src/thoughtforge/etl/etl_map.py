@@ -128,11 +128,11 @@ PIPELINE_STAGES: tuple[dict[str, Any], ...] = (
      "position_in_build_all": "step 6 (with the FTS rebuild), skippable by flag",
      "contract": "only rows missing an embedding are built; every vector is dimension/finiteness-validated before it is written (TF-054)"},
     {"id": "subset", "order": 4,
-     "modules": ("etl/subset.py",),
+     "modules": ("etl/subset.py", "etl/subset_craft.py"),
      "consumes": "a populated store + a hardware profile id",
      "produces": "a smaller store file for that profile",
      "position_in_build_all": "not a step — a standalone manual build, no caller in the orchestrator",
-     "contract": "top-N entities by popularity with their statements and a capped share of reference chunks; success and per-stage notes ride the SubsetResult"},
+     "contract": "top-N entities by popularity (qid tie-break) with their statements and a proportional share of reference chunks; TF-110's craft builds fresh, measures the file's bytes, and trims the limit until the measured size fits the profile's byte budget (or fails naming the measured size); success and per-stage notes ride the SubsetResult"},
     {"id": "store", "order": 5,
      "modules": ("etl/schema.py", "knowledge/forge.py"),
      "consumes": "everything the earlier stages wrote",
@@ -220,9 +220,11 @@ SUBSET_FACTS: dict[str, Any] = {
     "does_not_copy_rows": ("labels", "embeddings", "conceptnet_edges",
                            "geonames_places", "dbpedia_entities",
                            "reference_embeddings", "ingestion_log"),
-    "reference_chunk_cap": "max(1000, entity_limit // 10) when limited; all chunks when unlimited; order is chunk_id after D-SUBSET-1",
+    "reference_chunk_cap": "entity_limit // 10 when limited (TF-110 removed the 1000-row floor, D-SUBSET-2); all chunks when unlimited; order is chunk_id after D-SUBSET-1",
     "schema_clone": "table DDL only (FTS virtuals included); the 15 named indexes are not recreated",
     "failure_shape": "a failed copy returns SubsetResult(success=False) with the error in notes; a skipped stage rides notes with success still True",
+    "byte_budget": "TF-110 (etl/subset_craft.py): pi_zero's budget is its declared deployment.knowledge_subset_max_gb; every other profile's is derived at 0.25 x declared RAM (campaign rule, budget_source names the road); the craft loop rebuilds fresh and trims by measured overshoot until the file's measured bytes fit, or reports success=False",
+    "fresh_builds": "TF-110 (D-SUBSET-3): every subset build starts from no file and refuses the source itself as its output; selection ties break by qid (D-SUBSET-4)",
 }
 
 ORCHESTRATION: dict[str, Any] = {
