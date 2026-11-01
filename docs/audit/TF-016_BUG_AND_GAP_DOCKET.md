@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 96 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 49 FIXED
+**Totals: 99 entries — 43 OPEN, 1 OPEN-ENVIRONMENT, 52 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -22,10 +22,11 @@ D-DEP-5 by TF-065 in Part IV; D-QUANT-2 by TF-066 in
 Part IV; D-QUANT-1 by TF-068 in Part IV; D-ONNX-1 by
 TF-070 in Part IV; D-TOK-1, D-TOK-2 and D-TOK-3 by
 TF-071 in Part IV; D-STREAM-1 by TF-072 in Part IV; D-ORPHAN-2 and
-D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV; D-HON-1 by TF-084 in Part IV; D-GUIDE-1 by TF-085 in Part IV; D-SALV-2 by TF-088 in Part V; D-SALV-3 by TF-096 in Part V; D-TRACE-1 by TF-097 in Part V; D-PROF-4 by TF-037 (floor share) + TF-098 in Part V; D-COST-1 by TF-098 in Part V; D-SUBSET-1 by TF-105 in Part VI; D-LIC-2 and D-DATA-3 by TF-106 in Part VI; D-WIKI-1, D-WIKI-2 and D-WIKI-3 by TF-107 in Part VI), 3
+D-HEALTH-1 by TF-073 in Part IV; D-AESIR-2 by TF-075 in Part IV; D-OAI-1, D-OAI-2 and D-OAI-3 by TF-076 in Part IV; D-HEALTH-2 by TF-077 in Part IV; D-COLD-1 by TF-079 in Part IV; D-PRESS-1 by TF-080 in Part IV; D-BATCH-1 by TF-081 in Part IV; D-DET-1 by TF-082 in Part IV; D-GPU-1 by TF-083 in Part IV; D-HON-1 by TF-084 in Part IV; D-GUIDE-1 by TF-085 in Part IV; D-SALV-2 by TF-088 in Part V; D-SALV-3 by TF-096 in Part V; D-TRACE-1 by TF-097 in Part V; D-PROF-4 by TF-037 (floor share) + TF-098 in Part V; D-COST-1 by TF-098 in Part V; D-SUBSET-1 by TF-105 in Part VI; D-LIC-2 and D-DATA-3 by TF-106 in Part VI; D-WIKI-1, D-WIKI-2 and D-WIKI-3 by TF-107 in Part VI; D-GATE-1,
+D-GATE-2 and D-GATE-3 by TF-108 in Part VI), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 12 ·
+Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 15 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 9.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -372,6 +373,22 @@ closing its connection before logging). TF-107 also
 discharged D-COV-2's wikidata-depth share. Totals
 after TF-107: 96 entries.
 
+Entries D-GATE-1, D-GATE-2 and D-GATE-3 were added by
+TF-108 in Part VI under the same rule — all three found
+by that slice's live probes of the ungated builders (a
+DBpedia JSON number and a string-weighted ConceptNet
+line crashing whole builds; GeoNames coordinates of
+999.0 / -999.0 and an empty name inserted as filed;
+every refusal a bare skipped count with no reason
+recorded, and ConceptNet's build_from_reference
+dropping items counted nowhere) and fixed in scope by
+the same slice (the schema gate in etl/schema_gate.py:
+RECORD_SCHEMAS + validate_record + the SchemaGate
+ledger every gated builder holds — validation before
+insertion, refusals with reasons counted in skipped
+and in the ledger, filters kept distinct from
+refusals). Totals after TF-108: 99 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -387,6 +404,9 @@ after TF-107: 96 entries.
 | D-WIKI-1 | Re-running the wikidata build duplicated statements: entities/labels flush INSERT OR REPLACE but statements flushed a plain INSERT into an AUTOINCREMENT table — probed live by TF-107 (a 7-entity synthetic dump built twice: statements 7 -> 14, entities/labels unchanged), so the only interruption recovery the old shape offered corrupted the store | TF-107 | VI | **FIXED by TF-107**: `_flush_statements` guards on the stored tuple (subject, property, object, type, qualifiers, refs, source) — a row already present is never inserted again; the live checker + tests pin a completed re-run and a resume=False re-run at 7 statements. Changed facts still append; TF-114 owns update ingestion |
 | D-WIKI-2 | The wikidata build had no checkpoint, no resume and no pacing, and ran `synchronous = OFF`: commits only every 50,000 entities and at the end, so an interruption (kill / crash / power loss) discarded all uncommitted work since the last 50k boundary, under the posture SQLite warns can corrupt on power loss (measured by TF-107: no checkpoint/resume/throttle anywhere in the builder) | TF-107 | VI | **FIXED by TF-107**: checkpointed commits every 1000 stream items (flush -> commit -> atomic sidecar checkpoint, in that order only) under WAL + synchronous = FULL; resume continues at the checkpoint's stream position only when the dump fingerprint (path + size + mtime_ns) and config fingerprint (languages, filter, limit) match — a mismatch or a corrupt checkpoint raises by name; a completed checkpoint returns its filed stats without streaming; `max_items_per_second` is a hard RatePacer ceiling when set (no default, filed plainly: the dump is a local file, no upstream limit exists) |
 | D-WIKI-3 | The wikidata failure path masked its own error: the build connection was never closed on exception, so `_finish_log` on a fresh connection raised `sqlite3.OperationalError: database is locked` — the original exception was replaced by the lock error and no failure row reached ingestion_log (probed live by TF-107 with a stream raising mid-dump) | TF-107 | VI | **FIXED by TF-107**: on error the build connection rolls back and closes BEFORE the failure is logged, and the original exception re-raises unchanged; the interrupted-run test finds the `failed:` row in ingestion_log and the simulated error in the caller's hand, with the last landed checkpoint intact as the resume point |
+| D-GATE-1 | A malformed record could crash its whole build: a DBpedia line holding a JSON number or list died with AttributeError on .get, a DBpedia label of the wrong type died with TypeError when sliced, a ConceptNet metadata weight of "abc" died with ValueError (the parse caught only JSONDecodeError / TypeError), and wikidata entities whose labels/claims/aliases carried the wrong shapes or whose id was an integer died with AttributeError / TypeError mid-stream — in every case the build aborted and records already read were neither landed nor counted as refused (probed live by TF-108) | TF-108 | VI | **FIXED by TF-108**: every gated builder judges the record through etl/schema_gate.py before parsing it into a row, so each crash shape is now a refusal with reasons and the build continues; the gate's live checker + tests run every probed crash shape through the real builders with no exception raised |
+| D-GATE-2 | Out-of-schema values were silently accepted and landed: a GeoNames row with latitude 999.0 / longitude -999.0 and a row with an empty name were inserted as filed; a ConceptNet line whose metadata was not JSON was inserted with its weight silently defaulted to 1.0, lines with empty concepts or an empty relation were counted inserted, a weight of -5 was accepted, and a wikidata label whose value was the integer 123 was stored as the text "123" (probed live by TF-108) | TF-108 | VI | **FIXED by TF-108**: RECORD_SCHEMAS in etl/schema_gate.py refuse each of these whole — out-of-range coordinates, empty name/concepts, unparseable metadata, non-numeric or negative weights, non-string label values — and the live checker proves the GeoNames store holds only the valid row |
+| D-GATE-3 | Every refusal that existed was a bare number: each builder counted skipped with no reason recorded anywhere, so a short row, an unparseable row and a filtered row were indistinguishable — and ConceptNet's build_from_reference dropped non-dict items, field-less items and non-array files by a plain continue, counted nowhere at all (measured by TF-108) | TF-108 | VI | **FIXED by TF-108**: every refusal lands in the builder's SchemaGate ledger with source, run position, the record's own id where it carries one, and its reasons (code:field: detail), broken down by source and reason code, while still counting in the filed skipped totals; stated filters over valid records remain filter skips, never ledger refusals; build_from_reference gates its items through the same ledger |
 | D-COV-3 | `utils/paths.py` and `utils/logging_setup.py` have no direct test imports (TF-002) | TF-038 (logging_setup) + TF-069 (paths, via profile loading) | II | OPEN — **narrowed by TF-038** (logging_setup share): `tests/test_tf038_traces.py` now imports and pins `setup_logging` directly (one-shot configuration, level honoured + unknown level → INFO fallback, console/file switches, the rotating file's shape). The `paths` share stands untouched for TF-069 |
 | D-WING-1 | The research wing cannot import: the entire `wyrdforge.models` subpackage was never committed; its 2 test files error at collection, 0 run (TF-006) | Verdicts TF-139–TF-142; any ADOPT budgets rebuilding the models from the 14 JSON schemas (TF-143); tests TF-149 | VIII | OPEN |
 | D-LIC-1 | The project's own licence contradicts itself: CC BY 4.0 (permits commercial use) vs a "non-commercial" classifier; no LICENSE file in the repo; a content licence applied to code (TF-008) | TF-190 — with Volmarr's word; the licence choice is his | X | OPEN |

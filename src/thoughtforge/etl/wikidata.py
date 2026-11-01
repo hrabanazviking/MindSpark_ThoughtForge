@@ -27,6 +27,14 @@ not inserted again), rate-cappable
 (max_items_per_second), and honest on failure (the build
 connection is closed before the failure is logged, so
 the original error is never masked by a locked log).
+
+TF-108 (docs/architecture/SCHEMA_VALIDATION_GATE.md;
+the gate as data lives in etl/schema_gate.py): every
+streamed entity is judged by the schema gate before any
+field is read — a malformed entity is refused whole
+with reasons recorded in this builder's ``schema_gate``
+ledger and counted in ``skipped``, never a mid-stream
+crash and never a coerced row.
 """
 
 from __future__ import annotations
@@ -43,6 +51,7 @@ from typing import Any, Iterator
 from tqdm import tqdm
 
 from thoughtforge.etl.schema import get_connection, initialize_schema
+from thoughtforge.etl.schema_gate import SchemaGate
 from thoughtforge.etl.wikidata_pipeline import (
     DEFAULT_CHECKPOINT_EVERY,
     STATUS_COMPLETE,
@@ -81,6 +90,8 @@ class WikidataETL:
 
     def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or get_knowledge_db_path()
+        # TF-108: the schema gate's ledger for the most recent build.
+        self.schema_gate = SchemaGate()
 
     def build(
         self,
@@ -121,6 +132,7 @@ class WikidataETL:
         """
         dump_path = Path(dump_path)
         languages = languages or ["en"]
+        self.schema_gate = SchemaGate()
 
         if not dump_path.exists():
             raise FileNotFoundError(f"Wikidata dump not found: {dump_path}")
@@ -244,9 +256,36 @@ class WikidataETL:
                 if limit and stats["entities"] >= limit:
                     break
 
+                # TF-108 gate (D-GATE-1/2/3): the entity is
+                # judged before any field is read — a
+                # malformed entity (non-object, non-string
+                # or non-Q id, labels/claims of the wrong
+                # shape, a non-string label value) is
+                # refused whole with reasons and counted,
+                # never a mid-stream crash and never a
+                # coerced row. Excluded-type and
+                # instance_of-filter skips below remain
+                # filter skips over valid records.
+                if isinstance(item, dict):
+                    raw_id = item.get("id")
+                    if isinstance(raw_id, str) and raw_id:
+                        last_qid = raw_id
+                    gate_ref = raw_id if isinstance(raw_id, str) else None
+                else:
+                    gate_ref = None
+                gate_reasons = self.schema_gate.check(
+                    "wikidata", item, ref=gate_ref)
+                if gate_reasons:
+                    logger.warning(
+                        "Wikidata entity refused at the gate "
+                        "(%s): %s", gate_ref,
+                        "; ".join(gate_reasons))
+                    stats["skipped"] += 1
+                    processed_this_run += 1
+                    _tick()
+                    continue
+
                 qid = item.get("id", "")
-                if qid:
-                    last_qid = qid
                 if not qid.startswith("Q"):
                     stats["skipped"] += 1
                     processed_this_run += 1
