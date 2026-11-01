@@ -20,11 +20,15 @@ Pinned here:
   * the filing as data: format, doc, rules, profiles,
   * the index: nine entries at TF-121 (TF-122 registered a
     tenth, the persona suite, TF-123 an eleventh, the
-    memory suite, and TF-124 a twelfth, the depth suite
-    — the pins below were updated in the open
+    memory suite, TF-124 a twelfth, the depth suite, and
+    TF-125 a thirteenth, the presence suite — the pins
+    below were updated in the open
     by those slices), every one bound to a real
     module / attribute / file; the locust fate filed as
-    excluded; axis coverage depth + presence only,
+    excluded; axis coverage depth + presence only
+    (scorer/runner kinds; TF-125's suite entry carries
+    the will axis, and the TF-121 will-gap rule now
+    files TF-125 DONE),
   * the fixtures: synthetic, bound live, six persona
     lines carrying both penalty and bonus legs,
   * the baselines: pinned values re-measured live and
@@ -129,10 +133,10 @@ class TestProfiles:
 class TestBenchmarkIndex:
     def test_entries_cover_the_estate(self) -> None:
         ids = [b["id"] for b in BENCHMARKS]
-        assert len(ids) == len(set(ids)) == 12  # 9 at TF-121 + persona_suite (TF-122) + memory_suite (TF-123) + depth_suite (TF-124), in the open
+        assert len(ids) == len(set(ids)) == 13  # 9 at TF-121 + persona_suite (TF-122) + memory_suite (TF-123) + depth_suite (TF-124) + presence_suite (TF-125), in the open
         for needed in ("persona_consistency", "profile_benchmark",
                        "locust_load_test", "persona_suite", "memory_suite",
-                       "depth_suite",
+                       "depth_suite", "presence_suite",
                        "retrieval_precision",
                        "scoring_honesty", "quant_quality",
                        "quality_marks", "determinism", "perf_tracker"):
@@ -161,7 +165,9 @@ class TestBenchmarkIndex:
         covered = {axis for b in BENCHMARKS for axis in b["claims_axes"]
                    if b["kind"] in ("scorer", "runner")}
         assert covered == {"depth", "presence"}
-        assert "the_will_axis_has_no_scorer_yet" in {
+        # TF-125 update, in the open: the TF-121 will-gap
+        # rule now files the will suite DONE.
+        assert "the_will_axis_is_scored_by_tf125" in {
             r["id"] for r in HARNESS_RULES}
 
 
@@ -170,7 +176,7 @@ class TestBenchmarkIndex:
 
 class TestFixtures:
     def test_fixtures_are_synthetic_and_bind_live(self) -> None:
-        assert len(FIXTURES) == 5  # 2 at TF-121 + persona_suite_corpus (TF-122) + memory_suite_corpus (TF-123) + depth_suite_corpus (TF-124), in the open
+        assert len(FIXTURES) == 6  # 2 at TF-121 + persona_suite_corpus (TF-122) + memory_suite_corpus (TF-123) + depth_suite_corpus (TF-124) + presence_suite_corpus (TF-125), in the open
         for fixture in FIXTURES:
             assert fixture["synthetic"] is True
             module = importlib.import_module(fixture["bind_module"])

@@ -180,6 +180,27 @@ execution is unchanged and NOT claimed. All earlier
 pinned baselines stand exactly as filed (never
 re-pinned).
 
+**TF-125 update, in the open:** the presence suite
+is built (``benchmarks/presence_suite.py``) and
+registered below (``presence_suite``) with its own
+pinned baseline (``presence_suite_synthetic_v1``,
+measured live twice, identical): 36 scripted sagas
+scored through TF-028's real coherence scorer and
+TF-029's real ``GoalLedger`` — coherence 0.75,
+will steering 0.8333, will closure 0.75, overall
+0.7778, PASS. This discharges the will gap this
+module filed at TF-121 as the rule
+``the_will_axis_has_no_scorer_yet``: the rule is
+replaced below by ``the_will_axis_is_scored_by_tf125``.
+TF-125's probes found and filed **D-BENCH-11**
+(presence and will follow-through scored by
+nothing in the benchmarks estate, the gap filed
+as a harness rule and assigned in TF-028's doc but
+never numbered in the TF-016 docket — the
+D-BENCH-9 / D-BENCH-10 pattern) and FIXED it in
+the measuring sense. All earlier pinned baselines
+stand exactly as filed (never re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -187,10 +208,17 @@ Filed limits, stated plainly:
     empty-store refusal (9 words, confidence 0.408),
     never inference, never a loaded model. A seeded
     store and a loaded model are NOT PROVEN here.
-  * The will axis has no scorer anywhere in the estate
-    yet: ``BENCHMARKS`` covers depth and presence only.
-    TF-125 owns the will suite; the gap is filed as a
-    rule below, not dressed as coverage.
+  * The will axis had no scorer anywhere in the
+    estate at TF-121: ``BENCHMARKS`` covered depth
+    and presence only, and the gap was filed as a
+    rule below, not dressed as coverage. **TF-125
+    update:** the will axis now has its scorer —
+    TF-125's presence suite scores will steering
+    and will closure through TF-029's real ledger,
+    the ``presence_suite`` entry below carries the
+    will claims axis, and the rule below files
+    TF-125 DONE. A live model's will follow-through
+    is NOT PROVEN (TF-126).
   * No suite in Part VII existed at TF-121: TF-122..
     TF-125 build them. **TF-122 update:** the first
     suite (persona consistency) now exists and is
@@ -207,6 +235,10 @@ Filed limits, stated plainly:
     TF-129's regression gates, TF-134's baseline
     book and TF-137's one-command tool still stand
     as filed.
+    **TF-125 update:** the fourth suite (presence)
+    now exists and is registered below; TF-129's
+    regression gates, TF-134's baseline book and
+    TF-137's one-command tool still stand as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -311,6 +343,13 @@ FIXTURES: tuple[dict[str, Any], ...] = (
      "subject": "TF-124's scripted depth corpora: 12 chain "
                 "cases + 12 plan cases + 12 check cases "
                 "(36 scored problems, each on both roads)"},
+    {"id": "presence_suite_corpus", "benchmark": "presence_suite",
+     "bind_module": "benchmarks.presence_suite",
+     "bind_attribute": "ALL_SUITE_CASES",
+     "synthetic": True,
+     "subject": "TF-125's scripted presence corpora: 12 "
+                "coherence sagas + 12 will-steering sagas + "
+                "12 will-closure sagas (36 scored sagas)"},
 )
 
 
@@ -390,6 +429,23 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "measured delta, PASS/REVIEW by filed "
               "thresholds + a positive delta, empty suite "
               "0.0 / REVIEW"},
+    {"id": "presence_suite", "kind": "suite",
+     "status": "built_suite",
+     "bind_module": "benchmarks.presence_suite",
+     "bind_attribute": "run_presence_suite",
+     "fixture": "presence_suite_corpus",
+     "claims_axes": ("presence", "will"),
+     "suite_slice": "TF-125 (presence suite — itself)",
+     "doc": "docs/architecture/PRESENCE_SUITE.md",
+     "docket": ("D-BENCH-11 FIXED by TF-125 (measuring sense)",),
+     "notes": "TF-125's scored suite over TF-028's real "
+              "coherence scorer and TF-029's real "
+              "GoalLedger: long-conversation coherence, "
+              "will steering, will closure — 36 scripted "
+              "synthetic sagas, per-axis scores + overall, "
+              "PASS/REVIEW by filed thresholds, empty "
+              "suite 0.0 / REVIEW. This entry carries the "
+              "will claims axis TF-121 filed as scoreless"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -647,6 +703,37 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "computes": "problems scored across the suite's three "
                  "axes (12 per axis, 36 in the filed corpus, "
                  "each on both roads)"},
+    {"id": "coherence_score", "benchmark": "presence_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted coherence "
+                 "sagas TF-028's score_conversation scores at "
+                 "a whole-saga mean at or above 0.80 "
+                 "(TF-028's PASS_LATE_MIN) (TF-125)"},
+    {"id": "steering_score", "benchmark": "presence_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted steering "
+                 "sagas that follow through under TF-029's "
+                 "GoalLedger replayed over the filed user "
+                 "turns: every steered turn's answer carries "
+                 "the standing statement, no closed statement "
+                 "steers, the end state matches (TF-125)"},
+    {"id": "closure_score", "benchmark": "presence_suite",
+     "legacy_name": "",
+     "computes": "fraction of the suite's scripted closure "
+                 "sagas where completion / abandonment / "
+                 "supersession / staleness ends the steering "
+                 "exactly as filed under TF-029's ledger "
+                 "replay — a still-steered closed goal fails "
+                 "its saga (TF-125)"},
+    {"id": "overall_score", "benchmark": "presence_suite",
+     "legacy_name": "",
+     "computes": "the mean of the suite's three axis scores "
+                 "(coherence, will steering, will closure); "
+                 "0.0 for an empty suite (TF-125)"},
+    {"id": "total_cases", "benchmark": "presence_suite",
+     "legacy_name": "",
+     "computes": "sagas scored across the suite's three "
+                 "axes (12 per axis, 36 in the filed corpus)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -819,6 +906,39 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "PROVEN (TF-126), and the core loop does not "
               "execute strategies automatically (TF-022's "
               "filed limit; D-BENCH-10)"},
+    {"id": "presence_suite_synthetic_v1",
+     "benchmark": "presence_suite",
+     "fixture": "presence_suite_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-125's filed scripted "
+                    "sagas through TF-028's real coherence "
+                    "scorer and TF-029's real GoalLedger, "
+                    "measured live twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "coherence_score": 0.75,
+         "steering_score": 0.8333333333333334,
+         "closure_score": 0.75,
+         "overall_score": 0.7777777777777778,
+         "total_cases": 36,
+     },
+     "targets": {
+         "overall_score": {"target": 0.75, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the suite's scripted sagas hold 9/12 coherence "
+              "sagas (the onset-15 and onset-16 breaks and a "
+              "truncated drifting saga fail, by design), 10/12 "
+              "steering sagas (a dropped goal and a "
+              "contradicted goal fail, by design) and 9/12 "
+              "closure sagas (abandoned / completed / "
+              "superseded goals still steered fail, by "
+              "design); the coherence and closure axes sit "
+              "exactly at the 0.75 threshold, so the filed run "
+              "PASSes. This pins SCRIPTED fixtures through "
+              "the real machinery — a live model's presence "
+              "over real long conversations is NOT PROVEN "
+              "(TF-126), and the core loop's live answers "
+              "are not scored here (D-BENCH-11)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -898,11 +1018,18 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "excluded from the harness panel by verdict — a "
              "manual throughput script, unrunnable without its "
              "dev extra, measuring no claim axis"},
-    {"id": "the_will_axis_has_no_scorer_yet",
-     "rule": "the estate covers the depth and presence axes "
-             "only: no filed benchmark scores will. TF-125 owns "
-             "the will suite; this gap is filed, never dressed "
-             "as coverage"},
+    {"id": "the_will_axis_is_scored_by_tf125",
+     "rule": "TF-125 DONE: the estate covers depth, presence "
+             "and will — TF-125's presence suite "
+             "(benchmarks/presence_suite.py) scores will "
+             "steering and will closure through TF-029's real "
+             "GoalLedger over scripted sagas, with its own "
+             "pinned baseline (D-BENCH-11, fixed in the "
+             "measuring sense). TF-121 filed this slot as "
+             "the_will_axis_has_no_scorer_yet; the gap is "
+             "closed in the measuring sense, and a live "
+             "model's follow-through stays NOT PROVEN "
+             "(TF-126)"},
     {"id": "targets_are_checked_even_when_unmet",
      "rule": "every baseline files its targets with met stated "
              "honestly (all of the profile baseline's targets and "
@@ -1000,12 +1127,27 @@ def measure_depth_suite_baseline() -> dict[str, Any]:
     }
 
 
+def measure_presence_suite_baseline() -> dict[str, Any]:
+    """Run TF-125's filed suite corpora through the real machinery."""
+    from benchmarks.presence_suite import run_presence_suite
+
+    result = run_presence_suite()
+    return {
+        "coherence_score": result.coherence_score,
+        "steering_score": result.steering_score,
+        "closure_score": result.closure_score,
+        "overall_score": result.overall_score,
+        "total_cases": result.total_cases,
+    }
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
+    "presence_suite_synthetic_v1": measure_presence_suite_baseline,
 }
 
 
@@ -1066,7 +1208,7 @@ def harness_problems() -> list[str]:
                    "latency_is_never_a_pinned_baseline",
                    "metric_names_state_what_they_compute",
                    "an_unknown_profile_is_named_never_run",
-                   "the_will_axis_has_no_scorer_yet"):
+                   "the_will_axis_is_scored_by_tf125"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -1152,13 +1294,17 @@ def harness_problems() -> list[str]:
                    "locust_load_test", "perf_tracker"):
         if needed not in bench_ids:
             problems.append(f"BENCHMARKS lost {needed}")
-    # Axis coverage as filed: depth + presence covered, will not.
+    # Axis coverage as filed: the scorer/runner kinds cover
+    # depth + presence; suite-kind entries are not counted
+    # here (TF-125's presence_suite entry carries the will
+    # axis, filed in its own entry and in HARNESS_RULES).
     covered = {axis for b in BENCHMARKS for axis in b["claims_axes"]
                if b["kind"] in ("scorer", "runner")}
     if covered != {"depth", "presence"}:
         problems.append(
             f"filed axis coverage {sorted(covered)} != depth + presence "
-            "(the will gap is a filed rule; a silent change is a finding)")
+            "(the scorer/runner coverage as filed; a silent change "
+            "is a finding)")
 
     # Metric definitions cover every baseline metric, per benchmark.
     defined = {(m["benchmark"], m["id"]) for m in METRIC_DEFINITIONS}
@@ -1258,6 +1404,7 @@ __all__ = [
     "measure_depth_suite_baseline",
     "measure_memory_suite_baseline",
     "measure_persona_baseline",
+    "measure_presence_suite_baseline",
     "measure_persona_suite_baseline",
     "measure_profile_baseline",
     "validate_profile_id",
