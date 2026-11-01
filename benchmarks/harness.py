@@ -233,6 +233,46 @@ TF-173 owns the real-hardware road. All earlier
 pinned baselines stand exactly as filed (never
 re-pinned).
 
+**TF-127 update, in the open:** the
+quant-vs-quality panel is built
+(``benchmarks/quant_panel.py``) and registered
+below (``quant_panel``) with its own pinned
+baseline (``quant_panel_synthetic_v1``, measured
+live twice, identical): TF-067's fixture panel
+consumed mechanically — its own
+``run_quant_panel`` over its own
+``fixture_generate`` / ``QUANT_LEVELS`` /
+``QUANT_PROMPTS``, no corpus, scorer or curve
+copied — published as the overall rows (TF-067's
+``CURVE`` in row form) plus the panel's own
+per-kind breakdown (18 rows: fact / reasoning /
+instruction per level, each kind's loss against
+its own fp16 mean), recomputed live by its
+checker. The finding, filed whatever it was:
+reasoning carries the largest per-kind loss at
+both mid levels (0.5 at q4_k_m and q5_k_m) and
+plateaus at 0.5 from q2_k through q5_k_m, while
+instruction collapses to 0.0 at q2_k on its
+single prompt; the filed non-monotone q4_k_m /
+q5_k_m step is carried, never smoothed. TF-127's
+probes found and filed **D-BENCH-13**
+(quant-vs-quality measured only as TF-067's
+single overall curve in ``src/`` — never as a
+Part VII panel with a per-kind breakdown or a
+harness baseline; the gap assigned to TF-127 in
+TF-067's doc without ever being numbered — the
+D-BENCH-9 / D-BENCH-10 / D-BENCH-11 / D-BENCH-12
+pattern) and FIXED it in the measuring sense.
+The ``quant_quality`` entry's suite-slice note
+below now files TF-127 DONE in the measuring
+sense. Live quant-vs-quality of real models
+stays NOT PROVEN — no GGUF / llama_cpp on this
+VM (TF-078) — so TF-068's live re-rank /
+q2_k-calibration triggers stand open on
+TF-173's road, discharged by nothing here. All
+earlier pinned baselines stand exactly as filed
+(never re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -280,6 +320,11 @@ Filed limits, stated plainly:
     TF-129's regression gates, TF-134's baseline
     book and TF-137's one-command tool still stand
     as filed.
+    **TF-127 update:** the quant-vs-quality panel
+    over TF-067's fixture estate now exists and is
+    registered below; TF-129's regression gates,
+    TF-134's baseline book and TF-137's one-command
+    tool still stand as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -400,6 +445,16 @@ FIXTURES: tuple[dict[str, Any], ...] = (
                 "tiny 1.1B) anchored to catalogue models, "
                 "degrading the four suites' own filed "
                 "corpora (16 scored cells)"},
+    {"id": "quant_panel_corpus", "benchmark": "quant_panel",
+     "bind_module": "benchmarks.quant_panel",
+     "bind_attribute": "PANEL_ROWS",
+     "synthetic": True,
+     "subject": "TF-127's published panel rows over "
+                "TF-067's synthetic fixture corpus: "
+                "6 quant levels x 8 prompts (48 scored "
+                "cells), bound in place — the corpus "
+                "itself stays TF-067's, consumed "
+                "mechanically, never copied"},
 )
 
 
@@ -517,6 +572,30 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "is a degradation profile, never a live "
               "model run: live per-size behaviour is NOT "
               "PROVEN (TF-173)"},
+    {"id": "quant_panel", "kind": "panel",
+     "status": "built_panel",
+     "bind_module": "benchmarks.quant_panel",
+     "bind_attribute": "run_quant_panel",
+     "fixture": "quant_panel_corpus",
+     "claims_axes": ("depth",),
+     "suite_slice": "TF-127 (quant-vs-quality panel — itself)",
+     "doc": "docs/architecture/QUANT_PANEL.md",
+     "docket": ("D-BENCH-13 FIXED by TF-127 (measuring sense)",),
+     "notes": "TF-127's panel over TF-067's real runner: "
+              "the identical 8 synthetic prompts at the "
+              "6 quant levels the profiles + catalogue "
+              "span, scored by TF-067's own scorer over "
+              "its fixture corpus — the overall curve "
+              "(TF-067's CURVE in row form) plus the "
+              "per-kind breakdown TF-067 never filed "
+              "(fact / reasoning / instruction per "
+              "level, 18 rows, 48 cells published as "
+              "literal data, recomputed live). Reasoning "
+              "plateaus at 0.5 from q2_k through q5_k_m; "
+              "the non-monotone q4/q5 step is carried. "
+              "No live model ran: live quant-vs-quality "
+              "is NOT PROVEN (TF-173), and TF-068's live "
+              "re-rank / calibration shares stand open"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -584,12 +663,19 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
      "bind_attribute": "quant_quality_problems",
      "fixture": None,
      "claims_axes": ("depth",),
-     "suite_slice": "TF-127 (quant-vs-quality panel consumes it "
-                    "mechanically)",
+     "suite_slice": "TF-127 DONE (quant-vs-quality panel "
+                    "consumes it mechanically: "
+                    "benchmarks/quant_panel.py)",
      "doc": "docs/architecture/QUANT_QUALITY_FIXTURES.md",
      "docket": (),
      "notes": "TF-067's quant quality panel: fixture generation + "
-              "per-prompt scoring, filed as data"},
+              "per-prompt scoring, filed as data. TF-127 update, "
+              "in the open: the Part VII panel now consumes this "
+              "runner mechanically (benchmarks/quant_panel.py, "
+              "D-BENCH-13) with the per-kind breakdown and a "
+              "pinned harness baseline — over the fixture corpus "
+              "only; this doc's live-model panel share stands "
+              "open, live quant-vs-quality NOT PROVEN (TF-173)"},
     {"id": "quality_marks", "kind": "neighbour_scorer",
      "status": "bound_neighbour",
      "bind_module": "thoughtforge.refinement.quality_marks",
@@ -880,6 +966,87 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "computes": "panel cells measured (4 filed tiers x "
                  "4 suites, 16 in the filed panel) "
                  "(TF-126)"},
+    {"id": "iq2_xs_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "TF-067's scorer's mean score over the "
+                 "8 filed prompts at iq2_xs, through "
+                 "TF-067's run_quant_panel over its "
+                 "fixture corpus (TF-127)"},
+    {"id": "iq2_xs_loss", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the panel's own fp16 mean minus the "
+                 "iq2_xs mean — loss against a measured "
+                 "reference row, never an assumed 1.0 "
+                 "(TF-127)"},
+    {"id": "q2_k_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "TF-067's scorer's mean score over the "
+                 "8 filed prompts at q2_k (TF-127)"},
+    {"id": "q2_k_loss", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the panel's own fp16 mean minus the "
+                 "q2_k mean (TF-127)"},
+    {"id": "q4_k_m_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "TF-067's scorer's mean score over the "
+                 "8 filed prompts at q4_k_m — above "
+                 "q5_k_m on this corpus: the filed "
+                 "non-monotone step, carried (TF-127)"},
+    {"id": "q4_k_m_loss", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the panel's own fp16 mean minus the "
+                 "q4_k_m mean (TF-127)"},
+    {"id": "q5_k_m_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "TF-067's scorer's mean score over the "
+                 "8 filed prompts at q5_k_m (TF-127)"},
+    {"id": "q5_k_m_loss", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the panel's own fp16 mean minus the "
+                 "q5_k_m mean (TF-127)"},
+    {"id": "q8_0_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "TF-067's scorer's mean score over the "
+                 "8 filed prompts at q8_0 (TF-127)"},
+    {"id": "q8_0_loss", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the panel's own fp16 mean minus the "
+                 "q8_0 mean (TF-127)"},
+    {"id": "fp16_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "TF-067's scorer's mean score over the "
+                 "8 filed prompts at fp16 — the panel's "
+                 "measured reference row (TF-127)"},
+    {"id": "fp16_loss", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the panel's own fp16 mean minus "
+                 "itself: 0.0 by construction of the "
+                 "loss definition (TF-127)"},
+    {"id": "fact_mean_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the mean of the per-level fact-kind "
+                 "means (5 filed fact prompts per level, "
+                 "6 levels) from the panel's kind rows "
+                 "(TF-127)"},
+    {"id": "reasoning_mean_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the mean of the per-level "
+                 "reasoning-kind means (2 filed "
+                 "reasoning prompts per level, 6 "
+                 "levels) — the kind that plateaus at "
+                 "0.5 across the mid levels (TF-127)"},
+    {"id": "instruction_mean_score", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "the mean of the per-level "
+                 "instruction-kind means (1 filed "
+                 "instruction prompt per level, 6 "
+                 "levels) — a single-prompt mean, filed "
+                 "as exactly that (TF-127)"},
+    {"id": "total_cells", "benchmark": "quant_panel",
+     "legacy_name": "",
+     "computes": "panel cells measured (6 filed levels "
+                 "x 8 filed prompts, 48 in the filed "
+                 "panel) (TF-127)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -1154,6 +1321,62 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "behaviour is NOT PROVEN (no GGUF / "
               "llama_cpp on this VM, TF-078; TF-173 owns "
               "the real-hardware road)"},
+    {"id": "quant_panel_synthetic_v1",
+     "benchmark": "quant_panel",
+     "fixture": "quant_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-067's "
+                    "filed fixture corpus through its "
+                    "real run_quant_panel + scorer, "
+                    "consumed mechanically by "
+                    "TF-127's panel, measured live "
+                    "twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "iq2_xs_score": 0.0,
+         "iq2_xs_loss": 1.0,
+         "q2_k_score": 0.4375,
+         "q2_k_loss": 0.5625,
+         "q4_k_m_score": 0.8125,
+         "q4_k_m_loss": 0.1875,
+         "q5_k_m_score": 0.7083333333333334,
+         "q5_k_m_loss": 0.29166666666666663,
+         "q8_0_score": 1.0,
+         "q8_0_loss": 0.0,
+         "fp16_score": 1.0,
+         "fp16_loss": 0.0,
+         "fact_mean_score": 0.7000000000000001,
+         "reasoning_mean_score": 0.5833333333333334,
+         "instruction_mean_score": 0.611111111111111,
+         "total_cells": 48,
+     },
+     "targets": {
+         "fp16_score": {"target": 1.0, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "TF-067's published curve pinned as a "
+              "harness baseline through TF-127's panel "
+              "(48 cells, filed as literal rows in "
+              "benchmarks/quant_panel.py and recomputed "
+              "live by its checker): steep loss at the "
+              "bottom (iq2_xs 0.0, q2_k 0.4375), parity "
+              "at the top (q8_0 and fp16 at 1.0), and "
+              "the non-monotone q4_k_m 0.8125 > q5_k_m "
+              "0.7083 step carried exactly as TF-067 "
+              "filed it — 8 prompts cannot rank "
+              "neighbouring levels. Per kind, reasoning "
+              "plateaus at 0.5 from q2_k through q5_k_m "
+              "and instruction collapses to 0.0 at q2_k "
+              "on its single prompt. The filed target "
+              "is the curve-reproduction truth: the "
+              "fp16 reference row is pinned at its "
+              "measured 1.0. This pins TF-067's "
+              "SYNTHETIC FIXTURE corpus through its real "
+              "scorer — live models' quant-vs-quality "
+              "is NOT PROVEN (no GGUF / llama_cpp on "
+              "this VM, TF-078; TF-173 owns the "
+              "real-hardware road), and TF-068's live "
+              "re-rank / q2_k calibration shares stand "
+              "open on that road"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -1372,6 +1595,22 @@ def measure_honesty_panel_baseline() -> dict[str, Any]:
     return measured
 
 
+def measure_quant_panel_baseline() -> dict[str, Any]:
+    """Run TF-127's filed panel through TF-067's machinery."""
+    from benchmarks.quant_panel import PANEL_KINDS, run_quant_panel
+
+    result = run_quant_panel()
+    measured: dict[str, Any] = {"total_cells": result.total_cells}
+    for row in result.rows:
+        measured[f"{row['quant']}_score"] = row["mean_score"]
+        measured[f"{row['quant']}_loss"] = row["loss_vs_reference"]
+    for kind in PANEL_KINDS:
+        cells = [r for r in result.kind_rows if r["kind"] == kind]
+        measured[f"{kind}_mean_score"] = (
+            sum(r["mean_score"] for r in cells) / len(cells))
+    return measured
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
@@ -1380,6 +1619,7 @@ _MEASURERS = {
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
     "presence_suite_synthetic_v1": measure_presence_suite_baseline,
     "honesty_panel_synthetic_v1": measure_honesty_panel_baseline,
+    "quant_panel_synthetic_v1": measure_quant_panel_baseline,
 }
 
 
@@ -1640,5 +1880,6 @@ __all__ = [
     "measure_presence_suite_baseline",
     "measure_persona_suite_baseline",
     "measure_profile_baseline",
+    "measure_quant_panel_baseline",
     "validate_profile_id",
 ]
