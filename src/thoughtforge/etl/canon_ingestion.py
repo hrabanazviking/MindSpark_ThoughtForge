@@ -92,6 +92,12 @@ What this slice builds, filed as data in
     this slice does not smuggle it in; what changes
     here is that on the canon road the duplication is
     *recorded*, never invisible.
+    (Updated in the open by TF-118: the builder now
+    chunks each distinct content once, so a canon
+    duplicate is named here AND lands only under its
+    keeper; this module's checker stats, store counts,
+    retrieval keeper and embedding counts were
+    re-pinned to the deduped values.)
   * **Embeddings only through an injected encoder**
     (TF-111's driver, as TF-112 filed): with no encoder
     the leg is filed not-run and no model is loaded.
@@ -211,7 +217,7 @@ CANON_RULES: tuple[dict[str, Any], ...] = (
     {"id": "the_provenance_manifest_travels_with_the_store",
      "rule": "a content-hashed manifest (<db>.canon-manifest.json, written atomically) files the provenance, privacy obligations, metadata-only inventory, stats, store counts, merge ledger, named skips and duplicates beside the store; it carries no file content"},
     {"id": "skips_and_duplicates_are_named",
-     "rule": "every non-readable file is named under skipped_by_rule with its TF-058 class and every byte-duplicate readable file is named with its keeper — on the canon road a skip or a duplicate is a record, never a silence (the builder's per-file chunking of duplicates stands; ingestion-side dedup is TF-118's share)"},
+     "rule": "every non-readable file is named under skipped_by_rule with its TF-058 class and every byte-duplicate readable file is named with its keeper — on the canon road a skip or a duplicate is a record, never a silence (since TF-118 the builder also chunks each distinct content once, so the duplicate lands only under its keeper)"},
     {"id": "redistribution_and_publication_raise",
      "rule": "check_canon_use passes private ingestion/retrieval with the provenance record and raises CanonPrivacyError for redistribute and publish; an unknown use raises by name"},
     {"id": "a_missing_canon_directory_raises_before_the_store",
@@ -523,10 +529,15 @@ def canon_live_problems(base: Path | None = None) -> list[str]:
                 pass
 
         # The happy road through the real builder.
+        # (TF-118 re-pin: the builder now chunks each
+        # distinct content once and counts by-rule skips —
+        # copy.md lands 1 chunk; lantern_lore.md is its
+        # named duplicate; the empty file, the .jpg and
+        # the .csv are the other three skips.)
         report = ingest_canon(canon, db, private_store=True)
-        if report.stats != {"files": 2, "chunks": 2, "skipped": 1}:
+        if report.stats != {"files": 1, "chunks": 1, "skipped": 4}:
             problems.append(f"canon stats drifted: {report.stats}")
-        if report.store_counts.get("reference_chunks") != 2:
+        if report.store_counts.get("reference_chunks") != 1:
             problems.append(f"canon store counts drifted: "
                             f"{report.store_counts}")
         if report.source_untouched is not True or _snapshot(canon) != before:
@@ -564,7 +575,7 @@ def canon_live_problems(base: Path | None = None) -> list[str]:
         from thoughtforge.knowledge.forge import KnowledgeForge
 
         rows = KnowledgeForge(db_path=db).sql_retrieve("lantern keeper")
-        if not rows or rows[0]["source_file"] != "lantern_lore.md":
+        if not rows or rows[0]["source_file"] != "copy.md":
             problems.append(f"canon retrieval drifted: {rows[:1]}")
 
         # The injected-encoder leg (TF-111).
@@ -583,7 +594,7 @@ def canon_live_problems(base: Path | None = None) -> list[str]:
         embedded = ingest_canon(canon, embedded_db, private_store=True,
                                 encoder=fake_encoder)
         if embedded.embeddings.get("status") != "run" or \
-                embedded.embeddings.get("reference_built") != 2:
+                embedded.embeddings.get("reference_built") != 1:
             problems.append(f"the canon embedding leg drifted: "
                             f"{embedded.embeddings}")
         from thoughtforge.etl.schema import get_connection
@@ -594,7 +605,7 @@ def canon_live_problems(base: Path | None = None) -> list[str]:
                 "SELECT COUNT(*) FROM reference_embeddings").fetchone()[0]
         finally:
             conn.close()
-        if ref_emb != 2:
+        if ref_emb != 1:
             problems.append(f"embedded canon rows drifted: {ref_emb}")
     return problems
 

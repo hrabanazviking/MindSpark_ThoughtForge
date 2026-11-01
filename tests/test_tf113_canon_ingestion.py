@@ -174,8 +174,12 @@ class TestCanonRoad:
         report = ingest_canon(canon, db, private_store=True)
         data = report_as_data(report)
         assert data["format"] == CANON_FORMAT
-        assert report.stats == {"files": 2, "chunks": 2, "skipped": 1}
-        assert report.store_counts["reference_chunks"] == 2
+        # TF-118 re-pin: the builder chunks each distinct
+        # content once and counts by-rule skips — copy.md
+        # lands 1 chunk; lantern_lore.md is its duplicate;
+        # empty + .jpg + .csv are the other skips.
+        assert report.stats == {"files": 1, "chunks": 1, "skipped": 4}
+        assert report.store_counts["reference_chunks"] == 1
         assert report.merge["format"] == "thoughtforge-dedup-merge/1"
         assert report.source_untouched is True
         assert _snapshot(canon) == before
@@ -209,7 +213,8 @@ class TestCanonRoad:
         ingest_canon(canon, db, private_store=True)
         rows = KnowledgeForge(db_path=db).sql_retrieve("lantern keeper")
         assert rows
-        assert rows[0]["source_file"] == "lantern_lore.md"
+        # TF-118: the content lands under its keeper.
+        assert rows[0]["source_file"] == "copy.md"
 
 
 class TestManifest:
@@ -251,7 +256,7 @@ class TestEmbeddingLeg:
         report = ingest_canon(canon, db, private_store=True,
                               encoder=_fake_encoder)
         assert report.embeddings["status"] == "run"
-        assert report.embeddings["reference_built"] == 2
+        assert report.embeddings["reference_built"] == 1
         conn = get_connection(db)
         try:
             count = conn.execute(
@@ -259,7 +264,7 @@ class TestEmbeddingLeg:
             ).fetchone()[0]
         finally:
             conn.close()
-        assert count == 2
+        assert count == 1
 
 
 class TestCheckers:

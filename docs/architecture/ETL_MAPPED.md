@@ -69,6 +69,14 @@ the reference builder passes unsupported suffixes over
 count as skipped (TF-118 owns that share of D-DATA-4) —
 and ends by rebuilding the FTS indexes (TF-058's
 D-REF-1 fix, so an ingested library is a searchable one).
+*Updated in the open by TF-118:* that share is now fixed —
+unsupported suffixes are skipped by rule (classified,
+counted in `skipped`, named in the builder's
+`library_gate` ledger), byte-duplicate readable files
+are chunked once under their sorted-order keeper, and
+the checksummed ingestion filing lives in
+`etl/reference_ingestion.py` +
+`docs/architecture/REFERENCE_LIBRARY_AS_SOURCE.md`.
 
 ## 4. Schema, embeddings, subset, store — the filed facts
 

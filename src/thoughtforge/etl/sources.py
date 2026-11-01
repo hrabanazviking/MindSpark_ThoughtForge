@@ -47,6 +47,17 @@ dropped whole, a quarantine verdict is held out, both
 recorded in the builder's ``poison_gate`` ledger and
 counted in ``skipped`` (for the reference builder, per
 chunk in ``skipped``). Clean records are untouched.
+
+TF-118 (docs/architecture/REFERENCE_LIBRARY_AS_SOURCE.md;
+the filing as data lives in etl/reference_ingestion.py):
+the reference builder skips BY RULE and chunks each
+distinct content ONCE (D-DATA-4, fixed) — a file outside
+the supported set is classified, counted in ``skipped``
+and named in the builder's fresh ``library_gate``
+ledger, and a readable file whose SHA-256 duplicates
+an earlier sorted-order file's is named there with its
+keeper, counted in ``skipped``, never chunked, and its
+stale stored chunks retired via TF-114 in the same run.
 """
 
 from __future__ import annotations
@@ -67,6 +78,10 @@ from thoughtforge.etl.dedup_merge import (
     merge_conceptnet_edge,
 )
 from thoughtforge.etl.poisoned_source import PoisonLedger
+from thoughtforge.etl.reference_ingestion import (
+    LibraryLedger,
+    file_sha256,
+)
 from thoughtforge.etl.schema_gate import SchemaGate
 from thoughtforge.etl.update_ingestion import (
     UpdateLedger,
@@ -621,6 +636,9 @@ class ReferenceDataETL:
         self.update_ledger = UpdateLedger()
         # TF-116: the poison ledger for the most recent build.
         self.poison_gate = PoisonLedger()
+        # TF-118: the library ledger for the most recent build
+        # (by-rule skips + byte-duplicates, D-DATA-4).
+        self.library_gate = LibraryLedger()
 
     def build(
         self,
@@ -636,6 +654,7 @@ class ReferenceDataETL:
         self.merge_ledger = MergeLedger()
         self.update_ledger = UpdateLedger()
         self.poison_gate = PoisonLedger()
+        self.library_gate = LibraryLedger()
 
         if not ref_dir.exists():
             raise FileNotFoundError(f"Reference data directory not found: {ref_dir}")
@@ -646,12 +665,43 @@ class ReferenceDataETL:
         stats = {"files": 0, "chunks": 0, "skipped": 0}
         supported = {".md", ".json", ".jsonl", ".yaml", ".yml", ".txt"}
 
+        # TF-118: byte-duplicate keepers for this build —
+        # SHA-256 -> the first (sorted-order) readable file
+        # that carried those bytes.
+        keepers: dict[str, str] = {}
         try:
             files = sorted(ref_dir.rglob("*"))
             for path in tqdm(files, desc="Reference ETL", unit=" files"):
-                if not path.is_file() or path.suffix.lower() not in supported:
+                if not path.is_file():
+                    continue
+                rel = str(path.relative_to(ref_dir))
+                if path.suffix.lower() not in supported:
+                    # TF-118 (D-DATA-4): skipped BY RULE —
+                    # classified, counted, and named in the
+                    # library_gate ledger, never a bare
+                    # continue past an uncounted file.
+                    self.library_gate.note_skip(
+                        rel, path.suffix.lower())
+                    stats["skipped"] += 1
                     continue
                 try:
+                    # TF-118 (D-DATA-4): each distinct
+                    # content is chunked once — a readable
+                    # file whose bytes duplicate an earlier
+                    # file's is named with its keeper,
+                    # counted, never chunked, and any stale
+                    # chunks it landed under a pre-fix build
+                    # are retired in the same run (TF-114).
+                    digest = file_sha256(path)
+                    if digest in keepers:
+                        self.library_gate.note_duplicate(
+                            rel, keepers[digest], digest)
+                        retire_unpresented_chunks(
+                            conn, self.update_ledger, rel, set())
+                        conn.commit()
+                        stats["skipped"] += 1
+                        continue
+                    keepers[digest] = rel
                     chunks = self._load_and_chunk(path, chunk_size, overlap)
                     if not chunks:
                         # TF-114: the file was presented and

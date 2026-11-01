@@ -182,7 +182,7 @@ SOURCE_BUILDERS: tuple[dict[str, Any], ...] = (
      "write_mode": "merged per filed identity on (source_file, chunk_index) (TF-109: duplicates not rewritten, complementary fields union, conflicts ledgered with the incoming row winning — TF-114: that resolution is the lifecycle supersede); TF-114: stored chunks of a successfully re-read file whose index the new presentation does not produce are retired in the same commit (with their reference_embeddings rows, ledgered in the builder's update_ledger)",
      "batch_default": 1000, "stats_keys": ("files", "chunks", "skipped"),
      "logs_ingestion": False, "synchronous": "the schema default (NORMAL)",
-     "notes": "chunk target 1000 chars with 100 overlap; markdown chunks by heading first; unsupported suffixes are passed over UNCOUNTED (only empty-chunk files and read errors count as skipped); build ends by rebuilding the FTS indexes (TF-058, D-REF-1); TF-109: chunk writes merge per etl/dedup_merge.py and collisions ride the builder's merge_ledger; TF-114: a file absent from a re-run keeps its chunks (absence cannot be told from a partial input)"},
+     "notes": "chunk target 1000 chars with 100 overlap; markdown chunks by heading first; TF-118: unsupported suffixes are skipped BY RULE — classified, counted in skipped, and named in the builder's library_gate ledger (empty-chunk files and read errors also count as skipped); TF-118: a readable file whose SHA-256 duplicates an earlier sorted-order file's is named in the same ledger with its keeper, counted in skipped, never chunked, and its stale stored chunks are retired via TF-114 in the same run; build ends by rebuilding the FTS indexes (TF-058, D-REF-1); TF-109: chunk writes merge per etl/dedup_merge.py and collisions ride the builder's merge_ledger; TF-114: a file absent from a re-run keeps its chunks (absence cannot be told from a partial input)"},
 )
 
 SCHEMA_FACTS: dict[str, Any] = {
@@ -246,6 +246,7 @@ ORCHESTRATION: dict[str, Any] = {
     "metrics": "TF-115 (etl/ingestion_metrics.py): per-run reporting beside `all`, not a step of it — one real builder ingested into a named store under a measured clock with store snapshots before/after, reporting records/sec (presented over the build's elapsed), the TF-108 refusal rate (refused / seen, filter skips filed apart), store growth per source (per-table row deltas + byte delta, negative on update runs as measured), accepted-vs-landed on the primary table, and the gate / merge / update ledgers whole as data; multi-source figures only as summarise_runs' aggregation over per-run reports; `all`'s filed shape above stands unchanged",
     "poison": "TF-116 (etl/poisoned_source.py): adversarial-content screening inside every builder, not a step of `all` — each record's landed text is screened by TF-062's threat classes after TF-108's gate and before insertion (refuse dropped whole, quarantine held out, both named in the builder's poison_gate ledger and counted in skipped); KnowledgeForge's SQL + vector retrieval legs screen results and name exclusions in retrieve()'s screened_out, and scan_store screens a finished store read-only; `all`'s filed shape above stands unchanged",
     "offline": "TF-117 (etl/offline_ingestion.py): offline ingestion proven under a network cut, not a step of `all` — the fetch boundary filed as data (source download, embedding-model download and package install are the only fetches, all outside ingestion; no downloader exists in etl/), the whole synthetic pipeline plus a TF-116 scan run inside a recording NetworkCut with zero attempts, and the embedding loader local-files-only so ingestion never becomes a model fetch; `all`'s filed shape above stands unchanged",
+    "reference_library": "TF-118 (etl/reference_ingestion.py): the reference library as a source beside `all`, not a step of it — the real ReferenceDataETL (now skipping by rule and chunking each distinct content once, D-DATA-4) with a checksummed manifest beside the store (per-file SHA-256 + status, per-chunk checksums, library + store digests, the builder's library/merge/update/poison ledgers), verify_reference_store naming drift without repairing it, and check_reproducibility proving two independent builds agree on stats, chunk checksums and store digest; `all`'s filed shape above stands unchanged",
 }
 
 ETL_RULES: tuple[dict[str, Any], ...] = (
@@ -588,7 +589,7 @@ def etl_map_live_problems() -> list[str]:
         "conceptnet": {"inserted": 1, "skipped": 1},
         "geonames": {"inserted": 1, "skipped": 0},
         "dbpedia": {"inserted": 1, "skipped": 1},
-        "reference": {"files": 1, "chunks": 1, "skipped": 0},
+        "reference": {"files": 1, "chunks": 1, "skipped": 1},
     }
     for stage, expected in expected_stats.items():
         if result[stage] != expected:

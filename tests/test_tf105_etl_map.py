@@ -27,7 +27,8 @@ Pinned here:
     log row), one conceptnet edge (the French edge skipped
     by the language filter), one geonames place, one
     dbpedia entry (the uri-less line skipped), one
-    reference chunk (the .jpg passed over uncounted),
+    reference chunk (the .jpg skipped by rule and
+    counted since TF-118),
   * embeddings are built only for rows missing one —
     through a fake model in the real cache, 1 + 1 built
     and a re-run builds 0,
@@ -193,12 +194,14 @@ class TestLivePipeline:
     def test_dbpedia_leg(self, pipeline: dict) -> None:
         assert pipeline["dbpedia"] == {"inserted": 1, "skipped": 1}
 
-    def test_reference_leg_unsupported_uncounted(
+    def test_reference_leg_unsupported_counted_by_rule(
             self, pipeline: dict) -> None:
-        # The .jpg in the synthetic dir is passed over, not
-        # counted as skipped: files 1, skipped 0.
+        # TF-118 re-pin: the .jpg in the synthetic dir is
+        # skipped BY RULE and counted in skipped (it was
+        # passed over uncounted before TF-118 fixed
+        # D-DATA-4's ingestion share): files 1, skipped 1.
         assert pipeline["reference"] == {
-            "files": 1, "chunks": 1, "skipped": 0}
+            "files": 1, "chunks": 1, "skipped": 1}
 
     def test_store_counts(self, pipeline: dict) -> None:
         counts = pipeline["store_counts"]

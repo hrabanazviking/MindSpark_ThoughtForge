@@ -137,6 +137,15 @@ TF-016 totals after this slice: 109 entries —
   (source_file, chunk_index); ingestion-side dedup is
   TF-118's filed share of D-DATA-4 for the reference
   road generally.
+  *Updated in the open by TF-118:* that share has
+  landed — the builder now chunks each distinct
+  content once under its sorted-order keeper, counts
+  by-rule skips, and the canon road's stats, store
+  counts, retrieval keeper and embedding counts in
+  this filing's checker and tests were re-pinned to
+  the deduped values (the synthetic canon now builds
+  `{'files': 1, 'chunks': 1, 'skipped': 4}` and holds
+  1 reference chunk, under keeper `copy.md`).
 - One canon directory per call; a second call into
   the same store appends through the builder's merge
   rules and rewrites the manifest for that call only.
