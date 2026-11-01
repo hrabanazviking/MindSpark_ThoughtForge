@@ -127,7 +127,14 @@ and ``benchmarks/persona_consistency.py``:
     ``utils/perf.py``'s ``PerfTracker`` is core
     instrumentation, filed as an instrument, not a
     scorer. Consuming the tracker is TF-133's share;
-    the entry stays OPEN on it.
+    the entry stays OPEN on it. **TF-133 update:
+    FIXED** — the cost panel
+    (``benchmarks/cost_panel.py``) records every
+    timing sample into ``PerfTracker`` and reads
+    its summary back, so the tracker is consumed
+    by a benchmark in the open; the entry's
+    docket line below files D-BENCH-7 FIXED by
+    TF-133 (consumption share).
 
 D-BENCH-3 and D-BENCH-4 were TF-122's (the persona
 suite): TF-121 pinned the persona baseline under the
@@ -493,6 +500,60 @@ earlier pinned baseline stands exactly as
 filed (never re-pinned). Live world-state
 behaviour is NOT PROVEN (TF-173).
 
+**TF-133 update, in the open:** the cost
+panel is built (``benchmarks/cost_panel.py``)
+and registered below (``cost_panel``) with
+its own pinned baseline
+(``cost_panel_synthetic_v1``, the
+deterministic rows measured live twice,
+identical): tokens + time per suite per
+profile over TF-128's estate — the four
+suites' real runners (scored units counted
+live: persona 108, memory / depth / presence
+36 each) x the six shipped profiles' filed
+budgets read live from their JSONs
+(``token_budget`` = units x
+``max_response_tokens``, a budget exposure,
+never a consumed-token count) and sharpness
+derived only from the real suite scores
+(score / token budget x 1000; TF-128's
+depth refusal carried — pi_zero's depth
+headline is its OFF score). Time is
+repeat-measured live per cell (5 repeats
+through ``PerfTracker`` — **D-BENCH-7's
+consumption share is FIXED here**: the
+tracker is now consumed by a benchmark) and
+pinned nowhere, by this module's latency
+rule. Watts are NOT PROVEN and never
+invented: no shipped profile declares a
+power figure (re-scanned live by the
+panel's checker), so every row files
+``power_watts`` None +
+``not_proven_not_measured`` and sharpness
+per watt files NOT PROVEN. TF-133's probes
+found and filed **D-BENCH-18** (no cost
+panel existed — tokens / time per suite per
+profile measured by nothing, the share
+TF-121 assigned here without ever numbering
+it — the D-BENCH-9..17 pattern) and FIXED
+it in the measuring sense. The cost
+baseline is NOT one of TF-129's gated
+baselines: the gate's gated set stays the
+nine TF-121..TF-128 baselines exactly as
+filed, and the exclusion is filed in the
+open in ``benchmarks/regression_gate.py``.
+**TF-131 coupling, in the open:** the
+panel adds NO benchmark input (it consumes
+only the suites' already-filed corpora and
+the already-filed hardware-profile files),
+so it files no new fixture here and the
+hygiene inventory does NOT grow — its
+pinned baseline stands exactly as filed;
+every earlier pinned baseline stands
+exactly as filed (never re-pinned). Live
+per-profile hardware cost (real time, real
+tokens, real watts) is NOT PROVEN (TF-173).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -560,6 +621,10 @@ Filed limits, stated plainly:
     TF-137's one-command tool still stand as filed.
     **TF-132 update:** the WYRD-shaped panel
     over its filed synthetic world now exists
+    and is registered below; TF-134's baseline book and
+    TF-137's one-command tool still stand as filed.
+    **TF-133 update:** the cost panel over
+    the suites x shipped profiles now exists
     and is registered below; TF-134's baseline book and
     TF-137's one-command tool still stand as filed.
 
@@ -1047,6 +1112,42 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "decide it. Live world-state "
               "behaviour is NOT PROVEN "
               "(TF-173)"},
+    {"id": "cost_panel", "kind": "panel",
+     "status": "built_panel",
+     "bind_module": "benchmarks.cost_panel",
+     "bind_attribute": "run_cost_panel",
+     "fixture": None,
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-133 (cost panel — itself)",
+     "doc": "docs/architecture/COST_PANEL.md",
+     "docket": ("D-BENCH-18 FIXED by TF-133 (measuring sense)",
+                "D-BENCH-7 FIXED by TF-133 (consumption share)"),
+     "notes": "TF-133's cost panel: tokens + "
+              "time per suite per profile over "
+              "TF-128's estate — the four "
+              "suites' real runners x the six "
+              "shipped profiles' filed budgets "
+              "(token budget = scored units x "
+              "max_response_tokens, a budget "
+              "exposure, never consumed "
+              "tokens), sharpness derived only "
+              "from the real suite scores, "
+              "time repeat-measured live per "
+              "cell through PerfTracker (5 "
+              "repeats, pinned nowhere), and "
+              "watts NOT PROVEN on every row "
+              "(no profile declares a power "
+              "figure; none is invented) — 24 "
+              "filed cells published as "
+              "literal deterministic data, "
+              "recomputed live. The panel "
+              "files no fixture of its own: "
+              "it consumes only already-filed "
+              "inputs (the suites' corpora "
+              "and the hardware-profile "
+              "files, TF-131 coupling filed "
+              "in the open). Live hardware "
+              "cost is NOT PROVEN (TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -1166,16 +1267,22 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
      "bind_attribute": "PerfTracker",
      "fixture": None,
      "claims_axes": (),
-     "suite_slice": "TF-133 (cost panel owns consuming it)",
+     "suite_slice": "TF-133 DONE (cost panel consumes it: "
+                    "benchmarks/cost_panel.py)",
      "doc": None,
-     "docket": ("D-BENCH-7 OPEN narrowed by TF-121 (both latency "
-                "systems filed with roles; consumption TF-133)",),
+     "docket": ("D-BENCH-7 FIXED by TF-133 (consumption share; "
+                "narrowed by TF-121)",),
      "notes": "the core's ring-buffer latency tracker, wired into "
-              "ThoughtForgeCore as self._perf and consumed by no "
-              "benchmark (D-BENCH-7). Filed here as an instrument "
-              "with that role stated; the harness's turn timing is "
-              "ProfileBenchmark's own perf_counter. TF-133 decides "
-              "consumption"},
+              "ThoughtForgeCore as self._perf. TF-133 update, "
+              "in the open: the cost panel now consumes it — "
+              "every per-cell timing sample is recorded into a "
+              "PerfTracker and the filed timing is its summary "
+              "(benchmarks/cost_panel.py), so it is no longer "
+              "consumed by no benchmark (D-BENCH-7's "
+              "consumption share, FIXED). Filed here as an "
+              "instrument with that role stated; the harness's "
+              "turn timing is ProfileBenchmark's own "
+              "perf_counter"},
 )
 
 
@@ -1752,6 +1859,79 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
     {"id": "probes_total", "benchmark": "wyrd_panel",
      "legacy_name": "",
      "computes": "TF-132's filed probes in "
+                 "total (7 on this tree)"},
+    {"id": "total_cells", "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "cost cells filed in TF-133's "
+                 "panel: the four suites x the "
+                 "six shipped profiles (24 on "
+                 "this tree) (TF-133)"},
+    {"id": "total_units", "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "scored units across the filed "
+                 "cells, counted by the suites' "
+                 "real runners (persona 108 "
+                 "turns, memory / depth / "
+                 "presence 36 cases each, per "
+                 "profile; 1296 on this tree) "
+                 "(TF-133)"},
+    {"id": "total_token_budget", "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "the sum of the filed cells' "
+                 "token budgets: scored units x "
+                 "the profile's filed "
+                 "max_response_tokens per cell "
+                 "— a budget exposure, never "
+                 "consumed tokens (766800 on "
+                 "this tree) (TF-133)"},
+    {"id": "pi_zero_token_budget", "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "pi_zero's token budget summed "
+                 "over its four suite cells "
+                 "(216 units x its filed 120 "
+                 "max_response_tokens; 25920 on "
+                 "this tree) (TF-133)"},
+    {"id": "server_gpu_token_budget", "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "server_gpu's token budget "
+                 "summed over its four suite "
+                 "cells (216 units x its filed "
+                 "2000 max_response_tokens; "
+                 "432000 on this tree) (TF-133)"},
+    {"id": "mean_sharpness_per_1000_tokens",
+     "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "the mean of the filed cells' "
+                 "sharpness: each cell's real "
+                 "suite score / its token budget "
+                 "x 1000 (TF-133)"},
+    {"id": "pi_zero_mean_sharpness_per_1000_tokens",
+     "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "the mean sharpness of "
+                 "pi_zero's four cells — the "
+                 "panel's sharpest profile mean, "
+                 "budget arithmetic over the "
+                 "suites' scores, its depth "
+                 "cell filing the OFF score "
+                 "through its refused ON road "
+                 "(TF-133)"},
+    {"id": "server_gpu_mean_sharpness_per_1000_tokens",
+     "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "the mean sharpness of "
+                 "server_gpu's four cells — the "
+                 "panel's least sharp profile "
+                 "mean, through its widest filed "
+                 "token budget (TF-133)"},
+    {"id": "probes_passed", "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "TF-133's filed probes against "
+                 "the pure checker parts that "
+                 "behave as filed (7 on this tree)"},
+    {"id": "probes_total", "benchmark": "cost_panel",
+     "legacy_name": "",
+     "computes": "TF-133's filed probes in "
                  "total (7 on this tree)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
@@ -2343,6 +2523,86 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "PROVEN (TF-173), and the panel "
               "feeds TF-145's boundary with "
               "evidence without deciding it"},
+    {"id": "cost_panel_synthetic_v1",
+     "benchmark": "cost_panel",
+     "fixture": "profile_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-133's "
+                    "deterministic cost rows: the "
+                    "four suites through their real "
+                    "runners x the six shipped "
+                    "profiles' filed budgets, "
+                    "measured live twice, identical "
+                    "(time live-only, never pinned; "
+                    "watts NOT PROVEN, never filed)",
+     "tolerance": 1e-9,
+     "metrics": {
+         "total_cells": 24,
+         "total_units": 1296,
+         "total_token_budget": 766800,
+         "pi_zero_token_budget": 25920,
+         "server_gpu_token_budget": 432000,
+         "mean_sharpness_per_1000_tokens":
+             0.06650563779657573,
+         "pi_zero_mean_sharpness_per_1000_tokens":
+             0.13526306012802927,
+         "server_gpu_mean_sharpness_per_1000_tokens":
+             0.009273191015089164,
+         "probes_passed": 7,
+         "probes_total": 7,
+     },
+     "targets": {
+         "pi_zero_mean_sharpness_per_1000_tokens": {
+             "target": 0.13526306012802927, "met": True},
+     },
+     "excluded_metrics": {
+         "cell_wall_time_ms": "timing varies run to run "
+                              "and under contention; "
+                              "walls are not baselines "
+                              "(TF-121's rule) — the "
+                              "panel files repeat-"
+                              "measured timing live "
+                              "only, never pinned",
+         "power_watts": "no shipped profile declares a "
+                        "power figure and no power was "
+                        "measured; watts are NOT "
+                        "PROVEN, never pinned, never "
+                        "invented",
+     },
+     "notes": "the cost panel's deterministic "
+              "verdict row (24 filed cells in "
+              "benchmarks/cost_panel.py, recomputed "
+              "live by its checker): token budgets "
+              "are scored units x the profiles' "
+              "filed max_response_tokens (pi_zero "
+              "120 through server_gpu 2000; total "
+              "exposure 766800 over 1296 scored "
+              "units) — budget exposures, never "
+              "consumed tokens; sharpness is the "
+              "real suite scores over those budgets "
+              "(pi_zero sharpest per budgeted token "
+              "on every suite despite its depth "
+              "cell filing the OFF score through "
+              "its refused ON road; server_gpu "
+              "least sharp — budget arithmetic over "
+              "identical scores, filed as exactly "
+              "that, never hardware efficiency). "
+              "The filed target is the reproduction "
+              "truth: pi_zero's mean sharpness is "
+              "pinned at its measured value. The "
+              "baseline's fixture names the profile "
+              "panel's corpus estate in the open: "
+              "the cost panel files no fixture of "
+              "its own because it adds no benchmark "
+              "input — it consumes only the "
+              "suites' already-filed corpora and "
+              "the already-filed hardware-profile "
+              "files (TF-131 coupling, filed in "
+              "benchmarks/cost_panel.py). This "
+              "pins SCRIPTED suites through the "
+              "real machinery — live hardware "
+              "cost (real tokens, real time, real "
+              "watts) is NOT PROVEN (TF-173), and "
+              "sharpness per watt is NOT PROVEN"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -2402,7 +2662,11 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
      "rule": "no latency figure is pinned: timing varies run to "
              "run and under contention, so walls are colour, never "
              "baselines (the filed excluded_metrics state this per "
-             "baseline); TF-133 owns cost measurement"},
+             "baseline); TF-133 owns cost measurement. TF-133 "
+             "update: the cost panel files time as "
+             "repeat-measured live data only (per-cell "
+             "PerfTracker summaries at run time), pinned in no "
+             "baseline — this rule stands exactly as filed"},
     {"id": "metric_names_state_what_they_compute",
      "rule": "D-BENCH-2 FIXED: every metric a baseline carries is "
              "defined in METRIC_DEFINITIONS by what it actually "
@@ -2546,6 +2810,34 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "evidence, it does not decide it; "
              "live world-state behaviour is "
              "NOT PROVEN (TF-173)"},
+    {"id": "the_cost_panel_files_tokens_time_and_no_watts",
+     "rule": "TF-133 DONE: cost per suite per "
+             "profile has a panel "
+             "(benchmarks/cost_panel.py, "
+             "D-BENCH-18) — token budgets from "
+             "the suites' real runners (scored "
+             "units counted live) x the "
+             "profiles' filed max_response_tokens "
+             "(budget exposures, never consumed "
+             "tokens), sharpness derived only "
+             "from the real suite scores, time "
+             "repeat-measured live per cell "
+             "through PerfTracker (D-BENCH-7's "
+             "consumption share, FIXED) and "
+             "pinned nowhere, and watts NOT "
+             "PROVEN on every row: no profile "
+             "declares a power figure, none is "
+             "invented, and the pure checker "
+             "fails any claimed watt (7 filed "
+             "probes). The cost baseline is "
+             "judged by that checker, not gated "
+             "by TF-129's gate (the gated set "
+             "stays the nine TF-121..TF-128 "
+             "baselines). The panel adds no "
+             "benchmark input, so the hygiene "
+             "inventory does not move; live "
+             "hardware cost is NOT PROVEN "
+             "(TF-173)"},
 )
 
 
@@ -2759,6 +3051,50 @@ def measure_wyrd_panel_baseline() -> dict[str, Any]:
     }
 
 
+def measure_cost_panel_baseline() -> dict[str, Any]:
+    """Run TF-133's deterministic cost rows through the real machinery.
+
+    Files only the pinnable (deterministic) metrics:
+    the repeat-measured timing is live-only and
+    watts are NOT PROVEN, so neither is measured
+    here — by TF-121's latency rule, carried.
+    """
+    from benchmarks.cost_panel import (
+        compute_cost_rows,
+        run_panel_probes,
+    )
+
+    rows = compute_cost_rows()
+    probes = run_panel_probes()
+
+    def _profile_budget(profile: str) -> int:
+        return sum(r["token_budget"] for r in rows
+                   if r["profile"] == profile)
+
+    def _profile_sharpness(profile: str) -> float:
+        cells = [r for r in rows if r["profile"] == profile]
+        return sum(
+            r["sharpness_per_1000_tokens"] for r in cells) / len(cells)
+
+    return {
+        "total_cells": len(rows),
+        "total_units": sum(r["units"] for r in rows),
+        "total_token_budget": sum(
+            r["token_budget"] for r in rows),
+        "pi_zero_token_budget": _profile_budget("pi_zero"),
+        "server_gpu_token_budget": _profile_budget("server_gpu"),
+        "mean_sharpness_per_1000_tokens": (
+            sum(r["sharpness_per_1000_tokens"] for r in rows)
+            / len(rows)),
+        "pi_zero_mean_sharpness_per_1000_tokens":
+            _profile_sharpness("pi_zero"),
+        "server_gpu_mean_sharpness_per_1000_tokens":
+            _profile_sharpness("server_gpu"),
+        "probes_passed": sum(1 for p in probes if p["passed"]),
+        "probes_total": len(probes),
+    }
+
+
 def measure_data_hygiene_baseline() -> dict[str, Any]:
     """Run TF-131's filed hygiene inventory through the real machinery."""
     from benchmarks.data_hygiene import (
@@ -2787,6 +3123,7 @@ _MEASURERS = {
     "spot_checks_synthetic_v1": measure_spot_checks_baseline,
     "data_hygiene_synthetic_v1": measure_data_hygiene_baseline,
     "wyrd_panel_synthetic_v1": measure_wyrd_panel_baseline,
+    "cost_panel_synthetic_v1": measure_cost_panel_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -2857,7 +3194,8 @@ def harness_problems() -> list[str]:
                    "regression_gates_fail_on_moved_baselines",
                    "spot_checks_anchor_the_numbers_in_human_judgement",
                    "benchmark_inputs_are_synthetic_or_licensed_never_canon",
-                   "the_wyrd_panel_scores_world_state_consistency"):
+                   "the_wyrd_panel_scores_world_state_consistency",
+                   "the_cost_panel_files_tokens_time_and_no_watts"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -3061,6 +3399,7 @@ __all__ = [
     "measure_quant_panel_baseline",
     "measure_data_hygiene_baseline",
     "measure_wyrd_panel_baseline",
+    "measure_cost_panel_baseline",
     "measure_regression_gate_baseline",
     "measure_spot_checks_baseline",
     "validate_profile_id",

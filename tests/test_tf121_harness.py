@@ -96,7 +96,7 @@ class TestFilingData:
         assert HARNESS_DOC == "docs/architecture/HARNESS_ARCHITECTURE.md"
         assert (REPO_ROOT / HARNESS_DOC).exists()
         ids = [r["id"] for r in HARNESS_RULES]
-        assert len(ids) == len(set(ids)) == 13  # 9 at TF-121 + regression_gates_fail_on_moved_baselines (TF-129) + spot_checks_anchor_the_numbers_in_human_judgement (TF-130) + benchmark_inputs_are_synthetic_or_licensed_never_canon (TF-131) + the_wyrd_panel_scores_world_state_consistency (TF-132), in the open
+        assert len(ids) == len(set(ids)) == 14  # 9 at TF-121 + regression_gates_fail_on_moved_baselines (TF-129) + spot_checks_anchor_the_numbers_in_human_judgement (TF-130) + benchmark_inputs_are_synthetic_or_licensed_never_canon (TF-131) + the_wyrd_panel_scores_world_state_consistency (TF-132) + the_cost_panel_files_tokens_time_and_no_watts (TF-133), in the open
         data = harness_as_data()
         assert data["format"] == HARNESS_FORMAT
         assert data["doc"] == HARNESS_DOC
@@ -133,7 +133,7 @@ class TestProfiles:
 class TestBenchmarkIndex:
     def test_entries_cover_the_estate(self) -> None:
         ids = [b["id"] for b in BENCHMARKS]
-        assert len(ids) == len(set(ids)) == 20  # 9 at TF-121 + persona_suite (TF-122) + memory_suite (TF-123) + depth_suite (TF-124) + presence_suite (TF-125) + honesty_panel (TF-126) + quant_panel (TF-127) + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130) + data_hygiene (TF-131) + wyrd_panel (TF-132), in the open
+        assert len(ids) == len(set(ids)) == 21  # 9 at TF-121 + persona_suite (TF-122) + memory_suite (TF-123) + depth_suite (TF-124) + presence_suite (TF-125) + honesty_panel (TF-126) + quant_panel (TF-127) + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130) + data_hygiene (TF-131) + wyrd_panel (TF-132) + cost_panel (TF-133), in the open
         for needed in ("persona_consistency", "profile_benchmark",
                        "locust_load_test", "persona_suite", "memory_suite",
                        "depth_suite", "presence_suite", "honesty_panel", "quant_panel",

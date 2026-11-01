@@ -328,10 +328,10 @@ class TestHarnessRegistration:
                        "overall_off_score", "overall_on_score",
                        "delta", "total_cases"):
             assert ("depth_suite", metric) in defined
-        assert len(BENCHMARKS) == 20  # + presence_suite (TF-125) + honesty_panel (TF-126) + quant_panel (TF-127) + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130) + data_hygiene (TF-131) + wyrd_panel (TF-132), in the open
+        assert len(BENCHMARKS) == 21  # + presence_suite (TF-125) + honesty_panel (TF-126) + quant_panel (TF-127) + profile_panel (TF-128) + regression_gate (TF-129) + spot_checks (TF-130) + data_hygiene (TF-131) + wyrd_panel (TF-132) + cost_panel (TF-133), in the open
         assert len(FIXTURES) == 13  # + presence_suite_corpus (TF-125) + honesty_panel_corpus (TF-126) + quant_panel_corpus (TF-127) + profile_panel_corpus (TF-128) + regression_gate_corpus (TF-129) + spot_checks_corpus (TF-130) + data_hygiene_corpus (TF-131) + wyrd_panel_corpus (TF-132), in the open
-        assert len(BASELINES) == 13  # + presence_suite_synthetic_v1 (TF-125) + honesty_panel_synthetic_v1 (TF-126) + quant_panel_synthetic_v1 (TF-127) + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129) + spot_checks_synthetic_v1 (TF-130) + data_hygiene_synthetic_v1 (TF-131) + wyrd_panel_synthetic_v1 (TF-132), in the open
-        assert len(METRIC_DEFINITIONS) == 109  # + 5 presence_suite metrics (TF-125) + 13 honesty_panel metrics (TF-126) + 16 quant_panel metrics (TF-127) + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129) + 6 spot_checks metrics (TF-130) + 7 data_hygiene metrics (TF-131) + 7 wyrd_panel metrics (TF-132), in the open
+        assert len(BASELINES) == 14  # + presence_suite_synthetic_v1 (TF-125) + honesty_panel_synthetic_v1 (TF-126) + quant_panel_synthetic_v1 (TF-127) + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129) + spot_checks_synthetic_v1 (TF-130) + data_hygiene_synthetic_v1 (TF-131) + wyrd_panel_synthetic_v1 (TF-132) + cost_panel_synthetic_v1 (TF-133), in the open
+        assert len(METRIC_DEFINITIONS) == 119  # + 5 presence_suite metrics (TF-125) + 13 honesty_panel metrics (TF-126) + 16 quant_panel metrics (TF-127) + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129) + 6 spot_checks metrics (TF-130) + 7 data_hygiene metrics (TF-131) + 7 wyrd_panel metrics (TF-132) + 10 cost_panel metrics (TF-133), in the open
 
     def test_harness_checker_stays_clean(self) -> None:
         assert harness.harness_problems() == []
