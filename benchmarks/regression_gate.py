@@ -215,16 +215,32 @@ GATE_BASELINE_ID = "regression_gate_synthetic_v1"
 #: and the gated set stays the nine
 #: TF-121..TF-128 baselines exactly as TF-129
 #: filed it. The gated-set check below excludes
-#: both ungated pins by name.
+#: the ungated pins by name (TF-131 added a
+#: third, below).
 SPOT_CHECKS_BASELINE_ID = "spot_checks_synthetic_v1"
 
+#: TF-131 update, in the open: TF-131 registered
+#: one further baseline after TF-130 — the
+#: benchmark data hygiene inventory's own pin.
+#: It is NOT one of the gated baselines either,
+#: by the same shape: the inventory is a
+#: provenance filing judged by its own module's
+#: checker (data_hygiene_problems()), and the
+#: gated set stays the nine TF-121..TF-128
+#: baselines exactly as TF-129 filed it. The
+#: gated-set check below excludes all three
+#: ungated pins by name.
+DATA_HYGIENE_BASELINE_ID = "data_hygiene_synthetic_v1"
+
 #: The harness baselines that are not gated:
-#: the gate's own verdict row and TF-130's
-#: spot-check pin, each judged by its own
-#: module's checker.
+#: the gate's own verdict row, TF-130's
+#: spot-check pin, and TF-131's data-hygiene
+#: pin, each judged by its own module's
+#: checker.
 UNGATED_BASELINE_IDS: tuple[str, ...] = (
     GATE_BASELINE_ID,
     SPOT_CHECKS_BASELINE_ID,
+    DATA_HYGIENE_BASELINE_ID,
 )
 
 #: The baselines the gate gates: the nine pinned

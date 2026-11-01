@@ -341,11 +341,11 @@ class TestHarnessRegistration:
                        "suites_covered", "holding_transcripts",
                        "failing_transcripts", "mean_score"):
             assert ("spot_checks", metric) in defined
-        assert len(BENCHMARKS) == 18
-        assert len(FIXTURES) == 11
-        assert len(BASELINES) == 11
-        assert len(METRIC_DEFINITIONS) == 95
-        assert len(HARNESS_RULES) == 11
+        assert len(BENCHMARKS) == 19
+        assert len(FIXTURES) == 12
+        assert len(BASELINES) == 12
+        assert len(METRIC_DEFINITIONS) == 102
+        assert len(HARNESS_RULES) == 12
         assert "spot_checks_anchor_the_numbers_in_human_judgement" \
             in {r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []

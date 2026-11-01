@@ -397,6 +397,55 @@ transcripts are NOT PROVEN (TF-173). All
 earlier pinned baselines stand exactly as
 filed (never re-pinned).
 
+**TF-131 update, in the open:** the benchmark
+data hygiene inventory is built
+(``benchmarks/data_hygiene.py``) and registered
+below (``data_hygiene``) with its own pinned
+baseline (``data_hygiene_synthetic_v1``,
+measured live twice, identical): every
+benchmark input in the estate files one
+hygiene row AS DATA — the eleven harness
+fixtures and every suite / panel corpus bound
+through ``benchmarks/*.py``, the bound
+neighbour corpora in ``src/`` (TF-043's
+retrieval fixture, TF-067's quant fixture,
+TF-030's persona fixture), the shipped
+hardware-profile files, and the
+``tests/fixtures/`` estate — each classified
+by origin (synthetic-invented /
+licensed-or-public-domain / derived-live from
+another filed corpus) with its proof, rows
+binding the real modules / symbols / files
+and judged live by ``data_hygiene_problems()``:
+20 inputs, 14 synthetic, 0 licensed (no
+benchmark input is licensed material on this
+tree — the class is enforced by rule + probe),
+6 derived, all clean; the benchmark code
+estate is scanned live with TF-017's guard
+shapes (re-filed openly in the hygiene module)
+and files no canon-access shape. TF-131's
+probes found and filed **D-BENCH-16** (the
+benchmark estate carried no per-fixture
+provenance filing at all — TF-017's guards
+scan ``tests/`` only, so a benchmark corpus
+could have drifted to real material and
+nothing running would have named it; the gap
+was assigned to TF-131 by the roadmap without
+ever being numbered — the D-BENCH-9..15
+pattern) and FIXED it in the measuring sense.
+The hygiene baseline is NOT one of TF-129's
+gated baselines: the gate's gated set stays
+the nine TF-121..TF-128 baselines exactly as
+filed, and the exclusion is filed in the open
+in ``benchmarks/regression_gate.py`` (the
+shape TF-129 / TF-130 filed for their own
+baselines). Proof is marker / path /
+provenance-based over the estate's own
+filings — canon content itself is never
+opened; live-model benchmark data is NOT
+PROVEN (TF-173). All earlier pinned baselines
+stand exactly as filed (never re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -456,6 +505,11 @@ Filed limits, stated plainly:
     **TF-130 update:** the human-shaped spot
     checks over the suites' own filed corpora now
     exist and are registered below; TF-134's baseline book and
+    TF-137's one-command tool still stand as filed.
+    **TF-131 update:** the benchmark data
+    hygiene inventory over every benchmark
+    input in the estate now exists and is
+    registered below; TF-134's baseline book and
     TF-137's one-command tool still stand as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
@@ -628,6 +682,18 @@ FIXTURES: tuple[dict[str, Any], ...] = (
                 "suites', never copied; the "
                 "transcripts are assembled live by "
                 "build_spot_checks()"},
+    {"id": "data_hygiene_corpus", "benchmark": "data_hygiene",
+     "bind_module": "benchmarks.data_hygiene",
+     "bind_attribute": "HYGIENE_ROWS",
+     "synthetic": True,
+     "subject": "TF-131's filed hygiene "
+                "inventory: 20 rows over every "
+                "benchmark input in the estate "
+                "(14 synthetic-invented, 0 "
+                "licensed, 6 derived-live), "
+                "bound in place — the rows bind "
+                "the real modules / symbols / "
+                "files, never copy a corpus"},
 )
 
 
@@ -854,6 +920,34 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "judgement is recorded yet — the set "
               "is the instrument; live-model "
               "transcripts are NOT PROVEN (TF-173)"},
+    {"id": "data_hygiene", "kind": "panel",
+     "status": "built_panel",
+     "bind_module": "benchmarks.data_hygiene",
+     "bind_attribute": "run_data_hygiene",
+     "fixture": "data_hygiene_corpus",
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-131 (benchmark data hygiene — itself)",
+     "doc": "docs/architecture/BENCHMARK_DATA_HYGIENE.md",
+     "docket": ("D-BENCH-16 FIXED by TF-131 (measuring sense)",),
+     "notes": "TF-131's data hygiene inventory "
+              "over every benchmark input: 20 "
+              "filed rows (the harness fixtures "
+              "and suite / panel corpora, the "
+              "bound src neighbour corpora, the "
+              "hardware-profile files, the "
+              "tests/fixtures estate), each "
+              "classified synthetic / licensed / "
+              "derived with its proof, bindings "
+              "resolved live, the benchmark code "
+              "estate scanned with TF-017's "
+              "guard shapes — 14 synthetic, 0 "
+              "licensed, 6 derived, all clean, "
+              "7 filed probes proving the "
+              "checker can fail. Proof is marker "
+              "/ path / provenance-based; canon "
+              "content is never opened and "
+              "live-model benchmark data is NOT "
+              "PROVEN (TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -1472,6 +1566,49 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "this tree) — a summary only; the "
                  "anchor is the per-transcript "
                  "reading, never the mean (TF-130)"},
+    {"id": "total_inputs", "benchmark": "data_hygiene",
+     "legacy_name": "",
+     "computes": "benchmark inputs carrying a "
+                 "filed hygiene row in TF-131's "
+                 "inventory (20 on this tree)"},
+    {"id": "synthetic_inputs", "benchmark": "data_hygiene",
+     "legacy_name": "",
+     "computes": "filed inputs classified "
+                 "synthetic-invented, each with "
+                 "its proof checked live (14 on "
+                 "this tree) (TF-131)"},
+    {"id": "licensed_inputs", "benchmark": "data_hygiene",
+     "legacy_name": "",
+     "computes": "filed inputs classified "
+                 "licensed-or-public-domain, each "
+                 "naming its licence or source "
+                 "(0 on this tree — no benchmark "
+                 "input is licensed material) "
+                 "(TF-131)"},
+    {"id": "derived_inputs", "benchmark": "data_hygiene",
+     "legacy_name": "",
+     "computes": "filed inputs derived live "
+                 "from other filed rows, "
+                 "inheriting their cleanliness "
+                 "(6 on this tree) (TF-131)"},
+    {"id": "clean_inputs", "benchmark": "data_hygiene",
+     "legacy_name": "",
+     "computes": "filed inputs evaluating "
+                 "classified and clean under "
+                 "data_hygiene_problems(): "
+                 "binding resolved, proof in "
+                 "order, no canon-access shape "
+                 "in the bound source (20 on "
+                 "this tree) (TF-131)"},
+    {"id": "probes_passed", "benchmark": "data_hygiene",
+     "legacy_name": "",
+     "computes": "TF-131's filed probes against "
+                 "the pure checker parts that "
+                 "behave as filed (7 on this tree)"},
+    {"id": "probes_total", "benchmark": "data_hygiene",
+     "legacy_name": "",
+     "computes": "TF-131's filed probes in "
+                 "total (7 on this tree)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -1948,6 +2085,56 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "read, live behaviour NOT PROVEN "
               "(TF-173), and no human judgement is "
               "recorded yet"},
+    {"id": "data_hygiene_synthetic_v1",
+     "benchmark": "data_hygiene",
+     "fixture": "data_hygiene_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-131's "
+                    "filed hygiene inventory "
+                    "evaluated live over the real "
+                    "estate (bindings resolved, "
+                    "proofs checked, sources "
+                    "scanned), measured live "
+                    "twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "total_inputs": 20,
+         "synthetic_inputs": 14,
+         "licensed_inputs": 0,
+         "derived_inputs": 6,
+         "clean_inputs": 20,
+         "probes_passed": 7,
+         "probes_total": 7,
+     },
+     "targets": {
+         "clean_inputs": {"target": 20, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the hygiene inventory's verdict "
+              "row (20 filed inputs over the "
+              "whole benchmark estate, recomputed "
+              "live by "
+              "benchmarks/data_hygiene.py's "
+              "checker): every harness fixture "
+              "and suite / panel corpus, the "
+              "bound src neighbour corpora "
+              "(TF-043 / TF-067 / TF-030), the "
+              "hardware-profile files and the "
+              "tests/fixtures estate — 14 "
+              "synthetic-invented, 0 licensed "
+              "(no benchmark input is licensed "
+              "material on this tree; the class "
+              "is enforced by rule + probe), 6 "
+              "derived-live from other filed "
+              "rows, all 20 clean, and all 7 "
+              "filed probes behave against the "
+              "pure checker parts. The filed "
+              "target is the hygiene truth: "
+              "every input clean. This pins "
+              "FILED FIXTURES inspected by "
+              "marker / path / provenance — "
+              "canon content was never opened, "
+              "and live-model benchmark data is "
+              "NOT PROVEN (TF-173)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -2096,6 +2283,34 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "TF-121..TF-128 baselines). No human "
              "judgement is recorded yet and "
              "live-model transcripts are NOT "
+             "PROVEN (TF-173)"},
+    {"id": "benchmark_inputs_are_synthetic_or_licensed_never_canon",
+     "rule": "TF-131 DONE: every benchmark "
+             "input in the estate carries a "
+             "filed hygiene row "
+             "(benchmarks/data_hygiene.py, "
+             "D-BENCH-16) — classified "
+             "synthetic-invented, "
+             "licensed-or-public-domain with "
+             "the licence named, or derived-live "
+             "from another filed row, with its "
+             "proof checked live (bindings "
+             "resolved, TF-017 markers where "
+             "the policy files them, the "
+             "benchmark code estate scanned "
+             "with TF-017's guard shapes): 20 "
+             "inputs, 14 synthetic, 0 licensed, "
+             "6 derived, all clean, and 7 filed "
+             "probes prove the checker can "
+             "fail. Canon is never a benchmark "
+             "input; the hygiene baseline is "
+             "judged by that checker, not gated "
+             "by TF-129's gate (the gated set "
+             "stays the nine TF-121..TF-128 "
+             "baselines). Proof is marker / "
+             "path / provenance-based — canon "
+             "content is never opened, and "
+             "live-model benchmark data is NOT "
              "PROVEN (TF-173)"},
 )
 
@@ -2289,12 +2504,33 @@ def measure_spot_checks_baseline() -> dict[str, Any]:
     }
 
 
+def measure_data_hygiene_baseline() -> dict[str, Any]:
+    """Run TF-131's filed hygiene inventory through the real machinery."""
+    from benchmarks.data_hygiene import (
+        run_data_hygiene,
+        run_hygiene_probes,
+    )
+
+    result = run_data_hygiene()
+    probes = run_hygiene_probes()
+    return {
+        "total_inputs": result.total_inputs,
+        "synthetic_inputs": result.synthetic_inputs,
+        "licensed_inputs": result.licensed_inputs,
+        "derived_inputs": result.derived_inputs,
+        "clean_inputs": result.clean_inputs,
+        "probes_passed": sum(1 for p in probes if p["passed"]),
+        "probes_total": len(probes),
+    }
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
     "profile_panel_synthetic_v1": measure_profile_panel_baseline,
     "regression_gate_synthetic_v1": measure_regression_gate_baseline,
     "spot_checks_synthetic_v1": measure_spot_checks_baseline,
+    "data_hygiene_synthetic_v1": measure_data_hygiene_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -2363,7 +2599,8 @@ def harness_problems() -> list[str]:
                    "an_unknown_profile_is_named_never_run",
                    "the_will_axis_is_scored_by_tf125",
                    "regression_gates_fail_on_moved_baselines",
-                   "spot_checks_anchor_the_numbers_in_human_judgement"):
+                   "spot_checks_anchor_the_numbers_in_human_judgement",
+                   "benchmark_inputs_are_synthetic_or_licensed_never_canon"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -2565,6 +2802,7 @@ __all__ = [
     "measure_profile_baseline",
     "measure_profile_panel_baseline",
     "measure_quant_panel_baseline",
+    "measure_data_hygiene_baseline",
     "measure_regression_gate_baseline",
     "measure_spot_checks_baseline",
     "validate_profile_id",
