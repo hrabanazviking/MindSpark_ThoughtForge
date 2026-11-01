@@ -273,6 +273,44 @@ TF-173's road, discharged by nothing here. All
 earlier pinned baselines stand exactly as filed
 (never re-pinned).
 
+**TF-128 update, in the open:** the profile
+panels are built
+(``benchmarks/profile_panel.py``) and registered
+below (``profile_panel``) with their own pinned
+baseline (``profile_panel_synthetic_v1``,
+measured live twice, identical): the four
+suites and the profile benchmark run per
+shipped profile with the profile applied to a
+real core and its budgets enforced during the
+run — the applied core's resolved tokens /
+passes and lifecycle caps asserted equal to the
+profile JSON's filed budgets per profile,
+TF-069's boot + ``check_model_fit`` RAM-ceiling
+cap row re-run per profile (desktop_cpu /
+desktop_gpu / pi_5 fit; server_gpu's cap
+exceeds its own ceiling at 140.0 > 88 GB;
+phone_low / pi_zero unprovable, q2_k
+uncalibrated), and the depth suite's ON road
+gated by the profile's refinement budget —
+pi_zero budgets 0 passes, so its ON cell files
+refused-by-budget and its depth score is its
+OFF score. The measured finding: no score
+varies by profile except through that refusal
+— the benchmark cell is an empty-store run and
+the suite scorers take no profile input, filed
+plainly. This discharges **D-BENCH-1**'s
+application share, FIXED in the measuring
+sense; the ``profile_benchmark`` entry's
+suite-slice note below now files TF-128 DONE
+and the unknown-profile rule below files the
+application discharged. Live per-profile
+hardware behaviour stays NOT PROVEN (TF-082 /
+TF-173), and ``benchmark_profiles``' default
+ephemeral core is unchanged (the panel supplies
+the applied core through its ``core=``
+parameter). All earlier pinned baselines stand
+exactly as filed (never re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -322,6 +360,11 @@ Filed limits, stated plainly:
     as filed.
     **TF-127 update:** the quant-vs-quality panel
     over TF-067's fixture estate now exists and is
+    registered below; TF-129's regression gates,
+    TF-134's baseline book and TF-137's one-command
+    tool still stand as filed.
+    **TF-128 update:** the profile panels over
+    the six shipped profiles now exist and are
     registered below; TF-129's regression gates,
     TF-134's baseline book and TF-137's one-command
     tool still stand as filed.
@@ -455,6 +498,20 @@ FIXTURES: tuple[dict[str, Any], ...] = (
                 "cells), bound in place — the corpus "
                 "itself stays TF-067's, consumed "
                 "mechanically, never copied"},
+    {"id": "profile_panel_corpus", "benchmark": "profile_panel",
+     "bind_module": "benchmarks.profile_panel",
+     "bind_attribute": "PANEL_ROWS",
+     "synthetic": True,
+     "subject": "TF-128's published panel rows over "
+                "the six shipped hardware profiles: "
+                "per profile the applied-core "
+                "benchmark over the profile "
+                "benchmark's own filed queries plus "
+                "the four suites' own filed corpora "
+                "(30 filed cells, 1 refused by "
+                "budget), bound in place — the "
+                "corpora stay the suites', never "
+                "copied"},
 )
 
 
@@ -596,22 +653,58 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "No live model ran: live quant-vs-quality "
               "is NOT PROVEN (TF-173), and TF-068's live "
               "re-rank / calibration shares stand open"},
+    {"id": "profile_panel", "kind": "panel",
+     "status": "built_panel",
+     "bind_module": "benchmarks.profile_panel",
+     "bind_attribute": "run_profile_panel",
+     "fixture": "profile_panel_corpus",
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-128 (profile panels — itself)",
+     "doc": "docs/architecture/PROFILE_PANEL.md",
+     "docket": ("D-BENCH-1 FIXED by TF-128 (measuring sense)",),
+     "notes": "TF-128's panel over the six shipped "
+              "profiles: per profile, the profile "
+              "benchmark runs on a core built with "
+              "the profile selected (its resolved "
+              "tokens / passes + lifecycle caps "
+              "asserted equal to the profile JSON's "
+              "budgets during the run), TF-069's boot "
+              "+ RAM-ceiling cap row re-run, and the "
+              "four suites run through their real "
+              "runners — 30 filed cells published as "
+              "literal data, recomputed live. The "
+              "depth ON road is refused by budget on "
+              "pi_zero (0 refinement passes); no "
+              "score varies by profile except through "
+              "that refusal (empty store + scripted "
+              "scorers, filed plainly). Live "
+              "per-profile hardware behaviour is NOT "
+              "PROVEN (TF-082 / TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
      "bind_attribute": "ProfileBenchmark",
      "fixture": "profile_default_queries",
      "claims_axes": ("depth",),
-     "suite_slice": "TF-128 (profile panels apply the profile)",
+     "suite_slice": "TF-128 DONE (profile panels apply the "
+                    "profile: benchmarks/profile_panel.py)",
      "doc": "docs/audit/TF-010_BENCHMARK_ESTATE.md",
-     "docket": ("D-BENCH-1 OPEN narrowed by TF-121 (validation fixed; "
-                "application TF-128)",
+     "docket": ("D-BENCH-1 FIXED by TF-128 (measuring sense; "
+                "validation share FIXED by TF-121)",
                 "D-BENCH-2 FIXED by TF-121",
                 "D-BENCH-6 FIXED by TF-121"),
      "notes": "runs the core over an ephemeral empty store "
               "(model_path=None): measures retrieval + scaffold "
               "overhead and the empty-store refusal, never inference. "
-              "Latency filed as data per run, never pinned"},
+              "Latency filed as data per run, never pinned. "
+              "TF-128 update, in the open: the profile "
+              "panels now run this benchmark per profile "
+              "on a profile-applied core (supplied "
+              "through this runner's core= parameter, "
+              "budgets enforced during the run, "
+              "D-BENCH-1 fixed in the measuring sense); "
+              "this module's own default ephemeral core "
+              "still applies no profile, stated openly"},
     {"id": "locust_load_test", "kind": "load_instrument",
      "status": "excluded_by_verdict",
      "bind_file": "locustfile.py",
@@ -1047,6 +1140,76 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "computes": "panel cells measured (6 filed levels "
                  "x 8 filed prompts, 48 in the filed "
                  "panel) (TF-127)"},
+    {"id": "desktop_cpu_suite_score", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "the mean of desktop_cpu's four suite "
+                 "headline scores (persona / memory / "
+                 "depth ON / presence) run per profile "
+                 "through their real runners (TF-128)"},
+    {"id": "desktop_cpu_bench_avg_words", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "desktop_cpu's profile-benchmark mean "
+                 "response words over its filed queries "
+                 "on a profile-applied ephemeral core "
+                 "(empty store) (TF-128)"},
+    {"id": "desktop_gpu_suite_score", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "the mean of desktop_gpu's four suite "
+                 "headline scores run per profile "
+                 "through their real runners (TF-128)"},
+    {"id": "desktop_gpu_bench_avg_words", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "desktop_gpu's profile-benchmark mean "
+                 "response words on a profile-applied "
+                 "ephemeral core (empty store) (TF-128)"},
+    {"id": "phone_low_suite_score", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "the mean of phone_low's four suite "
+                 "headline scores run per profile "
+                 "through their real runners (TF-128)"},
+    {"id": "phone_low_bench_avg_words", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "phone_low's profile-benchmark mean "
+                 "response words on a profile-applied "
+                 "ephemeral core (empty store) (TF-128)"},
+    {"id": "pi_5_suite_score", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "the mean of pi_5's four suite headline "
+                 "scores run per profile through their "
+                 "real runners (TF-128)"},
+    {"id": "pi_5_bench_avg_words", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "pi_5's profile-benchmark mean response "
+                 "words on a profile-applied ephemeral "
+                 "core (empty store) (TF-128)"},
+    {"id": "pi_zero_suite_score", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "the mean of pi_zero's four suite "
+                 "headline scores — its depth headline "
+                 "is the OFF score because its 0-pass "
+                 "refinement budget refuses the ON "
+                 "road (TF-128)"},
+    {"id": "pi_zero_bench_avg_words", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "pi_zero's profile-benchmark mean "
+                 "response words on a profile-applied "
+                 "ephemeral core (empty store) (TF-128)"},
+    {"id": "server_gpu_suite_score", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "the mean of server_gpu's four suite "
+                 "headline scores run per profile "
+                 "through their real runners (TF-128)"},
+    {"id": "server_gpu_bench_avg_words", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "server_gpu's profile-benchmark mean "
+                 "response words on a profile-applied "
+                 "ephemeral core (empty store) (TF-128)"},
+    {"id": "total_cells", "benchmark": "profile_panel",
+     "legacy_name": "",
+     "computes": "panel cells filed (6 shipped profiles "
+                 "x the benchmark + 4 suites, 30 in the "
+                 "filed panel; 1 of them refused by "
+                 "budget) (TF-128)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -1377,6 +1540,59 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "real-hardware road), and TF-068's live "
               "re-rank / q2_k calibration shares stand "
               "open on that road"},
+    {"id": "profile_panel_synthetic_v1",
+     "benchmark": "profile_panel",
+     "fixture": "profile_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-128's "
+                    "filed panel: per shipped profile "
+                    "the benchmark on a profile-applied "
+                    "core + TF-069's boot and the four "
+                    "suites' real runners, measured "
+                    "live twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "desktop_cpu_suite_score": 0.8085648148148149,
+         "desktop_cpu_bench_avg_words": 9,
+         "desktop_gpu_suite_score": 0.8085648148148149,
+         "desktop_gpu_bench_avg_words": 9,
+         "phone_low_suite_score": 0.8085648148148149,
+         "phone_low_bench_avg_words": 9,
+         "pi_5_suite_score": 0.8085648148148149,
+         "pi_5_bench_avg_words": 9,
+         "pi_zero_suite_score": 0.7252314814814815,
+         "pi_zero_bench_avg_words": 9,
+         "server_gpu_suite_score": 0.8085648148148149,
+         "server_gpu_bench_avg_words": 9,
+         "total_cells": 30,
+     },
+     "targets": {
+         "desktop_cpu_suite_score": {"target": 0.8085648148148149,
+                                     "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the panel's per-profile suite means + "
+              "benchmark words (30 filed cells in "
+              "benchmarks/profile_panel.py, recomputed "
+              "live by its checker): the budgets apply "
+              "exactly on all six profiles (tokens "
+              "120..2000, passes 0..3, bundle 3..30), "
+              "TF-069's cap rows stand in the rows "
+              "(server_gpu exceeds its ceiling; "
+              "phone_low / pi_zero unprovable), and no "
+              "score varies by profile except pi_zero's "
+              "suite mean — its depth ON road is "
+              "refused by its 0-pass refinement budget, "
+              "so its depth headline is the OFF score. "
+              "The filed target is the reproduction "
+              "truth: the per-profile suite runs "
+              "reproduce the four suites' pinned "
+              "baselines, so desktop_cpu's mean is "
+              "pinned at the value those baselines "
+              "imply. This pins SCRIPTED fixtures + an "
+              "EMPTY-store core through the real "
+              "machinery with profiles applied — live "
+              "per-profile hardware behaviour is NOT "
+              "PROVEN (TF-082 / TF-173)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -1445,12 +1661,19 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "(min_words_met_rate) is filed beside it and the "
              "module states the truth in its own comments"},
     {"id": "an_unknown_profile_is_named_never_run",
-     "rule": "D-BENCH-1 narrowed: a benchmark run names its "
-             "hardware profile from KNOWN_PROFILES (the shipped "
-             "hardware_profiles/*.json ids) and an unknown id is "
-             "refused by name before anything runs; applying the "
-             "profile to the core is TF-128's share and is not "
-             "claimed here"},
+     "rule": "D-BENCH-1 FIXED (validation by TF-121, "
+             "application by TF-128 in the measuring "
+             "sense): a benchmark run names its hardware "
+             "profile from KNOWN_PROFILES (the shipped "
+             "hardware_profiles/*.json ids) and an unknown "
+             "id is refused by name before anything runs; "
+             "TF-128's profile panels "
+             "(benchmarks/profile_panel.py) run the suites "
+             "+ this benchmark per profile on a core with "
+             "the profile applied, its budgets enforced "
+             "during the run — the module's own default "
+             "ephemeral core still applies no profile, "
+             "stated openly in TF-128's filing"},
     {"id": "the_locust_fate_is_exclusion",
      "rule": "D-BENCH-5 narrowed: the locust load script is "
              "excluded from the harness panel by verdict — a "
@@ -1611,9 +1834,23 @@ def measure_quant_panel_baseline() -> dict[str, Any]:
     return measured
 
 
+def measure_profile_panel_baseline() -> dict[str, Any]:
+    """Run TF-128's filed panel through the real machinery."""
+    from benchmarks.profile_panel import run_profile_panel
+
+    result = run_profile_panel()
+    measured: dict[str, Any] = {"total_cells": result.total_cells}
+    for row in result.rows:
+        measured[f"{row['profile']}_suite_score"] = row["suite_score"]
+        measured[f"{row['profile']}_bench_avg_words"] = \
+            row["bench_avg_response_words"]
+    return measured
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
+    "profile_panel_synthetic_v1": measure_profile_panel_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -1880,6 +2117,7 @@ __all__ = [
     "measure_presence_suite_baseline",
     "measure_persona_suite_baseline",
     "measure_profile_baseline",
+    "measure_profile_panel_baseline",
     "measure_quant_panel_baseline",
     "validate_profile_id",
 ]

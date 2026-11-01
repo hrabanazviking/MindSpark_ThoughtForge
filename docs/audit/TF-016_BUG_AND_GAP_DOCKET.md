@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 128 entries — 35 OPEN, 1 OPEN-ENVIRONMENT, 89 FIXED
+**Totals: 128 entries — 34 OPEN, 1 OPEN-ENVIRONMENT, 90 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -41,6 +41,7 @@ in Part VII; D-BENCH-10 by TF-124 in Part VII —
 measuring sense; D-BENCH-11 by TF-125 in Part VII —
 measuring sense; D-BENCH-12 by TF-126 in Part VII —
 measuring sense; D-BENCH-13 by TF-127 in Part VII —
+measuring sense; D-BENCH-1 by TF-128 in Part VII —
 measuring sense), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
@@ -940,6 +941,64 @@ VII counted), and noted rather than silently
 repaired.
 Totals after TF-127: 128 entries.
 
+TF-128 added no entry and fixed one in the
+measuring sense — D-BENCH-1's remaining
+application share was discharged: the profile
+was validated since TF-121 but never applied
+(`ProfileBenchmark` measured the same ephemeral
+empty-store core for every profile, its core
+built with no profile at all), while the core
+itself has applied a selected profile since
+TF-032 / TF-037 / TF-056 (probed live at TF-128:
+for all six shipped profiles a core built with
+the profile selected resolves its JSON's own
+max_response_tokens / refinement passes —
+pi_zero 120 / 0 through server_gpu 2000 / 3 —
+and its lifecycle caps equal TF-056's budget
+caps). It is fixed in the measuring sense the
+roadmap assigned to TF-128:
+`benchmarks/profile_panel.py` runs the profile
+benchmark plus the four Part VII suites per
+shipped profile with the budgets enforced
+during the run (the benchmark on a
+profile-applied core whose resolved budgets are
+asserted equal to the JSON's filing, TF-069's
+boot + `check_model_fit` RAM-ceiling cap row
+re-run per profile — desktop_cpu / desktop_gpu
+/ pi_5 fit, server_gpu exceeds at 140.0 > 88 GB,
+phone_low / pi_zero unprovable — and the depth
+ON road gated by the refinement budget:
+pi_zero's 0 passes refuse it by budget, filed by
+name), published as literal rows recomputed
+live by `profile_panel_problems()` with a
+pinned harness baseline
+(`profile_panel_synthetic_v1`, measured live
+twice identical; the estate now files 16
+benchmarks / 9 fixtures / 9 baselines / 83
+metric definitions, every earlier baseline
+preserved exactly). The measured headline: the
+budgets apply exactly on all six profiles and
+no score varies by profile except through
+pi_zero's refused cell — the benchmark cell is
+an empty-store run (9 words, confidence 0.408
+everywhere) and the suite scorers take no
+profile input, filed plainly as the finding.
+Counting note, in TF-127's manner: the
+header-vs-row mismatches are pre-existing,
+preserved in shape (the primary-owner part
+counts still sum 126 against 128 — D-BENCH-1's
+status move inside Part VII changes no part
+count), and noted rather than silently
+repaired. Stated limits: `benchmark_profiles`'
+own default ephemeral core is unchanged (the
+panel supplies the applied core through its
+existing `core=` parameter), and live
+per-profile hardware behaviour is NOT PROVEN
+(TF-082 / TF-173).
+Totals after TF-128: 128 entries — 34 OPEN,
+1 OPEN-ENVIRONMENT, 90 FIXED, 3
+CLOSED-BY-VERDICT.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -1000,7 +1059,7 @@ Totals after TF-127: 128 entries.
 | D-CFG-3 | `user_config.yaml` mixes 10 LIVE backend keys with 5 DEAD (profile / knowledge_db_built / chat_*); the factory's fallback key `openai_model` is read and written by the wizard but absent from the shipped file (TF-009) | TF-065 (backend contract) + TF-153 (service shape) | IV | OPEN — **narrowed by TF-065**: the backend share is ruled — the factory's live key set (11 keys, `openai_model` included) is pinned as contract data (`inference/backend_contract.BACKEND_CONFIG_KEYS`, AST-judged against `load_backend_from_config`'s own `cfg.get` reads, so the factory can neither lose a live key nor grow a read of a dead one unnoticed). The dead keys' removal from the shipped file and the wizard's shape stay TF-153's |
 | D-CFG-4 | Credential-shaped keys (`openai_api_key`, `hf_token`) live in a plain YAML file — empty in the shipped copy, so no secret is in the tree, but the shape is the defect (TF-009) | TF-160 (Kista custody) | IX | OPEN |
 | D-CFG-5 | No single config system: three loaders (cached `load_config()`, hand-parsing in unified_backend + validators/health/self-heal, the memory store's own personality load) never meet; no code path sees a merged view (TF-009 finding 1) | TF-032 + TF-153 | II | OPEN — **narrowed by TF-032**: for cognition, one merged resolved view now exists (`ConversationConfig` — persona path + profile + strategy + depth + candidate modes in one frozen object per conversation); the system-wide merged view stays TF-153's |
-| D-BENCH-1 | `benchmark_profiles`: `profile_id` is never validated (a bogus profile exits 0) and never applied — `ThoughtForgeCore` has no profile parameter; every profile measures the same ephemeral empty-store core (TF-010). Child of D-PROF-3 | TF-121 (harness) + TF-128 (profile panels) | VII | OPEN — **narrowed by TF-121**: the validation share is FIXED — `ProfileBenchmark.run` validates `profile_id` against the shipped `hardware_profiles/*.json` ids (`known_profile_ids()`, filed as the harness's `KNOWN_PROFILES`) and raises ValueError naming the bogus id and the known set; the CLI exits 2 with that message (proven live with `totally_bogus_profile`). The application share stands exactly as filed for TF-128: the core has no profile parameter and every profile still measures the same ephemeral empty-store core until the profile panels land |
+| D-BENCH-1 | `benchmark_profiles`: `profile_id` is never validated (a bogus profile exits 0) and never applied — `ThoughtForgeCore` has no profile parameter; every profile measures the same ephemeral empty-store core (TF-010). Child of D-PROF-3 | TF-121 (harness) + TF-128 (profile panels) | VII | **FIXED by TF-128** (in the measuring sense): the validation share was FIXED by TF-121 — `ProfileBenchmark.run` validates `profile_id` against the shipped `hardware_profiles/*.json` ids (`known_profile_ids()`, filed as the harness's `KNOWN_PROFILES`) and raises ValueError naming the bogus id and the known set; the CLI exits 2 with that message (proven live with `totally_bogus_profile`). The application share is FIXED here: `benchmarks/profile_panel.py` runs the profile benchmark plus the four Part VII suites per shipped profile with the profile applied and its budgets enforced during the run — the benchmark runs on a `ThoughtForgeCore` built with the profile selected through TF-032's config surface (supplied via `ProfileBenchmark`'s existing `core=` parameter), its resolved `max_response_tokens` / refinement passes (pi_zero 120 / 0 through server_gpu 2000 / 3) and lifecycle caps asserted equal to the profile JSON's filed budgets per profile, TF-069's boot + `check_model_fit` RAM-ceiling cap row re-run per profile (fit × 3; server_gpu exceeds 140.0 > 88 GB; phone_low / pi_zero unprovable), and the depth suite's ON road refused by budget on pi_zero (0 refinement passes — its depth score is its OFF score, filed by name) — 30 filed cells published as literal rows recomputed live by `profile_panel_problems()`, registered in `benchmarks/harness.py` in the open with pinned baseline `profile_panel_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned). Filed limits: `benchmark_profiles`' own default ephemeral core still applies no profile when no core is passed — unchanged, stated openly in TF-128's doc; the benchmark cell is an empty-store run, so no score varies by profile except through the refused cell (filed as the finding); live per-profile hardware behaviour is NOT PROVEN (TF-082 / TF-173) |
 | D-BENCH-2 | Metric name drift in `benchmark_profiles`: `token_efficiency` and `citation_accuracy` do not compute what their names/docstrings say; MODEL_CARD's "avg response words ≥ 30" target is checked nowhere (TF-010) | TF-121 | VII | **FIXED by TF-121**: the module docstring and field comments now state what each metric actually computes (`token_efficiency` is the min-words met rate — the fraction of successful turns meeting their query's min_response_words, not a useful/total words ratio; `citation_accuracy`'s denominator is all successful turns and any citation string counts); MODEL_CARD's target is filed as `BenchmarkResult.AVG_WORDS_TARGET = 30.0`, judged by `passes_avg_words_target()` and printed in the summary beside the other two targets (the empty-store baseline files it unmet, honestly). The field name `token_efficiency` is kept (the phase-6 tests and the dataclass API pin it) and is filed in the harness's `METRIC_DEFINITIONS` under its canonical name `min_words_met_rate` with the legacy name named |
 | D-BENCH-3 | Persona scorer: the `weights` argument is built into a dict and never read — callers are silently ignored; the docstring formula is not the implementation (skald bonus undocumented) (TF-010) | TF-122 (persona consistency suite) | VII | **FIXED by TF-122**: `weights` is wired into the per-turn scoring in `benchmarks/persona_consistency.py` — each component is scaled by `weight / DEFAULT_WEIGHTS` (generic 1.0 / norse 1.0 / citation 0.5 / skald 0.5, the dict the scorer always built), so a non-default weight demonstrably moves the score (the TF-121 fixture at {generic: 2.0} scores 0.6667, at {norse: 3.0} 0.7333, at {generic: 0.0} 1.0) while the defaults reproduce the historical numbers EXACTLY — the TF-121 pinned baseline `persona_consistency_synthetic_v1` still measures 0.7166666666666667 and `baseline_problems()` stays clean (preserved, never re-pinned). The module docstring now states the computation as it actually is (per-turn penalty/bonuses with caps, weighted, clamped, then the mean). The public API (score signature, result fields) is unchanged |
 | D-BENCH-4 | The "100+ turns" persona claim exists in 3 docs with no fixture or recorded run anywhere; an empty response list scores a vacuous 1.0 PASS (TF-010) | TF-122 + TF-136 (public-claims audit strikes or proves the claim) | VII | OPEN — **narrowed by TF-122**: both filed defects are remedied in substance — `score([])` now returns 0.0 and does not pass (REVIEW), matching `score_persona_turns`' filed shape (the one existing test that pinned the vacuous 1.0 — phase-6's `test_empty_input_returns_perfect_score` — was updated in the open by TF-122 with the reason stated; TF-122's tests pin 0.0), and the missing run now exists: TF-122's persona suite (`benchmarks/persona_suite.py`) files a scripted corpus of 108 scored turns (36 identity + 36 voice + 36 values-under-pressure) with a pinned recorded baseline in the harness (`persona_suite_synthetic_v1`: identity 0.8333 / voice 0.8694 / values 0.8333 / overall 0.8454, PASS). What stands is exactly the share TF-010 filed for TF-136: BUILD_PLAN_v1.md, MODEL_CARD.md and TASK_PHASE6_RELEASE.md still word the claim without pointing at the suite — the public-claims audit strikes or re-points that wording |

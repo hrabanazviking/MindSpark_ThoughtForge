@@ -394,10 +394,10 @@ class TestHarnessRegistration:
         for metric in ("coherence_score", "steering_score",
                        "closure_score", "overall_score", "total_cases"):
             assert ("presence_suite", metric) in defined
-        assert len(BENCHMARKS) == 15  # + honesty_panel (TF-126) + quant_panel (TF-127), in the open
-        assert len(FIXTURES) == 8  # + honesty_panel_corpus (TF-126) + quant_panel_corpus (TF-127), in the open
-        assert len(BASELINES) == 8  # + honesty_panel_synthetic_v1 (TF-126) + quant_panel_synthetic_v1 (TF-127), in the open
-        assert len(METRIC_DEFINITIONS) == 70  # + 13 honesty_panel metrics (TF-126) + 16 quant_panel metrics (TF-127), in the open
+        assert len(BENCHMARKS) == 16  # + honesty_panel (TF-126) + quant_panel (TF-127) + profile_panel (TF-128), in the open
+        assert len(FIXTURES) == 9  # + honesty_panel_corpus (TF-126) + quant_panel_corpus (TF-127) + profile_panel_corpus (TF-128), in the open
+        assert len(BASELINES) == 9  # + honesty_panel_synthetic_v1 (TF-126) + quant_panel_synthetic_v1 (TF-127) + profile_panel_synthetic_v1 (TF-128), in the open
+        assert len(METRIC_DEFINITIONS) == 83  # + 13 honesty_panel metrics (TF-126) + 16 quant_panel metrics (TF-127) + 13 profile_panel metrics (TF-128), in the open
 
     def test_will_gap_rule_now_files_tf125_done(self) -> None:
         rule_ids = {r["id"] for r in HARNESS_RULES}
