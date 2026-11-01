@@ -241,6 +241,7 @@ ORCHESTRATION: dict[str, Any] = {
              "the subset stage is not a step of `all` at all — it runs only when invoked directly",
              "per-source commands exist beside `all` for wikidata / conceptnet / geonames / dbpedia / reference / embeddings"),
     "dry_run": "TF-112 (etl/ingestion_dry_run.py): a single-source scratch runner beside `all`, not a step of it — one real builder test-ingested into a scratch store (never the target, proven untouched by hash + counts), the TF-106 registry consulted first, and a full report (stats, store counts, TF-108 gate ledger, TF-109 merge ledger + overlaps, TF-111 embeddings when an encoder is injected); `all`'s filed shape above stands unchanged",
+    "canon": "TF-113 (etl/canon_ingestion.py): the owner's own materials ingested beside `all`, not a step of it — the real ReferenceDataETL into an explicitly affirmed private store only (never inside the canon directory), the canon source proven untouched by a TF-058 metadata-only inventory before/after, a content-hashed provenance manifest beside the store, skips and duplicates named in the report, TF-111 embeddings when an encoder is injected; `all`'s filed shape above stands unchanged",
 }
 
 ETL_RULES: tuple[dict[str, Any], ...] = (
