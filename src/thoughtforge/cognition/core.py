@@ -1876,6 +1876,13 @@ class ThoughtForgeCore:
             # (None when no persona is loaded — the guard is
             # inert and every leg is as before).
             persona_expectation=self._persona_expectation,
+            # TF-098: the selected profile's id, so salvage
+            # itself enforces that profile's refine-pass cap
+            # at the engine-call site (the max_passes above
+            # is already the resolved cap, so the effective
+            # count through the core is unchanged; None when
+            # no profile is selected, as before).
+            profile_id=self._conversation_config.profile_id,
         )
 
         # Run EnforcementGate — TF-049: with the bundle's

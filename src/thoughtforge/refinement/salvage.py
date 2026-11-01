@@ -56,6 +56,17 @@ from thoughtforge.refinement.rescue_provenance import (
     RESCUE_RECORD_FORMAT,
 )
 
+# TF-098 (D-COST-1): when the caller names the
+# profile in force, the refine-pass count is
+# resolved against that profile's own cap before
+# any engine call — salvage enforces the cap
+# itself, not only through the core's resolved
+# max_passes. The discipline is specified in
+# refinement/cost_discipline.py.
+from thoughtforge.refinement.cost_discipline import (
+    resolve_refine_budget,
+)
+
 if TYPE_CHECKING:
     from thoughtforge.cognition.prompt_builder import PromptBuilder
     from thoughtforge.knowledge.models import (
@@ -138,6 +149,7 @@ class FragmentSalvage:
         max_passes: int = _MAX_REFINE_PASSES,
         generation_seed: int | None = None,
         persona_expectation: Any | None = None,
+        profile_id: str | None = None,
     ) -> SalvageResult:
         """
         Score candidates and attempt fragment-based refinement.
@@ -160,6 +172,15 @@ class FragmentSalvage:
                 pass introducing a new avoid violation is never
                 adopted. None (the default) = every leg
                 byte-identical to before TF-096.
+            profile_id:     TF-098 — the hardware profile in
+                force, when the caller names one. Given, the
+                effective pass count is min(max_passes, the
+                profile's own generation.max_refinement_passes)
+                resolved through refinement/cost_discipline
+                before any engine call (pi_zero's 0 = no call
+                at all); an unknown profile raises ValueError.
+                None (the default) = no cap applied, every leg
+                byte-identical to before TF-098.
 
         Returns:
             SalvageResult with best text, citations, confidence.
@@ -242,6 +263,17 @@ class FragmentSalvage:
         fragments = self._extract_fragments(scored, retrieved_qids)
         logger.debug("FragmentSalvage: %d fragments kept (threshold=%.2f)", len(fragments), _MIN_FRAGMENT_SCORE)
 
+        # TF-098 (D-COST-1): with a profile named, the
+        # effective pass count is the profile-capped
+        # resolution of the caller's request, settled
+        # before any engine call is made. No profile
+        # named: max_passes stands exactly as given.
+        effective_max_passes = max_passes
+        if profile_id is not None:
+            effective_max_passes = resolve_refine_budget(
+                max_passes, profile_id=profile_id,
+            ).effective_passes
+
         # Step 3: Attempt refine passes if engine available
         pass_records: list[dict[str, Any]] = []
         refine_attempted = (
@@ -257,7 +289,7 @@ class FragmentSalvage:
                 prompt_builder=prompt_builder,
                 sketch=sketch,
                 scaffold=scaffold,
-                max_passes=max_passes,
+                max_passes=effective_max_passes,
                 generation_seed=generation_seed,
                 persona_expectation=persona_expectation,
             )
