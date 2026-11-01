@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 128 entries — 34 OPEN, 1 OPEN-ENVIRONMENT, 90 FIXED
+**Totals: 129 entries — 34 OPEN, 1 OPEN-ENVIRONMENT, 91 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -42,11 +42,11 @@ measuring sense; D-BENCH-11 by TF-125 in Part VII —
 measuring sense; D-BENCH-12 by TF-126 in Part VII —
 measuring sense; D-BENCH-13 by TF-127 in Part VII —
 measuring sense; D-BENCH-1 by TF-128 in Part VII —
-measuring sense), 3
+measuring sense; D-BENCH-14 by TF-129 in Part VII), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
 Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 36 ·
-Part VII 12 · Part VIII 1 · Part IX 2 · Part X 10.
+Part VII 13 · Part VIII 1 · Part IX 2 · Part X 10.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
 nothing found stays unnumbered. Entries D-EMB-1 and D-EMB-2 were
@@ -999,6 +999,79 @@ Totals after TF-128: 128 entries — 34 OPEN,
 1 OPEN-ENVIRONMENT, 90 FIXED, 3
 CLOSED-BY-VERDICT.
 
+TF-129 added one entry in Part VII and fixed it
+in the same slice — D-BENCH-14 was found by that
+slice's live probes: the harness's pinned
+baselines existed and `baseline_problems()`
+named any metric that moved beyond its filed
+tolerance, but no gate consumed them — no
+verdict object or PASS / FAIL semantics a slice
+gate could consume existed, no move was ever
+classified as a regression, an improvement or
+a count change, and the tolerances were one
+uniform 1e-9 asserted at pinning time, never
+derived from measured baseline noise (repeated
+re-measurement spread). The gap stood filed as
+future work in `benchmarks/harness.py`'s own
+filed-limits passages (every TF-122..TF-128
+update paragraph listed TF-129's regression
+gates as standing) and was assigned to TF-129
+by the roadmap without ever being numbered
+here — the D-BENCH-9 / D-BENCH-10 / D-BENCH-11
+/ D-BENCH-12 / D-BENCH-13 pattern. It is fixed
+by TF-129: `benchmarks/regression_gate.py`
+files the gate as data — NOISE_ROWS (every
+gated baseline re-measured 5 times in one
+process through the harness's own measurers;
+every spread measured 0.0 on this tree, the
+dict metric never changed — TF-036's
+determinism, measured), TOLERANCES derived
+from that noise by the filed rule (per float
+metric max(measured spread, the 1e-9 floor
+TF-121 filed); count and dict metrics exact,
+re-derived live by the checker), classified
+delta rows (within tolerance / regression /
+improvement / count change / unmeasurable,
+from the filed direction table), a verdict
+that is PASS only on the full nine-baseline
+selection within tolerance (any
+beyond-tolerance move FAILs, improvements
+included; partial / empty selections REVIEW),
+and 7 filed GATE_PROBES proving the gate can
+fail against its pure evaluator on synthetic
+perturbations — registered in
+`benchmarks/harness.py` in the open with
+pinned baseline `regression_gate_synthetic_v1`
+(measured live twice identical; the estate now
+files 17 benchmarks / 10 fixtures / 10
+baselines / 89 metric definitions, every
+earlier baseline preserved exactly). The
+measured headline: the live gate PASSes on
+this tree — 9 baselines gated, 83 metrics
+compared, 0 failures, all 7 probes behaving as
+filed. Stated limits: the gate judges the
+pinned fixture baselines only — no live model
+is gated (TF-173); noise was measured in one
+process on this VM (cross-process /
+cross-machine noise is TF-135's share, not
+claimed); the gate is a checker a slice runs
+in-house — wiring it into any external CI is
+NOT done and NOT claimed (manual-only
+workflows); and generation-time enforcement
+blocking is refused openly — D-BENCH-9's note
+left that share for the Part V / TF-129 line
+to take or refuse, and TF-129 refuses it:
+citation-truth blocking at generation time is
+not this slice. Counting note, in TF-128's
+manner: the header-vs-row mismatches are
+pre-existing, preserved in shape (the
+primary-owner part counts now sum 127 against
+129, D-BENCH-14's owner part VII counted), and
+noted rather than silently repaired.
+Totals after TF-129: 129 entries — 34 OPEN,
+1 OPEN-ENVIRONMENT, 91 FIXED, 3
+CLOSED-BY-VERDICT.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -1072,6 +1145,7 @@ CLOSED-BY-VERDICT.
 | D-BENCH-11 | Presence and will follow-through scored by nothing in the benchmarks estate: TF-029's steering line existed and the core injected it into every later turn's scaffold, but no scorer ever judged a conversation's answers against the ledger — whether a standing goal actually steered, was dropped or contradicted, or kept steering after it closed was asserted by design and measured nowhere; and long-conversation coherence stood as TF-028's Part II fixture, its Part VII consumption assigned to TF-125 in TF-028's own doc. TF-121's harness filed the will gap as a rule (`the_will_axis_has_no_scorer_yet`, TF-125 its owner) without the gap ever being numbered here (probed live by TF-125: `benchmarks/` held no presence/coherence/will scorer; TF-028's scorer re-measured coherent 1.000 / PASS and onset-15 drift 0.700 / REVIEW; TF-063's 100-turn proof measures the store channel, not presence or will) (found by TF-125) | TF-125 | VII | **FIXED by TF-125** (in the measuring sense the roadmap assigned): `benchmarks/presence_suite.py` files the presence suite as data (36 scripted synthetic sagas — COHERENCE 12 over TF-028's filed script / STEERING 12 / CLOSURE 12 over TF-029's ledger — including the filed failing shapes: coherence breaks at onsets 15 and 16 and in a truncated drifting saga, a goal dropped, a goal contradicted, and abandoned / completed / superseded goals still steered) scored by TF-028's real `score_conversation` (a saga holds at whole-saga mean ≥ TF-028's PASS_LATE_MIN 0.80) and TF-029's real `GoalLedger` replayed over the filed user turns (the checker also runs TF-028's fixture engine and TF-029's `inject_will` live) — coherence 0.75, steering 0.8333, closure 0.75, overall 0.7778, PASS, empty suite 0.0 / REVIEW — registered in `benchmarks/harness.py` in the open with pinned baseline `presence_suite_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned) and the harness's will-gap rule discharged (`the_will_axis_is_scored_by_tf125`). Filed limits: the coherence hold is the whole-saga mean — TF-028's stricter verdict (late window + drift + zero contradictions) is carried per saga and disagrees on six filed sagas, named in the suite doc; the sagas' answers are scripted, so a live model's presence and follow-through are NOT PROVEN (TF-126) |
 | D-BENCH-12 | The suites never run across model sizes: TF-122..TF-125 each built one suite with one pinned baseline over its filed corpus — measured once, at no model size — and each filed the same limit (a live model's behaviour NOT PROVEN, the across-sizes run assigned to TF-126) without the gap ever being numbered here; no per-size row existed anywhere in the estate, so where the forge helps most was measured by nothing (probed live by TF-126: `benchmarks/` held exactly the four suite modules + harness, all checkers clean, the four baselines re-measured exactly — persona 0.8454, memory 0.8056, depth OFF 0.4722 / ON 0.8056, presence 0.7778 — and no module, panel or row ran any suite at more than one size; every suite runner accepts an explicit corpus, probed) (found by TF-126) | TF-126 | VII | **FIXED by TF-126** (in the measuring sense the roadmap assigned): `benchmarks/honesty_panel.py` files the small-model honesty panel as data (MODEL_TIERS 4 anchored live to ModelBrowser.CURATED_MODELS filenames — Qwen2.5-14B / Llama-3.1-8B / Llama-3.2-3B / TinyLlama-1.1B, params from params_from_name, the tiny tier's 1.1 from its filename's own token since that reader returns None for it; TRANSFORMS 4 filed degradation transforms — citation_drop, terse_first_sentence, generic_closer, fact_swap — plus the filed coherence drift shift; the per-suite forge repairs from real machinery: memory's TF-048 marker re-attachment via citation_for_record (citation axes only), persona's generic strip over GENERIC_PHRASES, presence's will repair via a real GoalLedger replay, depth's native scaffold road, coherence filed with NO repair) scored by the four suites' real run_*_suite runners — 16 cells published as PANEL_ROWS literal data recomputed live by `honesty_panel_problems()` (TF-067's CURVE precedent), reference tier reproducing all four pinned baselines EXACTLY, PASS, empty panel 0.0 / REVIEW — registered in `benchmarks/harness.py` in the open with pinned baseline `honesty_panel_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned). The measured finding, filed whatever it was: the forge helps most at the MID tier overall (mean delta +0.2400; small +0.1289, reference +0.1150, tiny +0.0591), per suite persona most at tiny (+0.1531), memory most at small (+0.6111), depth and presence most at mid, and depth's small-tier delta is NEGATIVE (-0.1944 — the terse degradation truncates the scaffold's numbered working, so ON falls below OFF), filed by name. Filed limit: the tiers are filed degradation profiles over scripted synthetic corpora, NOT live model runs — live per-size behaviour is NOT PROVEN (no GGUF in the tree, no llama_cpp on this VM, TF-078); TF-173 owns the real-hardware road |
 | D-BENCH-13 | Quant-vs-quality across levels measured only as TF-067's single overall curve in `src/`: TF-067 filed one curve (`CURVE` — iq2_xs 0.0 / q2_k 0.4375 / q4_k_m 0.8125 / q5_k_m 0.7083 / q8_0 1.0 / fp16 1.0, re-measured clean live by TF-127) and assigned the Part VII panel to TF-127 in its own doc, but no panel had ever consumed its runner, no per-kind breakdown existed (the prompts' kinds — fact 5 / reasoning 2 / instruction 1 — were filed and its runner scored per prompt, and nothing aggregated either), and no harness baseline pinned the curve — TF-067 stood in the harness as a bound neighbour with the consumption unbuilt (found by TF-127) | TF-127 | VII | **FIXED by TF-127** (in the measuring sense the roadmap assigned): `benchmarks/quant_panel.py` files the quant-vs-quality panel as data, consuming TF-067 mechanically (its own `run_quant_panel` over its own `fixture_generate` / `QUANT_LEVELS` / `QUANT_PROMPTS`; no corpus, scorer or curve copied) — PANEL_ROWS (TF-067's CURVE in row form) + KIND_ROWS 18 (per level x kind: mean, loss vs that kind's own fp16 mean, perfect, contradictions, all from the runner's per-prompt scores) + FINDING, published as literal data recomputed live by `quant_panel_problems()`, PASS only on all 48 cells measured with the overall rows reproducing CURVE exactly (rounded to 4 as TF-067 files), empty panel 0.0 / REVIEW — registered in `benchmarks/harness.py` in the open with pinned baseline `quant_panel_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned). The measured finding, filed whatever it was: reasoning carries the largest per-kind loss at both mid levels (0.5 at q4_k_m and q5_k_m, against fact 0.1 / 0.2 and instruction 0.0 / 0.3333) and plateaus at 0.5 from q2_k through q5_k_m, recovering only at q8_0; instruction collapses to 0.0 at q2_k (its single prompt contradicted) while fact and reasoning hold 0.5; the non-monotone q4_k_m > q5_k_m step is carried, never smoothed. Filed limits: the panel measures TF-067's synthetic fixture corpus only — live quant-vs-quality of real models is NOT PROVEN (no GGUF in the tree, no llama_cpp on this VM, TF-078), so TF-068's live re-rank / q2_k calibration triggers (D-PROF-5's line) stand open on TF-173's road, discharged by nothing here; the per-kind counts are small and uneven (fact 5 / reasoning 2 / instruction 1) and 8 prompts cannot rank neighbouring levels (TF-067's own filing) |
+| D-BENCH-14 | Pinned baselines existed and `baseline_problems()` named moves, but no gate consumed them: TF-121 pinned the estate's baselines with one uniform tolerance (1e-9, asserted at pinning time, never derived from measured baseline noise) and a checker that *names* any metric moved beyond it — but no verdict object or PASS / FAIL semantics a slice gate could consume existed anywhere, no move was ever classified as a regression, an improvement or a count change, and no slice was ever failed by a moved baseline; the gap stood filed as future work in `benchmarks/harness.py`'s own filed-limits passages (every TF-122..TF-128 update paragraph listed "TF-129's regression gates" as standing — seven places, grepped by TF-129) and was assigned to TF-129 by the roadmap without ever being numbered here — the D-BENCH-9..13 pattern (found by TF-129; the number verified unused anywhere in benchmarks / docs / tests / src before filing) | TF-129 | VII | **FIXED by TF-129**: `benchmarks/regression_gate.py` files the regression gate as data — NOISE_ROWS (every gated baseline re-measured 5 times in one process through the harness's own measurers, ~1.6 s warm per full pass on this VM; every per-metric spread measured 0.0 and the dict metric `quality_tiers` never changed — TF-036's determinism, measured rather than assumed — filed per baseline with any nonzero spread named), TOLERANCES derived from that noise by the filed rule (per float metric max(measured spread, TF-121's 1e-9 filed floor) — noise can only widen a tolerance to what was observed, never to an invented number; integer / count metrics and the dict metric exact), classified delta rows from the filed direction table (score-like higher-is-better, `*_loss` lower-is-better, count / total / hit-count metrics + the descriptive `avg_response_words` + the dict metric file count changes, unre-measurable files unmeasurable), and a verdict that is PASS only on the full nine-baseline selection with every metric within tolerance — any beyond-tolerance move FAILs, improvements included (a moved baseline is re-pinned deliberately by a slice, never passed silently; `baseline_problems()`' precedent), a partial selection files REVIEW however it scores and an empty selection 0 baselines / REVIEW — with 7 filed GATE_PROBES run against the pure `evaluate_gate()` on synthetic perturbations of the pins (score −0.1 FAIL regression; score +0.1 FAIL improvement; count +1 FAIL count_change; loss −0.1 FAIL improvement; dict changed FAIL count_change; +5e-10 PASS-shaped within tolerance; a dropped baseline FAIL unmeasurable; real baselines never perturbed) — registered in `benchmarks/harness.py` in the open with pinned baseline `regression_gate_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned): the live gate PASSes on this tree, 9 baselines gated / 83 metrics compared / 0 failures. Filed limits: the gate judges the harness's pinned fixture baselines only — no live model is gated, live behaviour NOT PROVEN (TF-173); noise was measured in one process on this VM (cross-process / cross-machine noise is TF-135's flake-discipline share, not claimed); the gate is a checker a slice runs in-house — wiring it into any external CI is NOT done and NOT claimed (the house runs manual-only workflows); and generation-time enforcement blocking is REFUSED openly — the share D-BENCH-9's note left for the Part V / TF-129 line to take or refuse: citation-truth blocking at generation time is not this slice, and the gate sits in no generation path |
 | D-DEAD-1 | `utils/validators.py`: 5 of its 6 public functions are never called anywhere (`sanitise_system_prompt`, `validate_config`, `validate_model_path`, `validate_api_key`, `validate_jsonl_line`) — a validation layer that guards nothing (TF-011) | Wire-or-retire verdict per function: TF-032 (config surface) / TF-094 (policy configuration) | II | OPEN — **TF-032's share ruled**: `validate_config` is NOT wired into the cognition config surface — it requires the user_config `backend` key (it validates a backend dict, the wrong shape for a cognition config; the surface validates its own selections itself). Its wire-or-retire verdict, and the other four functions', belong to TF-094 / TF-065 — **TF-094's share ruled**: `validate_config` is NOT wired into the policy configuration surface either — it validates a backend dict, the wrong shape for a strictness level; that surface validates its own selections itself. The remaining functions are not policy configuration and their verdicts stand with TF-065 / the ingestion line; entry stays OPEN |
 | D-DEAD-2 | Scalar `cosine_similarity` (etl/embeddings.py:84) is dead while its batch sibling is live (TF-011) | TF-053 (embedding discipline) | III | **FIXED by TF-053** (retirement): the scalar function is removed from `etl/embeddings.py`; `batch_cosine_similarity` is the live path and its identity case is exercised by TF-053's checker and tests |
 | D-DEAD-3 | `utils/paths.py:get_embeddings_dir` has never been called (TF-011) | TF-053 / TF-110 era | III | **FIXED by TF-053** (wiring): `get_embeddings_dir()` is now called by `etl/embedding_discipline.onnx_artefact_status()` — the embeddings directory is the named ONNX artefact home the per-profile availability report checks |

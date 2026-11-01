@@ -32,7 +32,7 @@ Pinned here:
     refused depth ON road (its 0-pass refinement
     budget; its depth score is its OFF score),
   * the checker clean, the harness registration
-    (16 / 9 / 9 / 83), the new panel baseline
+    (17 / 10 / 10 / 89), the new panel baseline
     re-measured live twice — with every earlier
     pinned baseline preserved exactly,
   * TF-017 compliance: no canon access — risky
@@ -340,10 +340,10 @@ class TestHarnessRegistration:
             assert ("profile_panel",
                     f"{profile}_bench_avg_words") in defined
         assert ("profile_panel", "total_cells") in defined
-        assert len(BENCHMARKS) == 16
-        assert len(FIXTURES) == 9
-        assert len(BASELINES) == 9
-        assert len(METRIC_DEFINITIONS) == 83
+        assert len(BENCHMARKS) == 17  # + regression_gate (TF-129), in the open
+        assert len(FIXTURES) == 10  # + regression_gate_corpus (TF-129), in the open
+        assert len(BASELINES) == 10  # + regression_gate_synthetic_v1 (TF-129), in the open
+        assert len(METRIC_DEFINITIONS) == 89  # + 6 regression_gate metrics (TF-129), in the open
         assert harness.harness_problems() == []
 
 

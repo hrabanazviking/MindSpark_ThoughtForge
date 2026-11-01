@@ -329,10 +329,10 @@ class TestHarnessRegistration:
         for metric in ("present_score", "true_score", "explain_score",
                        "overall_score", "total_cases"):
             assert ("memory_suite", metric) in defined
-        assert len(BENCHMARKS) == 16  # + depth_suite (TF-124) + presence_suite (TF-125) + honesty_panel (TF-126) + quant_panel (TF-127) + profile_panel (TF-128), in the open
-        assert len(FIXTURES) == 9  # + depth_suite_corpus (TF-124) + presence_suite_corpus (TF-125) + honesty_panel_corpus (TF-126) + quant_panel_corpus (TF-127) + profile_panel_corpus (TF-128), in the open
-        assert len(BASELINES) == 9  # + depth_suite_synthetic_v1 (TF-124) + presence_suite_synthetic_v1 (TF-125) + honesty_panel_synthetic_v1 (TF-126) + quant_panel_synthetic_v1 (TF-127) + profile_panel_synthetic_v1 (TF-128), in the open
-        assert len(METRIC_DEFINITIONS) == 83  # + 10 depth_suite metrics (TF-124) + 5 presence_suite metrics (TF-125) + 13 honesty_panel metrics (TF-126) + 16 quant_panel metrics (TF-127) + 13 profile_panel metrics (TF-128), in the open
+        assert len(BENCHMARKS) == 17  # + depth_suite (TF-124) + presence_suite (TF-125) + honesty_panel (TF-126) + quant_panel (TF-127) + profile_panel (TF-128) + regression_gate (TF-129), in the open
+        assert len(FIXTURES) == 10  # + depth_suite_corpus (TF-124) + presence_suite_corpus (TF-125) + honesty_panel_corpus (TF-126) + quant_panel_corpus (TF-127) + profile_panel_corpus (TF-128) + regression_gate_corpus (TF-129), in the open
+        assert len(BASELINES) == 10  # + depth_suite_synthetic_v1 (TF-124) + presence_suite_synthetic_v1 (TF-125) + honesty_panel_synthetic_v1 (TF-126) + quant_panel_synthetic_v1 (TF-127) + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129), in the open
+        assert len(METRIC_DEFINITIONS) == 89  # + 10 depth_suite metrics (TF-124) + 5 presence_suite metrics (TF-125) + 13 honesty_panel metrics (TF-126) + 16 quant_panel metrics (TF-127) + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129), in the open
 
     def test_harness_checker_stays_clean(self) -> None:
         assert harness.harness_problems() == []

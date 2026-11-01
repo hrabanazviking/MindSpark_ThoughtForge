@@ -311,6 +311,52 @@ the applied core through its ``core=``
 parameter). All earlier pinned baselines stand
 exactly as filed (never re-pinned).
 
+**TF-129 update, in the open:** the regression
+gates are built
+(``benchmarks/regression_gate.py``) and
+registered below (``regression_gate``) with
+their own pinned baseline
+(``regression_gate_synthetic_v1``, measured
+live twice, identical): every gated baseline
+re-measured NOISE_REPEATS (5) times in one
+process through this harness's own measurers —
+every spread measured 0.0 on this tree, the
+estate's determinism (TF-036) measured rather
+than assumed — and the gate tolerances derived
+from that noise by the filed rule (per float
+metric, max(measured spread, this harness's
+1e-9 filed floor); count and dict metrics
+exact). The gate evaluates per-baseline /
+per-metric deltas with classifications
+(within tolerance / regression / improvement /
+count change / unmeasurable) and files PASS
+only on the full nine-baseline selection with
+every metric within tolerance — any
+beyond-tolerance move fails, improvements
+included, and a partial or empty selection
+files REVIEW. Seven filed probes prove the
+gate can fail against its pure evaluator with
+synthetic perturbations; real baselines are
+never perturbed. TF-129's probes found and
+filed **D-BENCH-14** (pinned baselines existed
+and baseline_problems named moves, but no gate
+consumed them — nothing classified deltas,
+nothing could fail a slice, and tolerances
+were uniform and asserted rather than
+noise-derived; the gap stood filed as future
+work in this module's own limits passages and
+was assigned to TF-129 by the roadmap without
+ever being numbered — the D-BENCH-9..13
+pattern) and FIXED it. The gate judges these
+pinned fixture baselines only — no live model
+is gated (TF-173); it is a checker a slice
+runs in-house, not a CI wiring, and it wires
+no generation-time enforcement blocking
+(D-BENCH-9's generation-time share is refused
+openly in TF-129's doc). All earlier pinned
+baselines stand exactly as filed (never
+re-pinned).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -336,38 +382,37 @@ Filed limits, stated plainly:
   * No suite in Part VII existed at TF-121: TF-122..
     TF-125 build them. **TF-122 update:** the first
     suite (persona consistency) now exists and is
-    registered below; TF-123..TF-125's suites, TF-129's
-    regression gates, TF-134's baseline book and
+    registered below; TF-123..TF-125's suites, TF-134's baseline book and
     TF-137's one-command tool still stand as filed.
     **TF-123 update:** the second suite (memory
     fidelity) now exists and is registered below;
-    TF-124..TF-125's suites, TF-129's regression
-    gates, TF-134's baseline book and TF-137's
+    TF-124..TF-125's suites, TF-134's baseline book and TF-137's
     one-command tool still stand as filed.
     **TF-124 update:** the third suite (depth) now
     exists and is registered below; TF-125's suite,
-    TF-129's regression gates, TF-134's baseline
+    TF-134's baseline
     book and TF-137's one-command tool still stand
     as filed.
     **TF-125 update:** the fourth suite (presence)
-    now exists and is registered below; TF-129's
-    regression gates, TF-134's baseline book and
+    now exists and is registered below; TF-134's baseline book and
     TF-137's one-command tool still stand as filed.
     **TF-126 update:** the honesty panel over the
     four suites now exists and is registered below;
-    TF-129's regression gates, TF-134's baseline
+    TF-134's baseline
     book and TF-137's one-command tool still stand
     as filed.
     **TF-127 update:** the quant-vs-quality panel
     over TF-067's fixture estate now exists and is
-    registered below; TF-129's regression gates,
-    TF-134's baseline book and TF-137's one-command
+    registered below; TF-134's baseline book and TF-137's one-command
     tool still stand as filed.
     **TF-128 update:** the profile panels over
     the six shipped profiles now exist and are
-    registered below; TF-129's regression gates,
-    TF-134's baseline book and TF-137's one-command
+    registered below; TF-134's baseline book and TF-137's one-command
     tool still stand as filed.
+    **TF-129 update:** the regression gates over
+    the nine pinned baselines now exist and are
+    registered below; TF-134's baseline book and
+    TF-137's one-command tool still stand as filed.
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -512,6 +557,19 @@ FIXTURES: tuple[dict[str, Any], ...] = (
                 "budget), bound in place — the "
                 "corpora stay the suites', never "
                 "copied"},
+    {"id": "regression_gate_corpus", "benchmark": "regression_gate",
+     "bind_module": "benchmarks.regression_gate",
+     "bind_attribute": "NOISE_ROWS",
+     "synthetic": True,
+     "subject": "TF-129's filed noise rows over "
+                "the 9 pinned baselines: every "
+                "gated baseline re-measured 5 "
+                "times in one process through the "
+                "harness's own measurers, spreads "
+                "filed per metric (all 0.0 on this "
+                "tree), bound in place — the "
+                "baselines stay the harness's, "
+                "never copied"},
 )
 
 
@@ -680,6 +738,39 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "scorers, filed plainly). Live "
               "per-profile hardware behaviour is NOT "
               "PROVEN (TF-082 / TF-173)"},
+    {"id": "regression_gate", "kind": "gate",
+     "status": "built_gate",
+     "bind_module": "benchmarks.regression_gate",
+     "bind_attribute": "run_regression_gate",
+     "fixture": "regression_gate_corpus",
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-129 (regression gates — itself)",
+     "doc": "docs/architecture/REGRESSION_GATES.md",
+     "docket": ("D-BENCH-14 FIXED by TF-129",),
+     "notes": "TF-129's gate over the nine pinned "
+              "baselines: their noise measured by "
+              "re-measuring each 5 times in one "
+              "process through this harness's own "
+              "measurers (every spread 0.0 on this "
+              "tree), tolerances derived from that "
+              "noise over the filed 1e-9 floor "
+              "(counts and the dict metric exact), "
+              "and live re-measurement evaluated "
+              "per metric with classifications "
+              "(within tolerance / regression / "
+              "improvement / count change / "
+              "unmeasurable) — PASS only on the "
+              "full selection within tolerance, "
+              "any beyond-tolerance move FAILs "
+              "(improvements included: a moved "
+              "baseline is re-pinned deliberately, "
+              "never passed silently), partial / "
+              "empty selections REVIEW. Seven filed "
+              "probes prove it can fail on "
+              "synthetic perturbations. It gates "
+              "fixture baselines only — no live "
+              "model (TF-173), no CI wiring, no "
+              "generation-time blocking"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -1210,6 +1301,52 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "x the benchmark + 4 suites, 30 in the "
                  "filed panel; 1 of them refused by "
                  "budget) (TF-128)"},
+    {"id": "baselines_gated", "benchmark": "regression_gate",
+     "legacy_name": "",
+     "computes": "baselines the regression gate "
+                 "re-measures and evaluates on a full "
+                 "run: the nine TF-121..TF-128 pinned "
+                 "baselines (the gate's own baseline "
+                 "is not gated) (TF-129)"},
+    {"id": "metrics_compared", "benchmark": "regression_gate",
+     "legacy_name": "",
+     "computes": "per-metric delta rows the gate "
+                 "evaluates on a full run: every "
+                 "pinned metric of every gated "
+                 "baseline, counted live from the "
+                 "pins (83 on this tree) (TF-129)"},
+    {"id": "max_noise_spread", "benchmark": "regression_gate",
+     "legacy_name": "",
+     "computes": "the widest per-metric spread in "
+                 "the gate's filed NOISE_ROWS: each "
+                 "gated baseline re-measured 5 times "
+                 "in one process through the harness "
+                 "measurers, max-min per metric (0.0 "
+                 "on this tree — TF-036's determinism, "
+                 "measured) (TF-129)"},
+    {"id": "gate_failures", "benchmark": "regression_gate",
+     "legacy_name": "",
+     "computes": "delta rows beyond their derived "
+                 "tolerance (or unmeasurable) on a "
+                 "live full gate run — regressions, "
+                 "improvements and count changes all "
+                 "count; 0 on this tree, so the filed "
+                 "run PASSes (TF-129)"},
+    {"id": "probes_passed", "benchmark": "regression_gate",
+     "legacy_name": "",
+     "computes": "filed GATE_PROBES whose synthetic "
+                 "perturbation of the pins evaluates "
+                 "with its filed outcome + "
+                 "classification against the gate's "
+                 "pure evaluator (TF-129)"},
+    {"id": "probes_total", "benchmark": "regression_gate",
+     "legacy_name": "",
+     "computes": "filed GATE_PROBES in total: a "
+                 "dropped score, a raised score, a "
+                 "changed count, a dropped loss, a "
+                 "changed dict metric, an "
+                 "inside-tolerance move and a missing "
+                 "baseline (7 on this tree) (TF-129)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -1593,6 +1730,52 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "machinery with profiles applied — live "
               "per-profile hardware behaviour is NOT "
               "PROVEN (TF-082 / TF-173)"},
+    {"id": "regression_gate_synthetic_v1",
+     "benchmark": "regression_gate",
+     "fixture": "regression_gate_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-129's "
+                    "gate over the nine pinned "
+                    "baselines, re-measured live "
+                    "through the harness measurers, "
+                    "measured live twice, identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "baselines_gated": 9,
+         "metrics_compared": 83,
+         "max_noise_spread": 0.0,
+         "gate_failures": 0,
+         "probes_passed": 7,
+         "probes_total": 7,
+     },
+     "targets": {
+         "gate_failures": {"target": 0, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the gate's verdict row over the nine "
+              "pinned baselines (83 pinned metrics, "
+              "filed as literal NOISE_ROWS + derived "
+              "TOLERANCES in "
+              "benchmarks/regression_gate.py and "
+              "recomputed live by its checker): the "
+              "noise measurement re-ran every gated "
+              "baseline 5 times in one process and "
+              "every spread measured 0.0, so every "
+              "float tolerance files the 1e-9 floor "
+              "and counts / the dict metric file "
+              "exact; the live full gate run PASSes "
+              "with 0 failures, and all 7 filed "
+              "probes behave against the pure "
+              "evaluator (a dropped score fails as a "
+              "regression, a raised score and a "
+              "dropped loss as improvements, a "
+              "changed count and a changed dict as "
+              "count changes, a 5e-10 move passes, a "
+              "missing baseline fails unmeasurable). "
+              "The filed target is the gate truth: "
+              "zero failures on the filed tree. This "
+              "pins the gate over SYNTHETIC fixture "
+              "baselines — no live model is gated, "
+              "live behaviour NOT PROVEN (TF-173)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -1697,6 +1880,27 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "the persona pass threshold are unmet at banking) — "
              "an unmet target is a measurement, not a failure of "
              "the harness"},
+    {"id": "regression_gates_fail_on_moved_baselines",
+     "rule": "TF-129 DONE: the pinned baselines have a "
+             "gate (benchmarks/regression_gate.py, "
+             "D-BENCH-14) — tolerances derived from "
+             "measured baseline noise (5 in-process "
+             "repeats per baseline; max(measured "
+             "spread, the 1e-9 floor) per float "
+             "metric, counts and the dict metric "
+             "exact), deltas classified "
+             "(regression / improvement / count "
+             "change / unmeasurable), and the verdict "
+             "PASS only on the full nine-baseline "
+             "selection within tolerance: any "
+             "beyond-tolerance move fails a slice "
+             "gate, improvements included — a moved "
+             "baseline is re-pinned deliberately by "
+             "a slice, never passed silently. The "
+             "gate is a checker a slice runs "
+             "in-house, not a CI wiring, and it "
+             "gates fixture baselines only (no live "
+             "model, TF-173)"},
 )
 
 
@@ -1847,10 +2051,38 @@ def measure_profile_panel_baseline() -> dict[str, Any]:
     return measured
 
 
+def measure_regression_gate_baseline() -> dict[str, Any]:
+    """Run TF-129's gate over the nine pinned baselines.
+
+    The noise spread files the gate's published
+    NOISE_ROWS summary (recomputed live by the
+    gate's own checker); the gate verdict and the
+    probes are measured live here.
+    """
+    from benchmarks.regression_gate import (
+        NOISE_ROWS,
+        run_gate_probes,
+        run_regression_gate,
+    )
+
+    result = run_regression_gate()
+    probes = run_gate_probes()
+    return {
+        "baselines_gated": result.baselines_gated,
+        "metrics_compared": result.metrics_compared,
+        "max_noise_spread": max(
+            row["max_abs_spread"] for row in NOISE_ROWS),
+        "gate_failures": result.failures,
+        "probes_passed": sum(1 for p in probes if p["passed"]),
+        "probes_total": len(probes),
+    }
+
+
 _MEASURERS = {
     "persona_consistency_synthetic_v1": measure_persona_baseline,
     "profile_benchmark_empty_store_v1": measure_profile_baseline,
     "profile_panel_synthetic_v1": measure_profile_panel_baseline,
+    "regression_gate_synthetic_v1": measure_regression_gate_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -1917,7 +2149,8 @@ def harness_problems() -> list[str]:
                    "latency_is_never_a_pinned_baseline",
                    "metric_names_state_what_they_compute",
                    "an_unknown_profile_is_named_never_run",
-                   "the_will_axis_is_scored_by_tf125"):
+                   "the_will_axis_is_scored_by_tf125",
+                   "regression_gates_fail_on_moved_baselines"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -2119,5 +2352,6 @@ __all__ = [
     "measure_profile_baseline",
     "measure_profile_panel_baseline",
     "measure_quant_panel_baseline",
+    "measure_regression_gate_baseline",
     "validate_profile_id",
 ]

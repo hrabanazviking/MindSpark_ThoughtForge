@@ -365,10 +365,10 @@ class TestHarnessRegistration:
         for kind in PANEL_KINDS:
             assert ("quant_panel", f"{kind}_mean_score") in defined
         assert ("quant_panel", "total_cells") in defined
-        assert len(BENCHMARKS) == 16  # + profile_panel (TF-128), in the open
-        assert len(FIXTURES) == 9  # + profile_panel_corpus (TF-128), in the open
-        assert len(BASELINES) == 9  # + profile_panel_synthetic_v1 (TF-128), in the open
-        assert len(METRIC_DEFINITIONS) == 83  # + 13 profile_panel metrics (TF-128), in the open
+        assert len(BENCHMARKS) == 17  # + profile_panel (TF-128) + regression_gate (TF-129), in the open
+        assert len(FIXTURES) == 10  # + profile_panel_corpus (TF-128) + regression_gate_corpus (TF-129), in the open
+        assert len(BASELINES) == 10  # + profile_panel_synthetic_v1 (TF-128) + regression_gate_synthetic_v1 (TF-129), in the open
+        assert len(METRIC_DEFINITIONS) == 89  # + 13 profile_panel metrics (TF-128) + 6 regression_gate metrics (TF-129), in the open
         assert harness.harness_problems() == []
 
 
