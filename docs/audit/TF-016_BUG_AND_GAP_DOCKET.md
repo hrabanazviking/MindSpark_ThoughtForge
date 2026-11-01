@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 112 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 66 FIXED
+**Totals: 115 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 69 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -29,10 +29,11 @@ D-SUBSET-2, D-SUBSET-3 and D-SUBSET-4 by TF-110 in Part VI;
 D-EMB-3 by TF-111 in Part VI; D-COV-2 by TF-112 in Part VI;
 D-CANON-1 by TF-113 in Part VI;
 D-UPDATE-1, D-UPDATE-2 and D-UPDATE-3 by TF-114 in Part VI;
+D-MET-1, D-MET-2 and D-MET-3 by TF-115 in Part VI;
 D-PROF-1 by TF-056 + TF-069 + TF-110 across Parts III–VI), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 27 ·
+Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 30 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 10.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -519,6 +520,26 @@ by stated rule; TF-109's dedup_merge rule was
 replaced in the open with the lifecycle supersede).
 Totals after TF-114: 112 entries.
 
+Entries D-MET-1, D-MET-2 and D-MET-3 were added by
+TF-115 in Part VI under the same rule — found by
+that slice's live probes (no per-run metrics report
+existed anywhere and every caller discarded the
+gate / merge / update ledgers TF-108, TF-109 and
+TF-114 had each assigned to TF-115; no build's
+outputs carry any elapsed time, so no records/sec
+could be computed after the fact; and an identical
+GeoNames re-run counted `inserted: 1` again while
+the store stayed at 1 row, accepted differing from
+landed with nothing naming the difference) and
+fixed in scope by the same slice (per-run reporting
+as data in etl/ingestion_metrics.py: a measured
+clock around the real build, the gate's refused /
+seen as the refusal rate with filter skips filed
+apart, store snapshots before/after filed as growth
+deltas, accepted-vs-landed on the primary table,
+and per-source aggregation with rates recomputed
+from the sums). Totals after TF-115: 115 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -533,6 +554,9 @@ Totals after TF-114: 112 entries.
 | D-UPDATE-1 | A changed wikidata statement appended beside the old fact: Q1 built with P31 -> Q111 and P17 -> Q900, then re-built with P31 -> Q999 and no P17 claim, held BOTH P31 tuples live (an unflagged contradiction in TF-050's sense) and kept the removed P17 statement — statements only ever grew; TF-107's idempotence covered exact duplicates only (probed live by TF-114) | TF-114 | VI | **FIXED by TF-114**: statements supersede by presented set (etl/update_ingestion.py) — before the wikidata build's final commit, stored statements (source wikidata) for subjects the run presented that the run did not re-present are deleted and recorded in the builder's update_ledger (statement_superseded when another value for the same property was presented, naming it; statement_retired when none was); only presented subjects are judged, multi-valued presented sets stand whole, and a completed-checkpoint return retires nothing |
 | D-UPDATE-2 | Chunks that disappeared from a re-presented reference file stayed stale: a file built with two chunks then edited to one changed chunk kept the vanished second chunk in the store, still searchable through the rebuilt FTS index; a file emptied kept its chunks too (probed live by TF-114) | TF-114 | VI | **FIXED by TF-114**: the reference builder retires, in the same per-file commit, stored chunks of a file it successfully re-reads whose chunk_index the new presentation does not produce — with any reference_embeddings row keyed on them — ledgered chunk_retired in its update_ledger; the build's closing FTS rebuild drops them from search in the same build |
 | D-UPDATE-3 | No lifecycle statement and no update record existed for re-runs: row tables resolved changed facts by TF-109's placeholder default ("the incoming row wins — TF-114 owns replacing this default"), nothing stated what a re-run should do with an unchanged fact, a changed fact, or a fact that disappears, and no ledger named a supersede or retirement as such — measured in the same probes, units absent from a re-run (Q2, a GeoNames place, a DBpedia uri, a deleted reference file's chunks) all survived by accident, not by rule (found by TF-114) | TF-114 | VI | **FIXED by TF-114**: the lifecycle rules are filed as data (UPDATE_RULES, format thoughtforge-update-ingestion/1) in etl/update_ingestion.py — unchanged = duplicate (TF-109 stands), changed within a source = supersede with the stored value ledgered (TF-050's rule in this store's form), disappeared-from-a-presented-unit = retired + ledgered, absent unit = kept (partial inputs are legitimate; whole-unit retirement is an operator's act, TF-045), cross-source rows never updated by a re-run; TF-109's dedup_merge within-table rule was replaced in the open with the lifecycle supersede, TF-107's pipeline rule text and TF-105's map updated with it, and the wikidata + reference builders hold a fresh UpdateLedger per build (TF-115 owns reporting it per run) |
+| D-MET-1 | No per-run ingestion metrics report existed: no module, `forge_memory.py` command or test named ingestion metrics, and every command printed a builder's stats dict and discarded the rest — the TF-108 gate ledger, TF-109 merge ledger and TF-114 update ledger live in memory on the builder and were thrown away by every caller except TF-112's scratch dry-run (which reports gate + merge for one source, but no timing, no refusal rate, no update ledger and no growth); TF-108, TF-109 and TF-114 each filed TF-115 as the owner of per-run reporting (found by TF-115) | TF-115 | VI | **FIXED by TF-115**: `etl/ingestion_metrics.py` files per-run reporting as data (SOURCE_METRIC_SHAPES + METRICS_RULES, format thoughtforge-ingestion-metrics/1) — `measure_ingestion()` runs one real builder into a named store and reports records/sec, the refusal rate and store growth per source, with the gate / merge / update ledgers carried whole as data; `summarise_runs()` aggregates per-run reports per source with rates recomputed from the sums; TF-105's map gained its metrics orchestration entry in the open |
+| D-MET-2 | No build records its own elapsed time: a finished build's stats, gate ledger and merge ledger carry no time / elapsed / seconds field at all (probed live by TF-115 — the key sets of all three listed), and the only rate in the tree was the wikidata builder's checkpoint log line (entities/sec, logged, never returned), so a records/sec figure could not be computed after the fact from a build's outputs (found by TF-115) | TF-115 | VI | **FIXED by TF-115**: the metrics wrapper measures the build call with a caller-supplied clock (`time.perf_counter` by default, a fake clock in tests) — the after snapshot sits outside the timed span — and files records_per_second = presented / elapsed only from a positive measured elapsed; a zero or unmeasured elapsed files the rate as None, never a division dressed as a fact |
+| D-MET-3 | Accepted is not landed, and nothing named the difference: builder stats count records accepted — probed live by TF-115, an identical GeoNames re-run reported `inserted: 1` again while the store stayed at 1 row (only the discarded merge ledger knew the record was a duplicate) — and store growth (rows + bytes actually landed) was derivable only by measuring the store before and after, which no caller did (found by TF-115) | TF-115 | VI | **FIXED by TF-115**: `store_snapshot()` measures a store without creating it (a missing store files exists False / counts None), growth is filed as the after-minus-before delta (per-table row deltas over TF-105's counted tables + byte delta with db/WAL/SHM named apart; negative growth on a TF-114 update run filed as measured), and `accepted_vs_primary_growth` files the primary count minus the primary table's growth per run — the probed identical re-run now reports zero growth with the difference naming the duplicate |
 | D-SUBSET-2 | The subset builder's only sizing rule was an entity count: no byte budget existed anywhere — only pi_zero's profile declares any knowledge size (deployment.knowledge_subset_max_gb 0.5, read by no code), the other five profiles declare nothing, no build's size was ever compared to anything, the builder's docstring claimed output sizes (~50MB / ~80MB / ~200MB) measured nowhere, and the reference-chunk cap floored at max(1000, limit // 10) so a phone_low build limited to 5 entities copied all 50 synthetic chunks (1.24 MB) and reported success (probed live by TF-110) | TF-110 | VI | **FIXED by TF-110**: etl/subset_craft.py files the craft as data (SUBSET_RULES, format thoughtforge-subset-craft/1) — budget_for_profile resolves each profile's byte budget live (declared knowledge_subset_max_gb wins; otherwise derived at 0.25 x declared RAM, budget_source naming the road as a campaign rule), measure_subset reports the built file's own bytes (db + sidecars, per-table counts + dbstat bytes), and build_profile_subset trims by measured overshoot, rebuilding fresh, until the measured size fits or returns success=False naming the smallest build's size; the chunk cap's 1000-row floor is struck in subset.py and the unmeasured docstring sizes with it |
 | D-SUBSET-3 | A subset re-build was not the subset it claimed: the builder connected to an existing output file and INSERT OR IGNOREd into it, so re-building at limit 2 onto a limit-5 output reported 2 entities while the file still held 5 entities and all 50 chunks (probed live by TF-110) | TF-110 | VI | **FIXED by TF-110**: every build starts from no file (output + -wal + -shm removed first) and building over the source DB itself raises ValueError by name; TF-110's tests prove a re-build's file holds exactly the new build's rows, and the craft result's reported counts are checked against the file it produced |
 | D-SUBSET-4 | Subset entity selection ordered by popularity_score DESC alone: rows tied on popularity were members or not by SQLite's unspecified scan order, so the same source could yield different subsets on different builds (code-read finding, TF-110) | TF-110 | VI | **FIXED by TF-110**: selection orders by popularity_score DESC, qid ASC in both the limited and unlimited queries; TF-110's tests pin the tie group (Q9/Q1/Q5 at one score, limit 2 keeps Q1 + Q5) and the static checker turns red if the tie-break leaves the source |
