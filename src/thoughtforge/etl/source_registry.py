@@ -59,12 +59,14 @@ estate:
     licence pass re-verifies it against the filed entry.
 
 Filed limit, stated plainly: the builders do not yet call
-``check_source_use()`` — nothing in ``etl/`` consults this
-registry at build time today, so the quarantine is enforced
+``check_source_use()`` — nothing in the BUILDERS consults
+this registry at build time, so the quarantine is enforced
 at the registry/gate surface, not yet inside a build. That
-wiring is docketed as D-ETL-2 (OPEN, TF-112's dry-run is
-the first consumer that must consult the registry;
-TF-119's new-source recipe must file a source here before
+wiring is docketed as D-ETL-2 (OPEN for TF-119's share;
+TF-112's dry-run — etl/ingestion_dry_run.py, a consumer,
+not a builder — now consults the registry first, as
+filed, and discharges D-ETL-2's TF-112 share; TF-119's
+new-source recipe must file a source here before
 documenting it). No builder's behaviour changes in this
 slice.
 
