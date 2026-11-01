@@ -20,8 +20,11 @@ citation no retrieved record owns (a foreign marker) fails
 too. The result then carries the CitationCheck as
 ``claim_check``. Without ``records`` the check above is the
 whole citation rule, byte-identical to before — the legacy
-any-QID floor is not relaxed in either mode (TF-093 owns
-reconciling the two rules under one policy surface).
+any-QID floor is not relaxed in either mode (TF-093
+reconciled the two rules under one policy surface in
+refinement/policy_surface.py: per-claim law when records
+are supplied, this floor alone in legacy mode — a policy
+of that surface; this gate itself is unchanged).
 """
 
 from __future__ import annotations
