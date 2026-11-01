@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 118 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 72 FIXED
+**Totals: 121 entries — 42 OPEN, 1 OPEN-ENVIRONMENT, 75 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -31,10 +31,11 @@ D-CANON-1 by TF-113 in Part VI;
 D-UPDATE-1, D-UPDATE-2 and D-UPDATE-3 by TF-114 in Part VI;
 D-MET-1, D-MET-2 and D-MET-3 by TF-115 in Part VI;
 D-POISON-1, D-POISON-2 and D-POISON-3 by TF-116 in Part VI;
+D-OFFLINE-1, D-OFFLINE-2 and D-OFFLINE-3 by TF-117 in Part VI;
 D-PROF-1 by TF-056 + TF-069 + TF-110 across Parts III–VI), 3
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict).** Primary-owner parts: Part I 1 ·
-Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 33 ·
+Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 36 ·
 Part VII 7 · Part VIII 1 · Part IX 2 · Part X 10.
 (Entry D-HON-1 was added by TF-031 in Part II — a defect found by
 that slice's own tests, numbered here per this docket's rule that
@@ -562,6 +563,26 @@ exclusions named in screened_out; scan_store names
 poison in a finished store read-only). Totals after
 TF-116: 118 entries.
 
+Entries D-OFFLINE-1, D-OFFLINE-2 and D-OFFLINE-3 were
+added by TF-117 in Part VI under the same rule —
+found by that slice's live probes (no module, test or
+checker had ever run ingestion with the network cut,
+so offline was an assumption from local-file
+signatures; `etl/embeddings._get_model` constructed
+SentenceTransformer with no local_files_only, so an
+uncached model turned an otherwise local build's
+embedding step into a Hugging Face fetch; and no
+filing named which operations are the fetch — source
+downloads existed only as docstring URLs, model
+download only as that hidden side effect) and fixed
+in scope by the same slice (the boundary as data in
+etl/offline_ingestion.py: FETCH_STEPS +
+OFFLINE_STEPS + OFFLINE_RULES, a recording
+NetworkCut under which the whole synthetic pipeline
+plus a TF-116 scan completes with zero attempts, and
+the loader local-files-only in etl/embeddings.py).
+Totals after TF-117: 121 entries.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -582,6 +603,9 @@ TF-116: 118 entries.
 | D-POISON-1 | Nothing screened source CONTENT at ingestion: TF-108's gate judges a record's shape and TF-106 its source's licence, neither reads what the text says — probed live by TF-116, one synthetic adversarial string landed verbatim with `skipped: 0` and a clean schema-gate ledger as a GeoNames place name, a DBpedia label + abstract, a wikidata label / description / aliases (entities + labels tables) and a reference chunk's content (found by TF-116) | TF-116 | VI | **FIXED by TF-116**: `etl/poisoned_source.py` files the gate as data (SOURCE_TEXT_FIELDS + POISON_RULES + POISON_FIXTURES / BENIGN_FIXTURES, format thoughtforge-poisoned-source/1) reusing TF-062's THREAT_CLASSES — every builder screens its landed text after TF-108 and before insertion; a refuse verdict drops the record whole, a quarantine verdict holds it out of the store, both named in the builder's fresh `poison_gate` ledger (position, ref, verdict, classes, findings) and counted in skipped; TF-105's map gained its poison orchestration entry in the open |
 | D-POISON-2 | Landed poison was retrievable poison: the reference chunk of the D-POISON-1 probe was returned by `KnowledgeForge.sql_retrieve` for a query over its own words, riding toward the prompt exactly as TF-062 proved for personal memory — TF-062 had filed this estate as its stated remainder ('the knowledge DB estate is not screened … Part VI owns that boundary') (found by TF-116) | TF-116 | VI | **FIXED by TF-116**: KnowledgeForge's SQL and vector legs screen every result's text through `screen_result_record` and exclude non-pass records — a row planted directly in the store file is stopped at retrieval — and `retrieve()` names every exclusion in its retained report's `screened_out` (record, verdict, classes), with `last_poison_screened_out` carrying a leg's own exclusions |
 | D-POISON-3 | No disposition named poison in a knowledge store: no ledger, scan or quarantine shape existed — a row planted directly in the plain-SQLite store file was invisible to every Part VI ledger, and there was no way to ask a finished store what in it is adversarial (found by TF-116) | TF-116 | VI | **FIXED by TF-116**: the per-build `poison_gate` ledger is the landing disposition, and `scan_store(db_path)` is the finished-store disposition — read-only (a missing store files exists False and is never created), screening every filed text column of the seven knowledge tables and naming flagged rows by table + key with verdict, classes and findings, with per-table and per-verdict counts |
+| D-OFFLINE-1 | Offline ingestion was assumed, never proven: the builders take local file paths, but no module, test or checker had ever run ingestion with the network cut — no socket blocked, no attempt recorded, nothing could answer whether anything reached out (found by TF-117) | TF-117 | VI | **FIXED by TF-117**: `etl/offline_ingestion.py` files `NetworkCut` (socket connect/connect_ex, create_connection, getaddrinfo/gethostbyname and urllib urlopen blocked + recorded, exact restoration) and `run_offline_pipeline()` runs TF-105's whole synthetic pipeline plus a TF-116 scan inside one cut, filing offline True only with zero attempts; the live checker + tests pin that run |
+| D-OFFLINE-2 | The embedding load was an unguarded fetch inside ingestion: `etl/embeddings._get_model` constructed `SentenceTransformer(name)` with no local_files_only and no use of TF-053's cache proof, so on a package-installed but model-uncached machine the embedding step of an otherwise local build silently became a Hugging Face fetch, failing offline with a hub error instead of a named local verdict (found by TF-117) | TF-117 | VI | **FIXED by TF-117**: `_get_model` loads with `local_files_only=True`, falling back to a plain construction only when the constructor rejects that argument (test fakes do); an uncached real model fails locally, model download is filed as a FETCH_STEPS entry, and TF-053's `model_cache_status` is the pre-ingestion cache proof |
+| D-OFFLINE-3 | The fetch boundary was undefined: nothing filed which operations are the fetch and which are ingestion — source downloads existed only as docstring URLs in `etl/sources.py` (no downloader exists in the tree), model download existed only as D-OFFLINE-2's hidden side effect, and package installation was named nowhere as a separate act, so 'except the fetch itself' named an undrawn thing (found by TF-117) | TF-117 | VI | **FIXED by TF-117**: `FETCH_STEPS` (exactly three, all outside ingestion, none performed by ingestion code) + `OFFLINE_STEPS` (every other Part VI operation, builders bound to TF-105's map) file the boundary as data in `etl/offline_ingestion.py`, format thoughtforge-offline-ingestion/1; TF-105's map gained its offline orchestration entry in the open |
 | D-SUBSET-2 | The subset builder's only sizing rule was an entity count: no byte budget existed anywhere — only pi_zero's profile declares any knowledge size (deployment.knowledge_subset_max_gb 0.5, read by no code), the other five profiles declare nothing, no build's size was ever compared to anything, the builder's docstring claimed output sizes (~50MB / ~80MB / ~200MB) measured nowhere, and the reference-chunk cap floored at max(1000, limit // 10) so a phone_low build limited to 5 entities copied all 50 synthetic chunks (1.24 MB) and reported success (probed live by TF-110) | TF-110 | VI | **FIXED by TF-110**: etl/subset_craft.py files the craft as data (SUBSET_RULES, format thoughtforge-subset-craft/1) — budget_for_profile resolves each profile's byte budget live (declared knowledge_subset_max_gb wins; otherwise derived at 0.25 x declared RAM, budget_source naming the road as a campaign rule), measure_subset reports the built file's own bytes (db + sidecars, per-table counts + dbstat bytes), and build_profile_subset trims by measured overshoot, rebuilding fresh, until the measured size fits or returns success=False naming the smallest build's size; the chunk cap's 1000-row floor is struck in subset.py and the unmeasured docstring sizes with it |
 | D-SUBSET-3 | A subset re-build was not the subset it claimed: the builder connected to an existing output file and INSERT OR IGNOREd into it, so re-building at limit 2 onto a limit-5 output reported 2 entities while the file still held 5 entities and all 50 chunks (probed live by TF-110) | TF-110 | VI | **FIXED by TF-110**: every build starts from no file (output + -wal + -shm removed first) and building over the source DB itself raises ValueError by name; TF-110's tests prove a re-build's file holds exactly the new build's rows, and the craft result's reported counts are checked against the file it produced |
 | D-SUBSET-4 | Subset entity selection ordered by popularity_score DESC alone: rows tied on popularity were members or not by SQLite's unspecified scan order, so the same source could yield different subsets on different builds (code-read finding, TF-110) | TF-110 | VI | **FIXED by TF-110**: selection orders by popularity_score DESC, qid ASC in both the limited and unlimited queries; TF-110's tests pin the tie group (Q9/Q1/Q5 at one score, limit 2 keeps Q1 + Q5) and the static checker turns red if the tie-break leaves the source |

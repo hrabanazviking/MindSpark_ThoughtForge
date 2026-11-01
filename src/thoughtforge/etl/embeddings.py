@@ -34,6 +34,17 @@ by model) found nothing for the second model (docket D-EMB-3).
 The per-profile, resumable, checksummed ingestion driver that
 consumes these builders' contract lives in
 ``etl/embedding_ingestion.py``.
+
+TF-117 (offline ingestion): ``_get_model`` loads with
+``local_files_only=True`` (falling back to a plain load only
+when the constructor rejects that argument, as test fakes
+do) — ingestion never becomes a model *fetch*: a model that
+is not in a local cache fails locally with the hub's local-
+files error instead of reaching for the network (docket
+D-OFFLINE-2). Fetching a model is the fetch step, filed in
+``etl/offline_ingestion.py``; TF-053's
+``model_cache_status`` / ``availability_report`` is how a
+machine proves the model is cached before it ingests.
 """
 
 from __future__ import annotations
@@ -63,18 +74,30 @@ EMBEDDING_DIM = 384   # all-MiniLM-L6-v2 output dimension
 
 
 def _get_model(model_name: str = DEFAULT_MODEL) -> Any:
-    """Load and cache a SentenceTransformer model."""
+    """Load and cache a SentenceTransformer model.
+
+    TF-117: the load is local-files-only — this loader is
+    part of ingestion, and ingestion is offline by rule
+    (etl/offline_ingestion.py). A constructor that rejects
+    the ``local_files_only`` argument (a test fake) is
+    retried plainly; a real uncached model fails locally,
+    never by fetching.
+    """
     model_name = canonical_model_name(model_name)
     if model_name not in _MODEL_CACHE:
         try:
             from sentence_transformers import SentenceTransformer
-            logger.info("Loading embedding model: %s", model_name)
-            _MODEL_CACHE[model_name] = SentenceTransformer(model_name)
-            logger.info("Model loaded: %s", model_name)
         except ImportError as e:
             raise RuntimeError(
                 "sentence-transformers not installed. Run: pip install sentence-transformers"
             ) from e
+        logger.info("Loading embedding model: %s", model_name)
+        try:
+            _MODEL_CACHE[model_name] = SentenceTransformer(
+                model_name, local_files_only=True)
+        except TypeError:
+            _MODEL_CACHE[model_name] = SentenceTransformer(model_name)
+        logger.info("Model loaded: %s", model_name)
     return _MODEL_CACHE[model_name]
 
 
