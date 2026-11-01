@@ -19,10 +19,11 @@ command) was fixed by this slice.
 
 Pinned here:
 
-  * the entries: 15 baselines / 125 pinned metrics
+  * the entries: 16 baselines / 132 pinned metrics
     built FROM the live registries (no number or
     method line copied by hand), 9 gated / 6
-    ungated per TF-129's registries, every entry
+    ungated per TF-129's registries (TF-135 update, in
+    the open: 9 gated / 7 ungated after TF-135's pin), every entry
     filing its fixture, tolerance, measured-on
     method, live measurer and gate status,
   * regeneration by command: the filed doc is the
@@ -38,7 +39,7 @@ Pinned here:
     and empty selections REVIEW (no vacuous
     pass),
   * the checker clean, the harness registration
-    (22 / 13 / 15 / 125, rules 15), the new
+    (23 / 13 / 16 / 132, rules 16), the new
     baseline re-measured live twice — with every
     earlier pinned baseline preserved exactly
     (no exception: the hygiene inventory does
@@ -112,14 +113,14 @@ def _entry(baseline_id: str):
 
 
 class TestEntries:
-    def test_fifteen_baselines_125_metrics_in_harness_order(
+    def test_sixteen_baselines_132_metrics_in_harness_order(
             self) -> None:
-        assert len(BOOK_ENTRIES) == 15
+        assert len(BOOK_ENTRIES) == 16
         assert [e["baseline"] for e in BOOK_ENTRIES] == \
             [b["id"] for b in BASELINES]
-        assert sum(len(e["metrics"]) for e in BOOK_ENTRIES) == 125
-        assert book.TOTAL_BASELINES == 15
-        assert book.TOTAL_PINNED_METRICS == 125
+        assert sum(len(e["metrics"]) for e in BOOK_ENTRIES) == 132
+        assert book.TOTAL_BASELINES == 16
+        assert book.TOTAL_PINNED_METRICS == 132
 
     def test_every_entry_files_its_method(self) -> None:
         for entry in BOOK_ENTRIES:
@@ -152,7 +153,7 @@ class TestEntries:
         gated = [e["baseline"] for e in BOOK_ENTRIES if e["gated"]]
         assert gated == list(GATED_BASELINE_IDS)
         assert len(gated) == 9
-        assert sum(1 for e in BOOK_ENTRIES if not e["gated"]) == 6
+        assert sum(1 for e in BOOK_ENTRIES if not e["gated"]) == 7
         depth = _entry("depth_suite_synthetic_v1")
         assert depth["gate_status"].startswith("gated")
         for metric in depth["metrics"]:
@@ -195,7 +196,7 @@ class TestRegeneration:
             cwd=REPO_ROOT, env=env, capture_output=True,
             text=True, timeout=300)
         assert completed.returncode == 0
-        assert "15 baselines / 125 pinned metrics" in \
+        assert "16 baselines / 132 pinned metrics" in \
             completed.stdout
         assert (REPO_ROOT / BASELINE_BOOK_DOC).read_bytes() == before
         assert REGENERATION_COMMAND == \
@@ -263,10 +264,10 @@ class TestLiveEvaluation:
         result = run_baseline_book()
         assert result.verdict == "PASS"
         assert result.passes is True
-        assert result.total_baselines == 15
-        assert result.total_pinned_metrics == 125
+        assert result.total_baselines == 16
+        assert result.total_pinned_metrics == 132
         assert result.gated_baselines == 9
-        assert result.ungated_baselines == 6
+        assert result.ungated_baselines == 7
         assert result.doc_current is True
 
     def test_empty_selection_scores_zero_and_reviews(self) -> None:
@@ -303,10 +304,10 @@ class TestHarnessRegistration:
         baseline = [b for b in BASELINES
                     if b["id"] == "baseline_book_synthetic_v1"]
         assert len(baseline) == 1
-        assert baseline[0]["metrics"]["total_baselines"] == 15
-        assert baseline[0]["metrics"]["total_pinned_metrics"] == 125
+        assert baseline[0]["metrics"]["total_baselines"] == 16
+        assert baseline[0]["metrics"]["total_pinned_metrics"] == 132
         assert baseline[0]["targets"]["total_baselines"] == {
-            "target": 15, "met": True}
+            "target": 16, "met": True}
         assert baseline[0]["excluded_metrics"] == {}
 
     def test_new_metrics_are_defined_and_counts_moved(self) -> None:
@@ -316,11 +317,11 @@ class TestHarnessRegistration:
                        "gated_baselines", "ungated_baselines",
                        "probes_passed", "probes_total"):
             assert ("baseline_book", metric) in defined
-        assert len(BENCHMARKS) == 22
+        assert len(BENCHMARKS) == 23
         assert len(FIXTURES) == 13
-        assert len(BASELINES) == 15
-        assert len(METRIC_DEFINITIONS) == 125
-        assert len(HARNESS_RULES) == 15
+        assert len(BASELINES) == 16
+        assert len(METRIC_DEFINITIONS) == 132
+        assert len(HARNESS_RULES) == 16
         assert "the_baseline_book_regenerates_every_pinned_baseline" \
             in {r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []
@@ -329,10 +330,10 @@ class TestHarnessRegistration:
         first = measure_baseline_book_baseline()
         second = measure_baseline_book_baseline()
         assert first == second
-        assert first["total_baselines"] == 15
-        assert first["total_pinned_metrics"] == 125
+        assert first["total_baselines"] == 16
+        assert first["total_pinned_metrics"] == 132
         assert first["gated_baselines"] == 9
-        assert first["ungated_baselines"] == 6
+        assert first["ungated_baselines"] == 7
         assert first["probes_passed"] == 7
         assert first["probes_total"] == 7
         assert baseline_problems(
@@ -367,7 +368,7 @@ class TestHarnessRegistration:
         assert BASELINE_BOOK_BASELINE_ID not in GATED_BASELINE_IDS
         assert BASELINE_BOOK_BASELINE_ID in UNGATED_BASELINE_IDS
         assert len(GATED_BASELINE_IDS) == 9
-        assert len(UNGATED_BASELINE_IDS) == 6
+        assert len(UNGATED_BASELINE_IDS) == 7
         assert run_regression_gate().verdict == "PASS"
 
 
@@ -393,8 +394,8 @@ class TestFilingAndChecker:
         assert data["format"] == BASELINE_BOOK_FORMAT
         assert data["regeneration_command"] == REGENERATION_COMMAND
         assert data["measured"]["verdict"] == "PASS"
-        assert data["measured"]["total_baselines"] == 15
-        assert data["measured"]["total_pinned_metrics"] == 125
+        assert data["measured"]["total_baselines"] == 16
+        assert data["measured"]["total_pinned_metrics"] == 132
         assert data["measured"]["probes_passed"] == 7
 
     def test_baseline_book_checker_clean_on_the_real_estate(
@@ -428,4 +429,4 @@ class TestCanonGuard:
         data = baseline_book_as_data()
         assert [e["baseline"] for e in data["entries"]] == \
             [b["id"] for b in BASELINES]
-        assert len(data["entries"]) == 15
+        assert len(data["entries"]) == 16

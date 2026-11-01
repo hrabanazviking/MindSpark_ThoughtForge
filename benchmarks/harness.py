@@ -606,6 +606,61 @@ re-pinned). The book measures nothing new —
 it files these pins; a live model's baselines
 are NOT PROVEN (TF-173).
 
+**TF-135 update, in the open:** the flake
+discipline is built
+(``benchmarks/flake_discipline.py``) and
+registered below (``flake_discipline``) with
+its own pinned baseline
+(``flake_discipline_synthetic_v1``): every
+pinned baseline in this harness re-measured
+5 times in one process through this harness's
+own measurers (TF-129's filed NOISE_REPEATS,
+widened from the gated nine to the whole
+estate) and classified — every censused
+baseline deterministic on this tree (all
+repeats reproduced their pins exactly,
+TF-036's determinism measured over the whole
+estate), none quarantined (the quarantine
+registry files empty with its reason rule),
+the unpinned timing / wall metrics classified
+excluded-by-rule with their filed reasons
+(6 rows, TF-121's rule — never flakes), a
+validated flake-report shape (suite, metric /
+leg, differing values, disposition) and a
+no-silent-re-rolls rule under which TF-126's
+EPERM re-roll is filed retroactively with its
+report and its linked re-run record. TF-135's
+probes found and filed **D-BENCH-20** (no
+flake discipline existed — nondeterministic
+suites were neither quarantined nor made
+deterministic, the ungated baselines had never
+been repeat-measured, and re-rolls were
+silent; the gap was assigned to TF-135 by the
+roadmap and by TF-129's own filed limits
+without ever being numbered — the
+D-BENCH-9..19 pattern) and FIXED it. The
+``determinism`` entry's suite-slice note below
+now files TF-135 DONE as its consumer. The
+flake baseline is NOT one of TF-129's gated
+baselines: the gate's gated set stays the
+nine TF-121..TF-128 baselines exactly as
+filed, and the exclusion is filed in the open
+in ``benchmarks/regression_gate.py``.
+**TF-131 coupling, in the open:** the
+discipline adds NO benchmark input (it
+re-measures only already-filed pins through
+their already-filed measurers), so it files
+no new fixture here and the hygiene inventory
+does NOT grow — its pinned baseline stands
+exactly as filed. **One deliberate re-pin, in
+the open:** the baseline-book baseline below
+is re-pinned for exactly the registry growth
+this slice files (15 -> 16 baselines, 125 ->
+132 pinned metrics, ungated 6 -> 7); every
+other earlier pinned baseline stands exactly
+as filed (never re-pinned). Live-model
+flakiness is NOT PROVEN (TF-173).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -692,6 +747,12 @@ Filed limits, stated plainly:
     and is registered below; TF-137's one-command
     tool still stands as filed (TF-134's baseline
     book DONE — the TF-134 update below).
+    **TF-135 update:** the flake discipline
+    over every pinned baseline now exists and
+    is registered below; TF-137's one-command
+    tool still stands as filed (TF-134's
+    baseline book DONE — the TF-134 update
+    above).
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -1249,6 +1310,41 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "measures nothing new — a live "
               "model's baselines are NOT PROVEN "
               "(TF-173)"},
+    {"id": "flake_discipline", "kind": "discipline",
+     "status": "built_discipline",
+     "bind_module": "benchmarks.flake_discipline",
+     "bind_attribute": "run_flake_discipline",
+     "fixture": None,
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-135 (flake discipline — itself)",
+     "doc": "docs/architecture/FLAKE_DISCIPLINE.md",
+     "docket": ("D-BENCH-20 FIXED by TF-135",),
+     "notes": "TF-135's flake discipline: every "
+              "pinned baseline in this harness "
+              "re-measured 5 times in one process "
+              "through the harness's own measurers "
+              "(TF-129's NOISE_REPEATS widened to "
+              "the whole estate) and classified — "
+              "16 deterministic, 0 quarantined on "
+              "this tree, the quarantine registry "
+              "filed empty with its reason rule, "
+              "the unpinned timing / wall metrics "
+              "classified excluded-by-rule (6 rows, "
+              "TF-121's rule, never flakes), a "
+              "validated flake-report shape and a "
+              "no-silent-re-rolls rule under "
+              "which TF-126's EPERM re-roll is "
+              "filed with its report + linked "
+              "re-run record; 7 filed probes prove "
+              "the pure validators can fail. The "
+              "rendered filing IS the doc "
+              "(FLAKE_DISCIPLINE.md). The "
+              "discipline files no fixture of its "
+              "own: it re-measures only "
+              "already-filed pins and adds no "
+              "benchmark input (TF-131 coupling, "
+              "filed in the open). Live-model "
+              "flakiness is NOT PROVEN (TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -1356,12 +1452,19 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
      "bind_attribute": "reproducibility_problems",
      "fixture": None,
      "claims_axes": ("depth", "presence", "will"),
-     "suite_slice": "TF-135 (flake discipline consumes it)",
+     "suite_slice": "TF-135 DONE (flake discipline "
+                    "consumes it: benchmarks/flake_discipline.py)",
      "doc": "docs/architecture/DETERMINISM_MODE.md",
      "docket": (),
      "notes": "TF-036's determinism mode + turn fingerprints: the "
               "reason the pinned baselines below may claim exact "
-              "values at all"},
+              "values at all. TF-135 update, in the open: the "
+              "flake discipline (benchmarks/flake_discipline.py, "
+              "D-BENCH-20) cites this mode as the standard its "
+              "census enforces — a suite is deterministic only "
+              "if all 5 census repeats reproduce its pinned "
+              "metrics exactly, and a suite made deterministic "
+              "is fixed by this mode's road"},
     {"id": "perf_tracker", "kind": "instrument",
      "status": "instrumentation_not_a_scorer",
      "bind_module": "thoughtforge.utils.perf",
@@ -2040,14 +2143,17 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "TF-134's baseline book: one "
                  "book entry per harness BASELINES "
                  "pin, built live from the "
-                 "registries (15 on this tree) "
+                 "registries (16 on this tree — "
+                 "TF-135 update, in the open: the "
+                 "count grew by TF-135's own pin) "
                  "(TF-134)"},
     {"id": "total_pinned_metrics", "benchmark": "baseline_book",
      "legacy_name": "",
      "computes": "pinned metrics filed across "
                  "the book's entries: the sum of "
                  "every filed baseline's metric "
-                 "count (125 on this tree) "
+                 "count (132 on this tree — "
+                 "TF-135 update, in the open) "
                  "(TF-134)"},
     {"id": "gated_baselines", "benchmark": "baseline_book",
      "legacy_name": "",
@@ -2061,7 +2167,8 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
                  "own modules' checkers, not "
                  "gated by TF-129's gate, from "
                  "its UNGATED_BASELINE_IDS "
-                 "registry (6 on this tree) "
+                 "registry (7 on this tree — "
+                 "TF-135 update, in the open) "
                  "(TF-134)"},
     {"id": "probes_passed", "benchmark": "baseline_book",
      "legacy_name": "",
@@ -2071,6 +2178,51 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
     {"id": "probes_total", "benchmark": "baseline_book",
      "legacy_name": "",
      "computes": "TF-134's filed probes in "
+                 "total (7 on this tree)"},
+    {"id": "total_census_baselines", "benchmark": "flake_discipline",
+     "legacy_name": "",
+     "computes": "pinned baselines censused in "
+                 "TF-135's flake census: every "
+                 "harness BASELINES pin re-measured "
+                 "5 times in one process through "
+                 "the harness measurers (16 on this "
+                 "tree) (TF-135)"},
+    {"id": "deterministic_baselines", "benchmark": "flake_discipline",
+     "legacy_name": "",
+     "computes": "censused baselines whose every "
+                 "repeat reproduced their pinned "
+                 "metrics exactly — TF-036's "
+                 "determinism, measured (16 on "
+                 "this tree) (TF-135)"},
+    {"id": "quarantined_baselines", "benchmark": "flake_discipline",
+     "legacy_name": "",
+     "computes": "censused baselines quarantined "
+                 "in TF-135's QUARANTINE_REGISTRY "
+                 "with a filed reason (0 on this "
+                 "tree — no suite differed) "
+                 "(TF-135)"},
+    {"id": "excluded_by_rule_metrics", "benchmark": "flake_discipline",
+     "legacy_name": "",
+     "computes": "metrics classified "
+                 "excluded-by-rule in the census: "
+                 "the unpinned latency / wall / "
+                 "power shapes filed in baselines' "
+                 "excluded_metrics (TF-121's rule; "
+                 "6 on this tree) (TF-135)"},
+    {"id": "census_repeats", "benchmark": "flake_discipline",
+     "legacy_name": "",
+     "computes": "repeats per baseline in "
+                 "TF-135's census: TF-129's filed "
+                 "NOISE_REPEATS (5 on this tree) "
+                 "(TF-135)"},
+    {"id": "probes_passed", "benchmark": "flake_discipline",
+     "legacy_name": "",
+     "computes": "TF-135's filed probes against "
+                 "the pure validators that behave "
+                 "as filed (7 on this tree)"},
+    {"id": "probes_total", "benchmark": "flake_discipline",
+     "legacy_name": "",
+     "computes": "TF-135's filed probes in "
                  "total (7 on this tree)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
@@ -2755,19 +2907,19 @@ BASELINES: tuple[dict[str, Any], ...] = (
                     "identical",
      "tolerance": 1e-9,
      "metrics": {
-         "total_baselines": 15,
-         "total_pinned_metrics": 125,
+         "total_baselines": 16,
+         "total_pinned_metrics": 132,
          "gated_baselines": 9,
-         "ungated_baselines": 6,
+         "ungated_baselines": 7,
          "probes_passed": 7,
          "probes_total": 7,
      },
      "targets": {
-         "total_baselines": {"target": 15, "met": True},
+         "total_baselines": {"target": 16, "met": True},
      },
      "excluded_metrics": {},
      "notes": "the baseline book's own verdict "
-              "row (15 filed entries in "
+              "row (16 filed entries in "
               "benchmarks/baseline_book.py, "
               "recomputed live by its checker): "
               "every pinned baseline in this "
@@ -2780,8 +2932,18 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "filed book and the live registries. "
               "The filed target is the book's "
               "completeness truth: every one of "
-              "the estate's 15 pinned baselines "
-              "stands in the book. The baseline's "
+              "the estate's 16 pinned baselines "
+              "stands in the book. TF-135 update, "
+              "in the open: this baseline was "
+              "re-pinned 15 -> 16 baselines / "
+              "125 -> 132 pinned metrics / "
+              "ungated 6 -> 7 for exactly one "
+              "reason — TF-135 filed a new "
+              "pinned baseline "
+              "(flake_discipline_synthetic_v1) "
+              "and the book it pins grew by that "
+              "baseline; no other value moved. "
+              "The baseline's "
               "fixture names the profile panel's "
               "corpus estate in the open, as "
               "TF-133's cost baseline did: the "
@@ -2795,6 +2957,83 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "fixture baselines — it measures "
               "nothing new, and a live model's "
               "baselines are NOT PROVEN (TF-173)"},
+    {"id": "flake_discipline_synthetic_v1",
+     "benchmark": "flake_discipline",
+     "fixture": "profile_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-135's "
+                    "filed census over every pinned "
+                    "baseline (5 repeats in one "
+                    "process through the harness "
+                    "measurers) and its filed "
+                    "probes, measured live twice, "
+                    "identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "total_census_baselines": 16,
+         "deterministic_baselines": 16,
+         "quarantined_baselines": 0,
+         "excluded_by_rule_metrics": 6,
+         "census_repeats": 5,
+         "probes_passed": 7,
+         "probes_total": 7,
+     },
+     "targets": {
+         "deterministic_baselines": {"target": 16, "met": True},
+     },
+     "excluded_metrics": {
+         "census_wall_time_s": "timing varies run to run "
+                              "and under contention; "
+                              "walls are not baselines "
+                              "(TF-121's rule) — the "
+                              "census files its "
+                              "repeat-measured "
+                              "classifications only, "
+                              "never its own wall",
+     },
+     "notes": "the flake discipline's own verdict "
+              "row (16 filed census rows in "
+              "benchmarks/flake_discipline.py, "
+              "recomputed live by its checker): "
+              "every pinned baseline re-measured "
+              "5 times in one process through the "
+              "harness measurers and classified — "
+              "16 deterministic (every repeat "
+              "reproduced its pin exactly, "
+              "TF-036's determinism measured over "
+              "the whole estate), 0 quarantined "
+              "(the registry files empty: no "
+              "suite differed), 6 metrics "
+              "excluded-by-rule with their filed "
+              "reasons (the unpinned latency / "
+              "wall / power shapes, TF-121's "
+              "rule — never flakes), 1 flake "
+              "report filed (TF-126's EPERM "
+              "re-roll, retroactively, with its "
+              "linked re-run record — no silent "
+              "re-rolls), and all 7 filed probes "
+              "behave against the pure validators. "
+              "The filed target is the census "
+              "truth: every censused baseline "
+              "deterministic on this tree. The "
+              "baseline's fixture names the "
+              "profile panel's corpus estate in "
+              "the open, as TF-133's and TF-134's "
+              "baselines did: the discipline "
+              "files no fixture of its own because "
+              "it adds no benchmark input — it "
+              "re-measures only the already-filed "
+              "pins through their already-filed "
+              "measurers (TF-131 coupling, filed "
+              "in benchmarks/flake_discipline.py). "
+              "This baseline's own census row is "
+              "measured through a literal-based "
+              "measurer over the filed census "
+              "(TF-129's gate-measurer shape), so "
+              "censusing it cannot recurse into "
+              "the census itself. This pins the "
+              "discipline's SHAPE over scripted "
+              "fixture baselines — a live model's "
+              "flakiness is NOT PROVEN (TF-173)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -3059,6 +3298,41 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "so the hygiene inventory does not "
              "move; it measures nothing new and "
              "a live model's baselines are NOT "
+             "PROVEN (TF-173)"},
+    {"id": "no_silent_rerolls_flake_discipline",
+     "rule": "TF-135 DONE: nondeterminism has a "
+             "discipline (benchmarks/"
+             "flake_discipline.py, D-BENCH-20) — "
+             "every pinned baseline is "
+             "census-measured by repetition (5 "
+             "repeats in one process through the "
+             "harness measurers, TF-129's repeats "
+             "widened to the whole estate) and "
+             "classified: deterministic only when "
+             "every repeat reproduces its pin "
+             "exactly (TF-036's determinism, "
+             "measured), otherwise FIXED by "
+             "TF-036's road or QUARANTINED with a "
+             "filed reason (registry empty on "
+             "this tree — nothing differed); any "
+             "re-run after a differing result "
+             "files a flake report (suite, metric "
+             "/ leg, differing values, "
+             "disposition) — no silent re-rolls, "
+             "a green re-run alone settles "
+             "nothing (TF-126's re-roll filed "
+             "retroactively under this rule); the "
+             "unpinned timing / wall metrics are "
+             "classified excluded-by-rule, never "
+             "flakes; 7 filed probes prove the "
+             "pure validators can fail. The flake "
+             "baseline is judged by that checker, "
+             "not gated by TF-129's gate (the "
+             "gated set stays the nine "
+             "TF-121..TF-128 baselines). The "
+             "discipline adds no benchmark input, "
+             "so the hygiene inventory does not "
+             "move; live-model flakiness is NOT "
              "PROVEN (TF-173)"},
 )
 
@@ -3341,6 +3615,41 @@ def measure_baseline_book_baseline() -> dict[str, Any]:
     }
 
 
+def measure_flake_discipline_baseline() -> dict[str, Any]:
+    """File TF-135's flake census over the real estate.
+
+    Literal-based over the filed census (the shape
+    TF-129's gate measurer files for its noise
+    summary): the counts come from the filed
+    CENSUS_ROWS + the live excluded-row registry
+    read + the pure probes, so measuring this
+    baseline never recurses into the census
+    itself; flake_discipline_problems() recomputes
+    the census live and names any drift.
+    """
+    from benchmarks.flake_discipline import (
+        CENSUS_REPEATS,
+        CENSUS_ROWS,
+        excluded_metric_rows,
+        run_flake_probes,
+    )
+
+    probes = run_flake_probes()
+    return {
+        "total_census_baselines": len(CENSUS_ROWS),
+        "deterministic_baselines": sum(
+            1 for r in CENSUS_ROWS
+            if r["classification"] == "deterministic"),
+        "quarantined_baselines": sum(
+            1 for r in CENSUS_ROWS
+            if r["classification"] == "quarantined"),
+        "excluded_by_rule_metrics": len(excluded_metric_rows()),
+        "census_repeats": CENSUS_REPEATS,
+        "probes_passed": sum(1 for p in probes if p["passed"]),
+        "probes_total": len(probes),
+    }
+
+
 def measure_data_hygiene_baseline() -> dict[str, Any]:
     """Run TF-131's filed hygiene inventory through the real machinery."""
     from benchmarks.data_hygiene import (
@@ -3371,6 +3680,7 @@ _MEASURERS = {
     "wyrd_panel_synthetic_v1": measure_wyrd_panel_baseline,
     "cost_panel_synthetic_v1": measure_cost_panel_baseline,
     "baseline_book_synthetic_v1": measure_baseline_book_baseline,
+    "flake_discipline_synthetic_v1": measure_flake_discipline_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -3443,7 +3753,8 @@ def harness_problems() -> list[str]:
                    "benchmark_inputs_are_synthetic_or_licensed_never_canon",
                    "the_wyrd_panel_scores_world_state_consistency",
                    "the_cost_panel_files_tokens_time_and_no_watts",
-                   "the_baseline_book_regenerates_every_pinned_baseline"):
+                   "the_baseline_book_regenerates_every_pinned_baseline",
+                   "no_silent_rerolls_flake_discipline"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -3649,6 +3960,7 @@ __all__ = [
     "measure_wyrd_panel_baseline",
     "measure_cost_panel_baseline",
     "measure_baseline_book_baseline",
+    "measure_flake_discipline_baseline",
     "measure_regression_gate_baseline",
     "measure_spot_checks_baseline",
     "validate_profile_id",
