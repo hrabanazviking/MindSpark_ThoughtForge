@@ -554,6 +554,58 @@ exactly as filed (never re-pinned). Live
 per-profile hardware cost (real time, real
 tokens, real watts) is NOT PROVEN (TF-173).
 
+**TF-134 update, in the open:** the baseline
+book is built (``benchmarks/baseline_book.py``)
+and registered below (``baseline_book``) with
+its own pinned baseline
+(``baseline_book_synthetic_v1``): every pinned
+baseline in this harness filed in one in-repo
+book beside its method — fixture, tolerance,
+measured-on line, live measurer, gate status,
+every pinned metric with its value, what it
+computes, its target and its gate tolerance,
+and its excluded metrics with reasons —
+rendered deterministically FROM these live
+registries by ``book_entries()`` and filed as
+``docs/architecture/BASELINE_BOOK.md`` by one
+command (``python3 -m benchmarks.baseline_book``).
+No number or method line is hand-kept anywhere:
+``baseline_book_problems()`` recomputes the
+book from the registries and fails on any
+drift, section by section, and seven filed
+probes prove the drift checker can fail (a
+stale value, a wrong method, a wrong tolerance,
+a flipped gate status, a dropped baseline, a
+hand-added baseline, + the clean book).
+TF-134's probes found and filed **D-BENCH-19**
+(no baseline book existed — the pins lived
+only as registry data inside this module,
+scattered across fourteen baseline dicts and
+fourteen doc files, with no single artefact
+filing every baseline beside its method and
+nothing regenerable by command; the gap was
+assigned to TF-134 by TF-121's own filed
+limits — the pinned baselines were "the
+persistence the estate lacked (TF-134 owns
+the baseline book's regenerated form)" —
+without ever being numbered — the
+D-BENCH-9..18 pattern) and FIXED it. The book
+baseline is NOT one of TF-129's gated
+baselines: the gate's gated set stays the
+nine TF-121..TF-128 baselines exactly as
+filed, and the exclusion is filed in the open
+in ``benchmarks/regression_gate.py``.
+**TF-131 coupling, in the open:** the book
+adds NO benchmark input (it regenerates only
+from already-filed registries), so it files
+no new fixture here and the hygiene
+inventory does NOT grow — its pinned baseline
+stands exactly as filed; every earlier pinned
+baseline stands exactly as filed (never
+re-pinned). The book measures nothing new —
+it files these pins; a live model's baselines
+are NOT PROVEN (TF-173).
+
 Filed limits, stated plainly:
 
   * The profile baseline measures an ephemeral core
@@ -579,54 +631,67 @@ Filed limits, stated plainly:
   * No suite in Part VII existed at TF-121: TF-122..
     TF-125 build them. **TF-122 update:** the first
     suite (persona consistency) now exists and is
-    registered below; TF-123..TF-125's suites, TF-134's baseline book and
-    TF-137's one-command tool still stand as filed.
+    registered below; TF-123..TF-125's suites and
+    TF-137's one-command tool still stand as filed
+    (TF-134's baseline book DONE — the TF-134 update
+    below).
     **TF-123 update:** the second suite (memory
     fidelity) now exists and is registered below;
-    TF-124..TF-125's suites, TF-134's baseline book and TF-137's
-    one-command tool still stand as filed.
+    TF-124..TF-125's suites and TF-137's one-command
+    tool still stand as filed (TF-134's baseline
+    book DONE — the TF-134 update below).
     **TF-124 update:** the third suite (depth) now
-    exists and is registered below; TF-125's suite,
-    TF-134's baseline
-    book and TF-137's one-command tool still stand
-    as filed.
+    exists and is registered below; TF-125's suite
+    and TF-137's one-command tool still stand as
+    filed (TF-134's baseline book DONE — the TF-134
+    update below).
     **TF-125 update:** the fourth suite (presence)
-    now exists and is registered below; TF-134's baseline book and
-    TF-137's one-command tool still stand as filed.
+    now exists and is registered below; TF-137's
+    one-command tool still stands as filed
+    (TF-134's baseline book DONE — the TF-134 update
+    below).
     **TF-126 update:** the honesty panel over the
     four suites now exists and is registered below;
-    TF-134's baseline
-    book and TF-137's one-command tool still stand
-    as filed.
+    TF-137's one-command
+    tool still stands as filed (TF-134's baseline
+    book DONE — the TF-134 update below).
     **TF-127 update:** the quant-vs-quality panel
     over TF-067's fixture estate now exists and is
-    registered below; TF-134's baseline book and TF-137's one-command
-    tool still stand as filed.
+    registered below; TF-137's one-command
+    tool still stands as filed (TF-134's baseline
+    book DONE — the TF-134 update below).
     **TF-128 update:** the profile panels over
     the six shipped profiles now exist and are
-    registered below; TF-134's baseline book and TF-137's one-command
-    tool still stand as filed.
+    registered below; TF-137's one-command
+    tool still stands as filed (TF-134's baseline
+    book DONE — the TF-134 update below).
     **TF-129 update:** the regression gates over
     the nine pinned baselines now exist and are
-    registered below; TF-134's baseline book and
-    TF-137's one-command tool still stand as filed.
+    registered below; TF-137's one-command
+    tool still stands as filed (TF-134's baseline
+    book DONE — the TF-134 update below).
     **TF-130 update:** the human-shaped spot
     checks over the suites' own filed corpora now
-    exist and are registered below; TF-134's baseline book and
-    TF-137's one-command tool still stand as filed.
+    exist and are registered below; TF-137's
+    one-command tool still stands as filed
+    (TF-134's baseline
+    book DONE — the TF-134 update below).
     **TF-131 update:** the benchmark data
     hygiene inventory over every benchmark
     input in the estate now exists and is
-    registered below; TF-134's baseline book and
-    TF-137's one-command tool still stand as filed.
+    registered below; TF-137's one-command
+    tool still stands as filed (TF-134's baseline
+    book DONE — the TF-134 update below).
     **TF-132 update:** the WYRD-shaped panel
     over its filed synthetic world now exists
-    and is registered below; TF-134's baseline book and
-    TF-137's one-command tool still stand as filed.
+    and is registered below; TF-137's one-command
+    tool still stands as filed (TF-134's baseline
+    book DONE — the TF-134 update below).
     **TF-133 update:** the cost panel over
     the suites x shipped profiles now exists
-    and is registered below; TF-134's baseline book and
-    TF-137's one-command tool still stand as filed.
+    and is registered below; TF-137's one-command
+    tool still stands as filed (TF-134's baseline
+    book DONE — the TF-134 update below).
 
 Docket (TF-016): D-BENCH-2 and D-BENCH-6 are FIXED by
 this slice; D-BENCH-1, D-BENCH-5 and D-BENCH-7 are
@@ -1148,6 +1213,42 @@ BENCHMARKS: tuple[dict[str, Any], ...] = (
               "files, TF-131 coupling filed "
               "in the open). Live hardware "
               "cost is NOT PROVEN (TF-173)"},
+    {"id": "baseline_book", "kind": "book",
+     "status": "built_book",
+     "bind_module": "benchmarks.baseline_book",
+     "bind_attribute": "run_baseline_book",
+     "fixture": None,
+     "claims_axes": ("depth", "presence", "will"),
+     "suite_slice": "TF-134 (baseline book — itself)",
+     "doc": "docs/architecture/BASELINE_BOOK.md",
+     "docket": ("D-BENCH-19 FIXED by TF-134",),
+     "notes": "TF-134's baseline book: every "
+              "pinned baseline in this harness "
+              "filed in one in-repo book beside "
+              "its method (fixture, tolerance, "
+              "measured-on line, live measurer, "
+              "gate status, every pinned metric "
+              "with its value + what it computes "
+              "+ target + gate tolerance, "
+              "excluded metrics with reasons) — "
+              "rendered deterministically from "
+              "the live registries by "
+              "book_entries() and filed as "
+              "docs/architecture/BASELINE_BOOK.md "
+              "by one command (python3 -m "
+              "benchmarks.baseline_book); "
+              "baseline_book_problems() recomputes "
+              "the book and fails on any drift, "
+              "and 7 filed probes prove the drift "
+              "checker can fail. The book files "
+              "no fixture of its own: it "
+              "regenerates only from "
+              "already-filed registries and adds "
+              "no benchmark input (TF-131 "
+              "coupling, filed in the open). It "
+              "measures nothing new — a live "
+              "model's baselines are NOT PROVEN "
+              "(TF-173)"},
     {"id": "profile_benchmark", "kind": "runner",
      "status": "existing_runner",
      "bind_module": "benchmarks.benchmark_profiles",
@@ -1933,6 +2034,44 @@ METRIC_DEFINITIONS: tuple[dict[str, Any], ...] = (
      "legacy_name": "",
      "computes": "TF-133's filed probes in "
                  "total (7 on this tree)"},
+    {"id": "total_baselines", "benchmark": "baseline_book",
+     "legacy_name": "",
+     "computes": "pinned baselines filed in "
+                 "TF-134's baseline book: one "
+                 "book entry per harness BASELINES "
+                 "pin, built live from the "
+                 "registries (15 on this tree) "
+                 "(TF-134)"},
+    {"id": "total_pinned_metrics", "benchmark": "baseline_book",
+     "legacy_name": "",
+     "computes": "pinned metrics filed across "
+                 "the book's entries: the sum of "
+                 "every filed baseline's metric "
+                 "count (125 on this tree) "
+                 "(TF-134)"},
+    {"id": "gated_baselines", "benchmark": "baseline_book",
+     "legacy_name": "",
+     "computes": "book entries gated by "
+                 "TF-129's regression gate, from "
+                 "its GATED_BASELINE_IDS registry "
+                 "(9 on this tree) (TF-134)"},
+    {"id": "ungated_baselines", "benchmark": "baseline_book",
+     "legacy_name": "",
+     "computes": "book entries judged by their "
+                 "own modules' checkers, not "
+                 "gated by TF-129's gate, from "
+                 "its UNGATED_BASELINE_IDS "
+                 "registry (6 on this tree) "
+                 "(TF-134)"},
+    {"id": "probes_passed", "benchmark": "baseline_book",
+     "legacy_name": "",
+     "computes": "TF-134's filed probes against "
+                 "the pure drift checker that "
+                 "behave as filed (7 on this tree)"},
+    {"id": "probes_total", "benchmark": "baseline_book",
+     "legacy_name": "",
+     "computes": "TF-134's filed probes in "
+                 "total (7 on this tree)"},
     {"id": "total_turns", "benchmark": "profile_benchmark",
      "legacy_name": "",
      "computes": "queries run in the measured set (warm-up excluded)"},
@@ -2603,6 +2742,59 @@ BASELINES: tuple[dict[str, Any], ...] = (
               "cost (real tokens, real time, real "
               "watts) is NOT PROVEN (TF-173), and "
               "sharpness per watt is NOT PROVEN"},
+    {"id": "baseline_book_synthetic_v1",
+     "benchmark": "baseline_book",
+     "fixture": "profile_panel_corpus",
+     "measured_on": "this VM, 2026-11-01 — TF-134's "
+                    "baseline book built live from "
+                    "the registries (the harness's "
+                    "BASELINES / METRIC_DEFINITIONS "
+                    "/ BENCHMARKS and TF-129's gate "
+                    "registries) and its filed "
+                    "probes, measured live twice, "
+                    "identical",
+     "tolerance": 1e-9,
+     "metrics": {
+         "total_baselines": 15,
+         "total_pinned_metrics": 125,
+         "gated_baselines": 9,
+         "ungated_baselines": 6,
+         "probes_passed": 7,
+         "probes_total": 7,
+     },
+     "targets": {
+         "total_baselines": {"target": 15, "met": True},
+     },
+     "excluded_metrics": {},
+     "notes": "the baseline book's own verdict "
+              "row (15 filed entries in "
+              "benchmarks/baseline_book.py, "
+              "recomputed live by its checker): "
+              "every pinned baseline in this "
+              "harness filed beside its method "
+              "and regenerated by one command "
+              "(python3 -m benchmarks.baseline_book) "
+              "as docs/architecture/BASELINE_BOOK.md, "
+              "with baseline_book_problems() "
+              "failing on any drift between the "
+              "filed book and the live registries. "
+              "The filed target is the book's "
+              "completeness truth: every one of "
+              "the estate's 15 pinned baselines "
+              "stands in the book. The baseline's "
+              "fixture names the profile panel's "
+              "corpus estate in the open, as "
+              "TF-133's cost baseline did: the "
+              "book files no fixture of its own "
+              "because it adds no benchmark "
+              "input — it regenerates only from "
+              "the already-filed registries "
+              "(TF-131 coupling, filed in "
+              "benchmarks/baseline_book.py). This "
+              "pins the book's SHAPE over scripted "
+              "fixture baselines — it measures "
+              "nothing new, and a live model's "
+              "baselines are NOT PROVEN (TF-173)"},
     {"id": "profile_benchmark_empty_store_v1",
      "benchmark": "profile_benchmark",
      "fixture": "profile_default_queries",
@@ -2838,6 +3030,36 @@ HARNESS_RULES: tuple[dict[str, Any], ...] = (
              "inventory does not move; live "
              "hardware cost is NOT PROVEN "
              "(TF-173)"},
+    {"id": "the_baseline_book_regenerates_every_pinned_baseline",
+     "rule": "TF-134 DONE: every suite's pinned "
+             "baseline stands in one in-repo book "
+             "beside its method "
+             "(benchmarks/baseline_book.py, "
+             "D-BENCH-19) — one section per "
+             "harness pin (fixture, tolerance, "
+             "measured-on line, live measurer, "
+             "gate status, every metric with its "
+             "value, what it computes, its "
+             "target and gate tolerance, excluded "
+             "metrics with reasons), rendered "
+             "deterministically from the live "
+             "registries and filed as "
+             "docs/architecture/BASELINE_BOOK.md "
+             "by one command (python3 -m "
+             "benchmarks.baseline_book); "
+             "baseline_book_problems() recomputes "
+             "the book and fails on any drift, "
+             "named by baseline, and 7 filed "
+             "probes prove the drift checker can "
+             "fail. The book baseline is judged "
+             "by that checker, not gated by "
+             "TF-129's gate (the gated set stays "
+             "the nine TF-121..TF-128 baselines). "
+             "The book adds no benchmark input, "
+             "so the hygiene inventory does not "
+             "move; it measures nothing new and "
+             "a live model's baselines are NOT "
+             "PROVEN (TF-173)"},
 )
 
 
@@ -3095,6 +3317,30 @@ def measure_cost_panel_baseline() -> dict[str, Any]:
     }
 
 
+def measure_baseline_book_baseline() -> dict[str, Any]:
+    """File TF-134's baseline book over the real registries."""
+    from benchmarks.baseline_book import (
+        book_entries,
+        run_book_probes,
+    )
+    from benchmarks.regression_gate import (
+        GATED_BASELINE_IDS,
+        UNGATED_BASELINE_IDS,
+    )
+
+    entries = book_entries()
+    probes = run_book_probes()
+    return {
+        "total_baselines": len(entries),
+        "total_pinned_metrics": sum(
+            len(e["metrics"]) for e in entries),
+        "gated_baselines": len(GATED_BASELINE_IDS),
+        "ungated_baselines": len(UNGATED_BASELINE_IDS),
+        "probes_passed": sum(1 for p in probes if p["passed"]),
+        "probes_total": len(probes),
+    }
+
+
 def measure_data_hygiene_baseline() -> dict[str, Any]:
     """Run TF-131's filed hygiene inventory through the real machinery."""
     from benchmarks.data_hygiene import (
@@ -3124,6 +3370,7 @@ _MEASURERS = {
     "data_hygiene_synthetic_v1": measure_data_hygiene_baseline,
     "wyrd_panel_synthetic_v1": measure_wyrd_panel_baseline,
     "cost_panel_synthetic_v1": measure_cost_panel_baseline,
+    "baseline_book_synthetic_v1": measure_baseline_book_baseline,
     "persona_suite_synthetic_v1": measure_persona_suite_baseline,
     "memory_suite_synthetic_v1": measure_memory_suite_baseline,
     "depth_suite_synthetic_v1": measure_depth_suite_baseline,
@@ -3195,7 +3442,8 @@ def harness_problems() -> list[str]:
                    "spot_checks_anchor_the_numbers_in_human_judgement",
                    "benchmark_inputs_are_synthetic_or_licensed_never_canon",
                    "the_wyrd_panel_scores_world_state_consistency",
-                   "the_cost_panel_files_tokens_time_and_no_watts"):
+                   "the_cost_panel_files_tokens_time_and_no_watts",
+                   "the_baseline_book_regenerates_every_pinned_baseline"):
         if needed not in rule_ids:
             problems.append(f"HARNESS_RULES lost {needed}")
 
@@ -3400,6 +3648,7 @@ __all__ = [
     "measure_data_hygiene_baseline",
     "measure_wyrd_panel_baseline",
     "measure_cost_panel_baseline",
+    "measure_baseline_book_baseline",
     "measure_regression_gate_baseline",
     "measure_spot_checks_baseline",
     "validate_profile_id",

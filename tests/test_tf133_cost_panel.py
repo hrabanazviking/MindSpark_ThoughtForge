@@ -324,11 +324,11 @@ class TestHarnessRegistration:
                        "server_gpu_mean_sharpness_per_1000_tokens",
                        "probes_passed", "probes_total"):
             assert ("cost_panel", metric) in defined
-        assert len(BENCHMARKS) == 21
+        assert len(BENCHMARKS) == 22
         assert len(FIXTURES) == 13
-        assert len(BASELINES) == 14
-        assert len(METRIC_DEFINITIONS) == 119
-        assert len(HARNESS_RULES) == 14
+        assert len(BASELINES) == 15
+        assert len(METRIC_DEFINITIONS) == 125
+        assert len(HARNESS_RULES) == 15
         assert "the_cost_panel_files_tokens_time_and_no_watts" \
             in {r["id"] for r in HARNESS_RULES}
         assert harness.harness_problems() == []

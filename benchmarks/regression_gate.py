@@ -258,18 +258,33 @@ WYRD_PANEL_BASELINE_ID = "wyrd_panel_synthetic_v1"
 #: by name.
 COST_PANEL_BASELINE_ID = "cost_panel_synthetic_v1"
 
+#: TF-134 update, in the open: TF-134 registered
+#: one further baseline after TF-133 — the
+#: baseline book's own pin. It is NOT one of
+#: the gated baselines either, by the same
+#: shape: the book is a regenerated filing
+#: judged by its own module's checker
+#: (baseline_book_problems()), and the gated
+#: set stays the nine TF-121..TF-128 baselines
+#: exactly as TF-129 filed it. The gated-set
+#: check below excludes all six ungated pins
+#: by name.
+BASELINE_BOOK_BASELINE_ID = "baseline_book_synthetic_v1"
+
 #: The harness baselines that are not gated:
 #: the gate's own verdict row, TF-130's
 #: spot-check pin, TF-131's data-hygiene
-#: pin, TF-132's wyrd-panel pin, and
-#: TF-133's cost-panel pin, each judged by
-#: its own module's checker.
+#: pin, TF-132's wyrd-panel pin,
+#: TF-133's cost-panel pin, and TF-134's
+#: baseline-book pin, each judged by its
+#: own module's checker.
 UNGATED_BASELINE_IDS: tuple[str, ...] = (
     GATE_BASELINE_ID,
     SPOT_CHECKS_BASELINE_ID,
     DATA_HYGIENE_BASELINE_ID,
     WYRD_PANEL_BASELINE_ID,
     COST_PANEL_BASELINE_ID,
+    BASELINE_BOOK_BASELINE_ID,
 )
 
 #: The baselines the gate gates: the nine pinned
@@ -1179,6 +1194,7 @@ __all__ = [
     "UNGATED_BASELINE_IDS",
     "WYRD_PANEL_BASELINE_ID",
     "COST_PANEL_BASELINE_ID",
+    "BASELINE_BOOK_BASELINE_ID",
     "RegressionGateResult",
     "compute_noise_rows",
     "direction_for",
