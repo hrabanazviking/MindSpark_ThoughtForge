@@ -184,20 +184,26 @@ TRACE_RULES: tuple[dict[str, Any], ...] = (
     },
     {
         "id": "salvage_refine_passes_are_a_named_gap",
-        "rule": "D-TRACE-1 (OPEN, TF-097): the refine "
+        "rule": "D-TRACE-1 (FIXED by TF-097): the refine "
                 "passes FragmentSalvage makes through the "
-                "engine inside its own forge() are NOT "
-                "individually recorded here — the core "
-                "hands the engine over and cannot see the "
-                "passes' per-call sizes or latencies, and "
-                "an aggregate invented from the salvage "
-                "result would be fabrication. TF-097 (Part "
-                "V's rescue-record slice, which the roadmap "
-                "already ties to TF-084) owns recording "
-                "them; until then a turn whose final came "
-                "through refine passes carries those "
-                "passes unrecorded, stated here, never "
-                "silently",
+                "engine inside its own forge() are recorded "
+                "individually by salvage itself in its "
+                "rescue record (refinement/"
+                "rescue_provenance.py, format "
+                "thoughtforge-rescue-record/1 — outcome, "
+                "score, size, rejection reasons, failure, "
+                "wall + reported latencies per pass), "
+                "carried on the final response record into "
+                "the cognition trace's final section, and "
+                "so into this joined trace inside its "
+                "cognition section. They are NOT inference-"
+                "section calls: this recorder records the "
+                "core's own leaf calls, and an aggregate "
+                "invented from the salvage result would "
+                "have been fabrication — the record is "
+                "built by salvage as each pass runs, "
+                "which is why the gap this rule's id names "
+                "is closed from salvage's side, not here",
     },
     {
         "id": "prompt_and_response_text_never_recorded",

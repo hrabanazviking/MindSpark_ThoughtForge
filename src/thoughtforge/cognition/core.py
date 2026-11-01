@@ -1909,6 +1909,10 @@ class ThoughtForgeCore:
             salvage_path=salvage_result.salvage_path,
             retrieval_confidence=bundle.retrieval_confidence,
             mode="full",
+            # TF-097: the rescue record rides the final
+            # into the TF-038 trace (and so into TF-084's
+            # joined trace, which carries cognition whole).
+            rescue_record=salvage_result.rescue_record,
         )
 
     def _knowledge_only_response(

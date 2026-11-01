@@ -33,7 +33,9 @@ one named format (``TRACE_FORMAT``) with named sections
     being the only witness;
   * ``final`` — the final response record whole: text, mode,
     salvage path, citations, enforcement verdict, scores with
-    composite and quality tier;
+    composite and quality tier, and (TF-097) the salvage
+    rescue record — each refine pass salvage ran, recorded
+    by salvage itself (D-TRACE-1, closed there);
   * ``writeback`` — the writeback record when one exists
     (usually ``None`` today; TF-047 owns the write-back leg);
   * ``timings`` — retrieval / generation / salvage milliseconds
@@ -294,6 +296,13 @@ def _final_section(turn: RuntimeTurnState) -> dict[str, Any] | None:
         "citations": list(final.citations),
         "enforcement_passed": final.enforcement_passed,
         "enforcement_notes": final.enforcement_notes,
+        # TF-097: the rescue record (D-TRACE-1) — salvage's
+        # own per-pass provenance, judged by
+        # refinement/rescue_provenance.py's checker in
+        # trace_problems below; None on finals salvage
+        # never composed (knowledge-only, model-failed).
+        "rescue_record": _json_safe(
+            getattr(final, "rescue_record", None)),
         "token_count": final.token_count,
         "retrieval_confidence": final.retrieval_confidence,
         "created_at": final.created_at,
@@ -443,6 +452,27 @@ def trace_problems(trace: Any) -> list[str]:
                     f"final names source fragment {fid!r} absent "
                     "from the trace"
                 )
+        # TF-097: a carried rescue record is judged by its
+        # own module's checker, and its candidate rows must
+        # resolve to this trace's candidates.
+        rescue_record = final.get("rescue_record")
+        if rescue_record is not None:
+            from thoughtforge.refinement.rescue_provenance import (
+                rescue_record_problems,
+            )
+
+            problems.extend(
+                f"final rescue_record: {p}"
+                for p in rescue_record_problems(rescue_record)
+            )
+            if isinstance(rescue_record, dict):
+                for row in rescue_record.get("candidates") or []:
+                    cid = row.get("candidate_id")
+                    if cid and cid not in candidate_ids:
+                        problems.append(
+                            f"final rescue_record names candidate "
+                            f"{cid!r} absent from the trace"
+                        )
 
     timings = trace.get("timings") or {}
     for key, value in timings.items():
