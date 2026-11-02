@@ -136,7 +136,27 @@ class TestLiveTreeBinding:
     def test_shipping_sources_have_no_bond_graph(self) -> None:
         for folder in ("knowledge", "cognition"):
             for path in (REPO_ROOT / "src" / "thoughtforge" / folder).glob("*.py"):
-                if path.name == "bond_graph_verdict.py":
+                # Verdict modules are verdicts, not the store
+                # (TF-140's files the wing's bond vocabulary;
+                # TF-141's files the compiler's BondEdge /
+                # relationship vocabulary; TF-143's bond_graph.py
+                # IS the adopted layer and persona_compiler.py
+                # compiles from its production BondEdge —
+                # TF-143 extended this exclusion in the open;
+                # TF-146's bond_bridge.py IS the layer's
+                # bridge, exporting that BondEdge's data —
+                # TF-146 extended it in the open the same way;
+                # TF-147's runmal_cards.py exports the
+                # compiled persona, filing its relationship
+                # excerpt — TF-147 extended it in the open
+                # the same way).
+                if path.name in ("bond_graph_verdict.py",
+                                 "micro_rag_verdict.py",
+                                 "persona_compiler_verdict.py",
+                                 "bond_graph.py",
+                                 "persona_compiler.py",
+                                 "bond_bridge.py",
+                                 "runmal_cards.py"):
                     continue
                 text = path.read_text(encoding="utf-8").lower()
                 assert "bond" not in text, path.name

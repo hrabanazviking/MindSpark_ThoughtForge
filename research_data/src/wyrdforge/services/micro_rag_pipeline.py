@@ -1,3 +1,22 @@
+# ARCHIVED-IN-PLACE - RETIRED by TF-144 (2026-11-02)
+#
+# Mechanism: wyrdforge micro-RAG retrieval
+# (MicroRAGPipeline, services/micro_rag_pipeline.py).
+# Verdict: TF-140 - RETIRE as a retrieval mechanism,
+# decided by measurement on TF-043's fixtures
+# (shipping defaults precision 0.8889 / recall 0.9630
+# / F1 0.9111 vs the micro-RAG spike's 0.3333 /
+# 0.8889 / 0.4749).
+# Successor: the shipping KnowledgeForge (Part III)
+# is the estate's sole retriever. No micro-RAG
+# scoring or assembly code is adopted or merged.
+# This file is archived in place as verdict evidence:
+# TF-140's checker re-reads it live, and its body
+# below stands byte-for-byte as filed. Do not import,
+# revive, or build on it without a new roadmap word.
+# Lessons harvested in docs/architecture/
+# WING_CLOSING.md (TF-144).
+# ------------------------------------------------------------------
 from __future__ import annotations
 
 from collections import Counter
