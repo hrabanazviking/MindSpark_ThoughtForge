@@ -1,3 +1,21 @@
+# ARCHIVED-IN-PLACE - RETIRED by TF-144 (2026-11-02)
+#
+# The wing's tests for the two RETIRED mechanisms:
+# test_micro_rag_assembles_packet (TF-140's subject)
+# and
+# test_truth_calibrator_flags_unsupported_exclusivity
+# (TF-142's subject - the relational catch,
+# archived with the calibrator per TF-142's
+# filed condition, not silently dropped).
+# Archived in place with the retired code (TF-149:
+# retired code's tests archived with it): the file
+# stands byte-for-byte below as verdict evidence -
+# TF-142's checker re-reads the truth test's intent
+# here live. These tests still cannot run: the
+# wing's models package was never committed
+# (TF-006 / D-WING-1). Do not revive without a new
+# roadmap word.
+# ------------------------------------------------------------------
 from __future__ import annotations
 
 from wyrdforge.models.evals import EvalCase, EvalSetup, ExpectedBehavior
