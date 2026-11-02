@@ -1,3 +1,23 @@
+# ARCHIVED-IN-PLACE - RETIRED by TF-144 (2026-11-02)
+#
+# Mechanism: wyrdforge truth calibrator
+# (TruthCalibrator, services/truth_calibrator.py).
+# Verdict: TF-142 - RETIRE as a calibration /
+# enforcement mechanism, decided by measurement on
+# TF-100's chaos corpus (Part V enforcement 29/38 vs
+# the calibrator spike's 5/38; the spike passes all
+# 38 outputs and detects 0 of 33 broken ones).
+# Successor: Part V's shipping enforcement (the
+# TF-093 surface) is the estate's sole runtime
+# truth law. No calibrator scoring is adopted or
+# merged into the shipping tree.
+# This file is archived in place as verdict evidence:
+# TF-142's checker re-reads it live, and its body
+# below stands byte-for-byte as filed. Do not import,
+# revive, or build on it without a new roadmap word.
+# Lessons harvested in docs/architecture/
+# WING_CLOSING.md (TF-144).
+# ------------------------------------------------------------------
 from __future__ import annotations
 
 from wyrdforge.models.evals import DimensionScore, EvalCase, EvalResult

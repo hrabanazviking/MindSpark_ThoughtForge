@@ -1013,13 +1013,37 @@ def bond_graph_verdict_problems() -> list[str]:
             f"the findings are {findings.count('unique')} unique / "
             f"{findings.count('layer-link')} layer-link, not 5 / 1")
 
-    # The shipping store still has no bond graph (this module
-    # excluded — it is the verdict, not the store).
+    # The shipping store still has no bond graph (the verdict
+    # modules excluded — they are verdicts, not the store;
+    # TF-140's micro_rag_verdict.py files the wing's bond_fit /
+    # bond_excerpt vocabulary, so TF-140 extended this module's
+    # own exclusion to it in the open; TF-141's
+    # persona_compiler_verdict.py files the compiler's
+    # BondEdge / relationship vocabulary, so TF-141 extended
+    # the exclusion to it in the open the same way; TF-143's
+    # bond_graph.py IS the adopted layer itself and its
+    # persona_compiler.py compiles from the production
+    # BondEdge, so TF-143 extended the exclusion to both
+    # production modules in the open the same way; TF-146's
+    # bond_bridge.py IS the adopted layer's bridge — it
+    # exports the production BondEdge's data as
+    # WYRD-consumable data — so TF-146 extended the
+    # exclusion to it in the open the same way; TF-147's
+    # runmal_cards.py exports TF-143's compiled persona —
+    # it files the persona's relationship excerpt and
+    # compiles from the production BondEdge — so TF-147
+    # extended the exclusion to it in the open the same
+    # way — the premise guarded is unchanged: the
+    # persisted STORE still files no bond record type,
+    # checked below).
     knowledge_dir = _REPO_ROOT / "src" / "thoughtforge" / "knowledge"
     cognition_dir = _REPO_ROOT / "src" / "thoughtforge" / "cognition"
     for folder in (knowledge_dir, cognition_dir):
         for path in sorted(folder.glob("*.py")):
-            if path.name == Path(__file__).name:
+            if path.name in (Path(__file__).name, "micro_rag_verdict.py",
+                             "persona_compiler_verdict.py",
+                             "bond_graph.py", "persona_compiler.py",
+                             "bond_bridge.py", "runmal_cards.py"):
                 continue
             text = path.read_text(encoding="utf-8").lower()
             if "bond" in text or "relationship" in text:
