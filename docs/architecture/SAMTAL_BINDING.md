@@ -87,7 +87,7 @@ A seat is a `principals` row in Samtal's `server.py` (`id` / `name` UNIQUE / `ki
 
 ## 7. Docket
 
-TF-157 has **no share** of TF-016 and found no new defect in existing code, so this slice does not edit the docket and adds no entry. TF-016 totals stand unchanged (137 entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT), verified live against the docket header and filed in the open here.
+TF-157 has **no share** of TF-016 and found no new defect in existing code, so this slice does not edit the docket and adds no entry. TF-016 totals stand unchanged (137 entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT), verified live against the docket header and filed in the open here.
 
 ## 8. The probes
 

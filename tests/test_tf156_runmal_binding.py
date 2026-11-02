@@ -689,6 +689,6 @@ class TestStateProbesDoc:
     def test_docket_untouched_totals_unchanged(self) -> None:
         docket = _read("docs/audit/TF-016_BUG_AND_GAP_DOCKET.md")
         normalized = re.sub(r"\s+", " ", docket)
-        assert "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, " \
-            "100 FIXED" in normalized
+        assert "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, " \
+            "101 FIXED" in normalized
         assert "4 CLOSED-BY-VERDICT" in normalized

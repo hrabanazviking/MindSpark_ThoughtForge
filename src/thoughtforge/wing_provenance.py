@@ -91,7 +91,7 @@ CLOSED-BY-VERDICT by TF-149, whose closure files
 "TF-150/TF-152 own provenance/gate, not this
 entry". TF-150 adds no docket entry, reopens
 nothing, and TF-016 totals do not move (137 —
-32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4
+31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4
 CLOSED-BY-VERDICT).
 
 Provenance here is about the wing's code/docs
@@ -835,8 +835,8 @@ def _limits_lines() -> list[str]:
         "- No README.md anywhere was touched, no wing file "
         "was changed, and the docket is untouched: D-WING-1 "
         "stands CLOSED-BY-VERDICT by TF-149 with TF-016 "
-        "totals unchanged (137 — 32 OPEN / 1 "
-        "OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT); "
+        "totals unchanged (137 — 31 OPEN / 1 "
+        "OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT); "
         "TF-151 owns the panel re-run and TF-152 the Part "
         "VIII gate.",
         "- No live model was read; live behaviour is NOT "
@@ -984,8 +984,8 @@ def render_wing_provenance_markdown() -> str:
         "TF-149, whose closure files TF-150/TF-152 as the "
         "owners of provenance/gate, not that entry. This "
         "slice adds no docket entry, reopens nothing, and "
-        "TF-016 totals do not move: 137 entries — 32 OPEN "
-        "/ 1 OPEN-ENVIRONMENT / 100 FIXED / 4 "
+        "TF-016 totals do not move: 137 entries — 31 OPEN "
+        "/ 1 OPEN-ENVIRONMENT / 101 FIXED / 4 "
         "CLOSED-BY-VERDICT.")
     lines.append("")
     lines.append("## 6. The probes")
@@ -1165,11 +1165,11 @@ def wing_provenance_problems() -> list[str]:
 
     docket_text = _DOCKET.read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", docket_text)
-    if "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, 100 FIXED" \
+    if "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, 101 FIXED" \
             not in normalized:
         problems.append(
             "docket: the header totals no longer file 137 "
-            "entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 "
+            "entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 "
             "FIXED; TF-150 must not move them")
     wing_line = next(
         (line for line in docket_text.splitlines()

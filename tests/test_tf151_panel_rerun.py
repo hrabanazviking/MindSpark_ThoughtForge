@@ -29,8 +29,8 @@ Pinned here:
     any re-run measurer's source),
   * no harness baseline added or re-pinned and
     no docket touch: TF-016 totals unchanged
-    137 — 32 OPEN / 1 OPEN-ENVIRONMENT /
-    100 FIXED / 4 CLOSED-BY-VERDICT,
+    137 — 31 OPEN / 1 OPEN-ENVIRONMENT /
+    101 FIXED / 4 CLOSED-BY-VERDICT,
   * the probes: 7/7 against the pure validators,
   * the rerun doc matches its render verbatim.
 
@@ -252,8 +252,8 @@ class TestDocsAndDocket:
     def test_docket_untouched_totals_unchanged(self) -> None:
         docket = _read("docs/audit/TF-016_BUG_AND_GAP_DOCKET.md")
         normalized = re.sub(r"\s+", " ", docket)
-        assert "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, " \
-            "100 FIXED" in normalized
+        assert "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, " \
+            "101 FIXED" in normalized
         assert "4 CLOSED-BY-VERDICT" in normalized
 
     def test_fixtures_are_synthetic_only(self) -> None:
