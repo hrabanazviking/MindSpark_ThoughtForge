@@ -1024,7 +1024,11 @@ def bond_graph_verdict_problems() -> list[str]:
     # bond_graph.py IS the adopted layer itself and its
     # persona_compiler.py compiles from the production
     # BondEdge, so TF-143 extended the exclusion to both
-    # production modules in the open the same way — the
+    # production modules in the open the same way; TF-146's
+    # bond_bridge.py IS the adopted layer's bridge — it
+    # exports the production BondEdge's data as
+    # WYRD-consumable data — so TF-146 extended the
+    # exclusion to it in the open the same way — the
     # premise guarded is unchanged: the persisted STORE
     # still files no bond record type, checked below).
     knowledge_dir = _REPO_ROOT / "src" / "thoughtforge" / "knowledge"
@@ -1033,7 +1037,8 @@ def bond_graph_verdict_problems() -> list[str]:
         for path in sorted(folder.glob("*.py")):
             if path.name in (Path(__file__).name, "micro_rag_verdict.py",
                              "persona_compiler_verdict.py",
-                             "bond_graph.py", "persona_compiler.py"):
+                             "bond_graph.py", "persona_compiler.py",
+                             "bond_bridge.py"):
                 continue
             text = path.read_text(encoding="utf-8").lower()
             if "bond" in text or "relationship" in text:

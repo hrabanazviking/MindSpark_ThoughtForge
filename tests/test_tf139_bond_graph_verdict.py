@@ -142,12 +142,16 @@ class TestLiveTreeBinding:
                 # relationship vocabulary; TF-143's bond_graph.py
                 # IS the adopted layer and persona_compiler.py
                 # compiles from its production BondEdge —
-                # TF-143 extended this exclusion in the open).
+                # TF-143 extended this exclusion in the open;
+                # TF-146's bond_bridge.py IS the layer's
+                # bridge, exporting that BondEdge's data —
+                # TF-146 extended it in the open the same way).
                 if path.name in ("bond_graph_verdict.py",
                                  "micro_rag_verdict.py",
                                  "persona_compiler_verdict.py",
                                  "bond_graph.py",
-                                 "persona_compiler.py"):
+                                 "persona_compiler.py",
+                                 "bond_bridge.py"):
                     continue
                 text = path.read_text(encoding="utf-8").lower()
                 assert "bond" not in text, path.name
