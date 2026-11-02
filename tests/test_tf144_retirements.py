@@ -252,9 +252,18 @@ class TestProbesAndDoc:
         assert archive_state_problems(None, None)
 
     def test_doc_matches_render(self) -> None:
+        # TF-150 extension, in the open: the closing doc
+        # is TF-144's render, completed by TF-150's
+        # provenance appendix as its section 9 — the
+        # render stands byte-for-byte as the prefix.
+        from thoughtforge.wing_provenance import (
+            render_wing_closing_appendix_markdown,
+        )
+
         doc = REPO_ROOT / WING_CLOSING_DOC
         assert doc.read_text(encoding="utf-8") == \
-            render_wing_closing_markdown()
+            render_wing_closing_markdown() + \
+            render_wing_closing_appendix_markdown()
 
     def test_closing_doc_names_both_verdicts_and_lessons(self) -> None:
         doc = _read(WING_CLOSING_DOC)

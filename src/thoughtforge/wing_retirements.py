@@ -980,14 +980,34 @@ def wing_retirements_problems() -> list[str]:
             f"{[p['id'] for p in probes if not p['passed']]}")
 
     # The closing doc files the render verbatim.
+    # TF-150 extension, in the open: TF-150 completes
+    # the wing's provenance in this doc as its
+    # section 9, appended below this render — so the
+    # completed doc is exactly this render plus
+    # TF-150's filed appendix, and both shapes'
+    # prefix (this render, byte-for-byte) is pinned.
     doc = _REPO_ROOT / WING_CLOSING_DOC
     if not doc.exists():
         problems.append(f"the closing doc {WING_CLOSING_DOC} is missing")
-    elif doc.read_text(encoding="utf-8") != render_wing_closing_markdown():
-        problems.append(
-            f"the filed doc {WING_CLOSING_DOC} is not the render "
-            "verbatim (regenerate with python3 -m "
-            "thoughtforge.wing_retirements)")
+    else:
+        text = doc.read_text(encoding="utf-8")
+        render = render_wing_closing_markdown()
+        completed = None
+        try:
+            from thoughtforge.wing_provenance import (
+                render_wing_closing_appendix_markdown,
+            )
+
+            completed = render + render_wing_closing_appendix_markdown()
+        except Exception:
+            completed = None
+        if text != render and text != completed:
+            problems.append(
+                f"the filed doc {WING_CLOSING_DOC} is not the render "
+                "verbatim, nor the render completed by TF-150's "
+                "provenance appendix (regenerate with python3 -m "
+                "thoughtforge.wing_retirements, or complete it with "
+                "python3 -m thoughtforge.wing_provenance)")
     return problems
 
 
