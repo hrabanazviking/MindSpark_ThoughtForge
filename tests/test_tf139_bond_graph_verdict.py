@@ -139,10 +139,15 @@ class TestLiveTreeBinding:
                 # Verdict modules are verdicts, not the store
                 # (TF-140's files the wing's bond vocabulary;
                 # TF-141's files the compiler's BondEdge /
-                # relationship vocabulary).
+                # relationship vocabulary; TF-143's bond_graph.py
+                # IS the adopted layer and persona_compiler.py
+                # compiles from its production BondEdge —
+                # TF-143 extended this exclusion in the open).
                 if path.name in ("bond_graph_verdict.py",
                                  "micro_rag_verdict.py",
-                                 "persona_compiler_verdict.py"):
+                                 "persona_compiler_verdict.py",
+                                 "bond_graph.py",
+                                 "persona_compiler.py"):
                     continue
                 text = path.read_text(encoding="utf-8").lower()
                 assert "bond" not in text, path.name
