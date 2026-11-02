@@ -1013,13 +1013,16 @@ def bond_graph_verdict_problems() -> list[str]:
             f"the findings are {findings.count('unique')} unique / "
             f"{findings.count('layer-link')} layer-link, not 5 / 1")
 
-    # The shipping store still has no bond graph (this module
-    # excluded — it is the verdict, not the store).
+    # The shipping store still has no bond graph (the verdict
+    # modules excluded — they are verdicts, not the store;
+    # TF-140's micro_rag_verdict.py files the wing's bond_fit /
+    # bond_excerpt vocabulary, so TF-140 extended this module's
+    # own exclusion to it in the open).
     knowledge_dir = _REPO_ROOT / "src" / "thoughtforge" / "knowledge"
     cognition_dir = _REPO_ROOT / "src" / "thoughtforge" / "cognition"
     for folder in (knowledge_dir, cognition_dir):
         for path in sorted(folder.glob("*.py")):
-            if path.name == Path(__file__).name:
+            if path.name in (Path(__file__).name, "micro_rag_verdict.py"):
                 continue
             text = path.read_text(encoding="utf-8").lower()
             if "bond" in text or "relationship" in text:
