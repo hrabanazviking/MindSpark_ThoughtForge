@@ -145,13 +145,18 @@ class TestLiveTreeBinding:
                 # TF-143 extended this exclusion in the open;
                 # TF-146's bond_bridge.py IS the layer's
                 # bridge, exporting that BondEdge's data —
-                # TF-146 extended it in the open the same way).
+                # TF-146 extended it in the open the same way;
+                # TF-147's runmal_cards.py exports the
+                # compiled persona, filing its relationship
+                # excerpt — TF-147 extended it in the open
+                # the same way).
                 if path.name in ("bond_graph_verdict.py",
                                  "micro_rag_verdict.py",
                                  "persona_compiler_verdict.py",
                                  "bond_graph.py",
                                  "persona_compiler.py",
-                                 "bond_bridge.py"):
+                                 "bond_bridge.py",
+                                 "runmal_cards.py"):
                     continue
                 text = path.read_text(encoding="utf-8").lower()
                 assert "bond" not in text, path.name

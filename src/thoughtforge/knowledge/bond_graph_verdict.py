@@ -1028,9 +1028,14 @@ def bond_graph_verdict_problems() -> list[str]:
     # bond_bridge.py IS the adopted layer's bridge — it
     # exports the production BondEdge's data as
     # WYRD-consumable data — so TF-146 extended the
-    # exclusion to it in the open the same way — the
-    # premise guarded is unchanged: the persisted STORE
-    # still files no bond record type, checked below).
+    # exclusion to it in the open the same way; TF-147's
+    # runmal_cards.py exports TF-143's compiled persona —
+    # it files the persona's relationship excerpt and
+    # compiles from the production BondEdge — so TF-147
+    # extended the exclusion to it in the open the same
+    # way — the premise guarded is unchanged: the
+    # persisted STORE still files no bond record type,
+    # checked below).
     knowledge_dir = _REPO_ROOT / "src" / "thoughtforge" / "knowledge"
     cognition_dir = _REPO_ROOT / "src" / "thoughtforge" / "cognition"
     for folder in (knowledge_dir, cognition_dir):
@@ -1038,7 +1043,7 @@ def bond_graph_verdict_problems() -> list[str]:
             if path.name in (Path(__file__).name, "micro_rag_verdict.py",
                              "persona_compiler_verdict.py",
                              "bond_graph.py", "persona_compiler.py",
-                             "bond_bridge.py"):
+                             "bond_bridge.py", "runmal_cards.py"):
                 continue
             text = path.read_text(encoding="utf-8").lower()
             if "bond" in text or "relationship" in text:
