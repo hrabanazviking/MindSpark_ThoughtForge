@@ -137,9 +137,12 @@ class TestLiveTreeBinding:
         for folder in ("knowledge", "cognition"):
             for path in (REPO_ROOT / "src" / "thoughtforge" / folder).glob("*.py"):
                 # Verdict modules are verdicts, not the store
-                # (TF-140's files the wing's bond vocabulary).
+                # (TF-140's files the wing's bond vocabulary;
+                # TF-141's files the compiler's BondEdge /
+                # relationship vocabulary).
                 if path.name in ("bond_graph_verdict.py",
-                                 "micro_rag_verdict.py"):
+                                 "micro_rag_verdict.py",
+                                 "persona_compiler_verdict.py"):
                     continue
                 text = path.read_text(encoding="utf-8").lower()
                 assert "bond" not in text, path.name

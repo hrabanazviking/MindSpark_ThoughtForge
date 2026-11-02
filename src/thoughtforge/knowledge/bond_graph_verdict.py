@@ -1017,12 +1017,16 @@ def bond_graph_verdict_problems() -> list[str]:
     # modules excluded — they are verdicts, not the store;
     # TF-140's micro_rag_verdict.py files the wing's bond_fit /
     # bond_excerpt vocabulary, so TF-140 extended this module's
-    # own exclusion to it in the open).
+    # own exclusion to it in the open; TF-141's
+    # persona_compiler_verdict.py files the compiler's
+    # BondEdge / relationship vocabulary, so TF-141 extended
+    # the exclusion to it in the open the same way).
     knowledge_dir = _REPO_ROOT / "src" / "thoughtforge" / "knowledge"
     cognition_dir = _REPO_ROOT / "src" / "thoughtforge" / "cognition"
     for folder in (knowledge_dir, cognition_dir):
         for path in sorted(folder.glob("*.py")):
-            if path.name in (Path(__file__).name, "micro_rag_verdict.py"):
+            if path.name in (Path(__file__).name, "micro_rag_verdict.py",
+                             "persona_compiler_verdict.py"):
                 continue
             text = path.read_text(encoding="utf-8").lower()
             if "bond" in text or "relationship" in text:
