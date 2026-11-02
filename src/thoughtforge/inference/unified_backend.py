@@ -51,8 +51,16 @@ class UnifiedBackend(ABC):
         incrementally; the cognition core detects the override and
         labels its chunks native, while chunks from this default
         are re-chunked for delivery and labelled simulated.
+
+        TF-084 (D-HON-1): the response this default obtained
+        is stashed on ``last_stream_response`` before anything
+        is yielded, so a consumer of an empty stream can
+        recover the exact error string the plain path would
+        have recorded — the yield-nothing-on-error contract
+        itself is unchanged.
         """
         resp = self.generate(request)
+        self.last_stream_response = resp
         if not resp.error and resp.text:
             yield resp.text
 

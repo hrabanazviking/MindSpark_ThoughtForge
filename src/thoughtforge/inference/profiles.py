@@ -65,8 +65,13 @@ class HardwareDetector:
         snap.cpu_count = os.cpu_count() or 1
         snap.is_arm = snap.cpu_arch.startswith("arm") or snap.cpu_arch == "aarch64"
         snap.is_raspberry_pi = self._detect_raspberry_pi()
-        snap.is_mobile = self._detect_mobile(snap)
+        # TF-082 (D-DET-1): RAM must be detected BEFORE the
+        # mobile check — _detect_mobile reads ram_gb, and the
+        # snapshot default is 0.0, so the old order labelled
+        # every ARM machine "mobile" (measured on a real
+        # 16 GB Raspberry Pi 5: is_mobile came back True).
         snap.ram_gb = self._detect_ram_gb()
+        snap.is_mobile = self._detect_mobile(snap)
         snap.vram_gb, snap.gpu_name = self._detect_gpu()
         snap.has_cuda = self._check_cuda()
         snap.has_vulkan = self._check_vulkan()

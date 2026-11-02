@@ -156,6 +156,21 @@ def build_llama_kwargs(
     elif "n_gpu_layers" not in kwargs:
         kwargs["n_gpu_layers"] = 0
 
+    # TF-083 (D-GPU-1): a backend that itself declares no GPU
+    # offload (its own kwargs carry n_gpu_layers == 0 — the cpu
+    # backend, and directml, whose offload is a build property,
+    # not a kwarg) must never be handed a caller GPU-layer count.
+    # The count the caller passes is resolved from the *profile's
+    # declared* VRAM, so a GPU profile that fell back to cpu on a
+    # GPU-less machine otherwise reached Llama() as cpu in name
+    # and GPU in fact (measured pre-fix on a GPU-less VM:
+    # server_gpu selected cpu and still carried -1, desktop_gpu
+    # would have carried 40). The selected backend is the truth;
+    # the profile's ladder applies only to a backend that can
+    # offload.
+    if backend.llama_cpp_kwargs.get("n_gpu_layers", 0) == 0:
+        kwargs["n_gpu_layers"] = 0
+
     logger.debug("Llama kwargs: ctx=%d, gpu_layers=%d, threads=%d, backend=%s",
                  n_ctx, kwargs["n_gpu_layers"], n_threads, backend.name)
     return kwargs

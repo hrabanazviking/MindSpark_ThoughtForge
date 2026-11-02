@@ -381,6 +381,17 @@ POST_FREEZE_ADDITIONS: tuple[dict[str, Any], ...] = (
             "retained citation check, as one JSON-safe document"
         ),
     },
+    {
+        "name": "last_turn_joined_trace",
+        "kind": "core-method",
+        "added_by": "TF-084",
+        "note": (
+            "the last turn's one exportable story (inference/"
+            "joined_trace.py): the TF-038 cognition trace joined "
+            "with the turn's recorded inference calls and a "
+            "reconciliation derived from the two sections"
+        ),
+    },
 )
 
 

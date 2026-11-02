@@ -303,14 +303,16 @@ class TestSimulatedStream:
         # TF-031 superseded this pin (was mode == "knowledge_only"):
         # a backend failure with nothing to show is a stated failure
         # (mode "failed"), never a silent knowledge-only completion.
-        # The streamed detail is the no-text one, not "backend down":
-        # the default generate_stream yields nothing on an error
-        # response, so the error string never crosses the stream
-        # contract (docket D-HON-1, owned by TF-084; the plain
-        # backend path records resp.error exactly — TF-031 tests).
+        # TF-084 superseded the detail pin (was the no-text line):
+        # D-HON-1 is FIXED — the default generate_stream still
+        # yields nothing on an error response, but it stashes the
+        # response on last_stream_response and the streamed path
+        # recovers the exact error, so the streamed final now
+        # carries "backend down" exactly as the plain path does
+        # (TF-084's tests pin the two paths side by side).
         assert events[-1].final.mode == "failed"
         assert "backend" in events[-1].final.text
-        assert "returned no text" in events[-1].final.text
+        assert "backend down" in events[-1].final.text
 
 
 # ── Failure honesty ────────────────────────────────────────────────────────────

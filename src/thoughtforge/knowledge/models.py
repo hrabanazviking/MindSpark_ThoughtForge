@@ -561,6 +561,11 @@ class FinalResponseRecord:
     salvage_path: str = "direct"
     retrieval_confidence: float = 0.0
     mode: str = "knowledge_only"
+    # TF-097: the salvage rescue record (format
+    # thoughtforge-rescue-record/1) as detached data,
+    # carried into the TF-038 trace's final section;
+    # None on finals salvage never composed.
+    rescue_record: dict[str, Any] | None = None
 
 
 # ── 13. WritebackRecord ───────────────────────────────────────────────────────

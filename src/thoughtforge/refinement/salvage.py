@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -26,6 +27,45 @@ from typing import TYPE_CHECKING, Any
 # utils/common.py; this name is its alias (existing tests import it
 # from here).
 from thoughtforge.utils.common import split_sentences as _split_sentences
+
+# TF-088 (D-SALV-2): the refine adoption rule's safety guard —
+# a pass is adopted only when it introduces no new checkable
+# content (numbers, citations, named entities, polarity,
+# displaced time markers) against the source pool. The line
+# is specified in refinement/salvage_safety.py.
+from thoughtforge.refinement.salvage_safety import fabrication_problems
+
+# TF-096 (D-SALV-3): the persona-voice guard — when the
+# caller supplies the persona in force, selection must
+# not choose a flattened draft over an in-voice one at
+# hand, and a refine pass is adopted only when it
+# introduces no new persona avoid violation (TF-030's
+# checkable subset) against the current best text. The
+# judgement is specified in refinement/persona_voice.py.
+from thoughtforge.refinement.persona_voice import (
+    persona_violations,
+    voice_problems,
+)
+
+# TF-097 (D-TRACE-1): every forge() carries its rescue
+# record — candidates scored, selection, fragments, and
+# each refine pass individually (attempted vs adopted,
+# rejection reasons, failure) — specified in
+# refinement/rescue_provenance.py.
+from thoughtforge.refinement.rescue_provenance import (
+    RESCUE_RECORD_FORMAT,
+)
+
+# TF-098 (D-COST-1): when the caller names the
+# profile in force, the refine-pass count is
+# resolved against that profile's own cap before
+# any engine call — salvage enforces the cap
+# itself, not only through the core's resolved
+# max_passes. The discipline is specified in
+# refinement/cost_discipline.py.
+from thoughtforge.refinement.cost_discipline import (
+    resolve_refine_budget,
+)
 
 if TYPE_CHECKING:
     from thoughtforge.cognition.prompt_builder import PromptBuilder
@@ -80,6 +120,11 @@ class SalvageResult:
     best_draft_score: float
     fragments_kept: int
     salvage_path: str        # "direct" | "refine_pass_1" | "refine_pass_2" | "best_draft"
+    # TF-097: the rescue record (format
+    # thoughtforge-rescue-record/1) — detached data,
+    # never the live objects; None only on a result
+    # built outside forge().
+    rescue_record: dict[str, Any] | None = None
 
 
 # ── FragmentSalvage ────────────────────────────────────────────────────────────
@@ -103,6 +148,8 @@ class FragmentSalvage:
         scaffold: "CognitionScaffold | None" = None,
         max_passes: int = _MAX_REFINE_PASSES,
         generation_seed: int | None = None,
+        persona_expectation: Any | None = None,
+        profile_id: str | None = None,
     ) -> SalvageResult:
         """
         Score candidates and attempt fragment-based refinement.
@@ -118,6 +165,22 @@ class FragmentSalvage:
             generation_seed: TF-036 — per-pass sampling seed base
                 for the refine generations (pass i uses base + i);
                 None = unseeded, the standing behaviour.
+            persona_expectation: TF-096 — the persona in force
+                (a PersonaExpectation), when the caller has one.
+                Given, selection ranks only persona-consistent
+                drafts when at least one is at hand and a refine
+                pass introducing a new avoid violation is never
+                adopted. None (the default) = every leg
+                byte-identical to before TF-096.
+            profile_id:     TF-098 — the hardware profile in
+                force, when the caller names one. Given, the
+                effective pass count is min(max_passes, the
+                profile's own generation.max_refinement_passes)
+                resolved through refinement/cost_discipline
+                before any engine call (pi_zero's 0 = no call
+                at all); an unknown profile raises ValueError.
+                None (the default) = no cap applied, every leg
+                byte-identical to before TF-098.
 
         Returns:
             SalvageResult with best text, citations, confidence.
@@ -132,6 +195,26 @@ class FragmentSalvage:
                 best_draft_score=0.0,
                 fragments_kept=0,
                 salvage_path="empty",
+                rescue_record={
+                    "format": RESCUE_RECORD_FORMAT,
+                    "candidates": [],
+                    "selection": {
+                        "selected_candidate_id": None,
+                        "persona_filter_applied": False,
+                        "persona_consistent_count": None,
+                    },
+                    "fragments_kept": 0,
+                    "refine_attempted": False,
+                    "refine_passes": [],
+                    "final": {
+                        "salvage_path": "empty",
+                        "final_source": "empty",
+                        "final_pass": None,
+                        "passes_used": 0,
+                        "confidence": 0.0,
+                        "best_draft_score": 0.0,
+                    },
+                },
             )
 
         retrieved_qids = self._extract_qids(bundle)
@@ -139,6 +222,36 @@ class FragmentSalvage:
         # Step 1: Score all drafts
         scored = [self._score_draft(c, retrieved_qids) for c in candidates]
         scored.sort(key=lambda s: s.composite, reverse=True)
+        # TF-097: the record's candidate rows are the
+        # scored drafts as scored (before any persona
+        # filtering) — provenance is what was at hand.
+        record_candidates = [
+            {
+                "candidate_id": s.candidate_id,
+                "text_chars": len(s.text),
+                "length_score": round(s.length_score, 6),
+                "citation_score": round(s.citation_score, 6),
+                "composite": round(s.composite, 6),
+                "citations_found": list(s.citations_found),
+            }
+            for s in scored
+        ]
+        persona_consistent_count: int | None = None
+        # TF-096 (D-SALV-3): with a persona in force, a
+        # persona-consistent draft at hand outranks any
+        # flattened rival — the composite rewards length and
+        # cannot see voice, so the consistent drafts (score
+        # order kept within them) become the ranked list.
+        # When none is consistent the full ranking stands:
+        # the guard restricts choice, it invents no voice.
+        if persona_expectation is not None:
+            consistent = [
+                s for s in scored
+                if not persona_violations(persona_expectation, s.text)
+            ]
+            persona_consistent_count = len(consistent)
+            if consistent:
+                scored = consistent
         best = scored[0]
 
         logger.debug(
@@ -150,9 +263,24 @@ class FragmentSalvage:
         fragments = self._extract_fragments(scored, retrieved_qids)
         logger.debug("FragmentSalvage: %d fragments kept (threshold=%.2f)", len(fragments), _MIN_FRAGMENT_SCORE)
 
+        # TF-098 (D-COST-1): with a profile named, the
+        # effective pass count is the profile-capped
+        # resolution of the caller's request, settled
+        # before any engine call is made. No profile
+        # named: max_passes stands exactly as given.
+        effective_max_passes = max_passes
+        if profile_id is not None:
+            effective_max_passes = resolve_refine_budget(
+                max_passes, profile_id=profile_id,
+            ).effective_passes
+
         # Step 3: Attempt refine passes if engine available
-        if engine is not None and prompt_builder is not None and sketch is not None and scaffold is not None:
-            result = self._refine_with_engine(
+        pass_records: list[dict[str, Any]] = []
+        refine_attempted = (
+            engine is not None and prompt_builder is not None
+            and sketch is not None and scaffold is not None)
+        if refine_attempted:
+            result, pass_records = self._refine_with_engine(
                 best_draft=best,
                 fragments=fragments,
                 bundle=bundle,
@@ -161,14 +289,26 @@ class FragmentSalvage:
                 prompt_builder=prompt_builder,
                 sketch=sketch,
                 scaffold=scaffold,
-                max_passes=max_passes,
+                max_passes=effective_max_passes,
                 generation_seed=generation_seed,
+                persona_expectation=persona_expectation,
             )
             if result is not None:
+                result.rescue_record = self._rescue_record(
+                    candidates=record_candidates,
+                    selected_id=best.candidate_id,
+                    persona_filter_applied=(
+                        persona_expectation is not None),
+                    persona_consistent_count=persona_consistent_count,
+                    fragments_kept=len(fragments),
+                    refine_attempted=True,
+                    pass_records=pass_records,
+                    result=result,
+                )
                 return result
 
         # Step 4: Fall back to best-scoring draft directly
-        return SalvageResult(
+        fallback = SalvageResult(
             text=best.text,
             citations=best.citations_found,
             confidence=best.composite,
@@ -177,6 +317,70 @@ class FragmentSalvage:
             fragments_kept=len(fragments),
             salvage_path="best_draft",
         )
+        fallback.rescue_record = self._rescue_record(
+            candidates=record_candidates,
+            selected_id=best.candidate_id,
+            persona_filter_applied=(persona_expectation is not None),
+            persona_consistent_count=persona_consistent_count,
+            fragments_kept=len(fragments),
+            refine_attempted=refine_attempted,
+            pass_records=pass_records,
+            result=fallback,
+        )
+        return fallback
+
+    # ── TF-097: the rescue record ──────────────────────────────────────────
+
+    @staticmethod
+    def _rescue_record(
+        *,
+        candidates: list[dict[str, Any]],
+        selected_id: str,
+        persona_filter_applied: bool,
+        persona_consistent_count: int | None,
+        fragments_kept: int,
+        refine_attempted: bool,
+        pass_records: list[dict[str, Any]],
+        result: "SalvageResult",
+    ) -> dict[str, Any]:
+        """The rescue record for one forge() (TF-097).
+
+        Derived only from what forge() itself did and
+        measured — scores it computed, passes it ran,
+        latencies it timed. ``final_source`` answers
+        TF-087's naming debt: ``salvage_path``
+        refine_pass_N names passes *attempted*; the
+        record states whether the final text is the
+        selected draft or an adopted pass, and which.
+        """
+        adopted = [p for p in pass_records
+                   if p.get("outcome") == "adopted"]
+        if adopted:
+            final_source = "refine_pass"
+            final_pass: int | None = adopted[-1]["pass"]
+        else:
+            final_source = "selected_draft"
+            final_pass = None
+        return {
+            "format": RESCUE_RECORD_FORMAT,
+            "candidates": candidates,
+            "selection": {
+                "selected_candidate_id": selected_id,
+                "persona_filter_applied": persona_filter_applied,
+                "persona_consistent_count": persona_consistent_count,
+            },
+            "fragments_kept": fragments_kept,
+            "refine_attempted": refine_attempted,
+            "refine_passes": pass_records,
+            "final": {
+                "salvage_path": result.salvage_path,
+                "final_source": final_source,
+                "final_pass": final_pass,
+                "passes_used": result.passes_used,
+                "confidence": round(result.confidence, 6),
+                "best_draft_score": round(result.best_draft_score, 6),
+            },
+        }
 
     # ── Draft scoring ──────────────────────────────────────────────────────────
 
@@ -268,16 +472,20 @@ class FragmentSalvage:
         scaffold: "CognitionScaffold",
         max_passes: int,
         generation_seed: int | None = None,
-    ) -> SalvageResult | None:
+        persona_expectation: Any | None = None,
+    ) -> tuple[SalvageResult | None, list[dict[str, Any]]]:
         """
         Attempt up to max_passes refine generations using salvaged fragments.
-        Returns the best result, or None if all passes fail.
+        Returns (the best result, the TF-097 per-pass records), or
+        (None, records) if all passes fail — the records ride
+        either way, so a failed attempt is provenance too.
         """
         from thoughtforge.knowledge.models import FragmentRecord, FragmentScores
 
         current_best_text = best_draft.text
         current_best_score = best_draft.composite
         passes_used = 0
+        pass_records: list[dict[str, Any]] = []
 
         # Build FragmentRecord stubs for PromptBuilder
         frag_records = [
@@ -295,6 +503,25 @@ class FragmentSalvage:
             if not frag_records:
                 break
 
+            # TF-097: the pass record is built alongside
+            # the pass itself — outcome, score, rejection
+            # reasons, and the wall latency this method
+            # measures around the engine call. A record
+            # is appended for every attempt, adopted or
+            # not, failed or not.
+            record: dict[str, Any] = {
+                "pass": pass_num,
+                "outcome": "failed",
+                "counted_in_passes_used": False,
+                "score": None,
+                "text_chars": None,
+                "fabrication_problems": [],
+                "voice_problems": [],
+                "error": None,
+                "latency_ms": None,
+                "reported_latency_ms": None,
+            }
+            pass_records.append(record)
             try:
                 from thoughtforge.inference.turboquant import GenerationParams
                 refine_prompt = prompt_builder.build_refine_prompt(
@@ -302,6 +529,7 @@ class FragmentSalvage:
                     sketch=sketch,
                     scaffold=scaffold,
                 )
+                t_pass = time.perf_counter()
                 result = engine.generate(
                     refine_prompt,
                     params=GenerationParams(
@@ -317,18 +545,63 @@ class FragmentSalvage:
                         ),
                     ),
                 )
+                record["latency_ms"] = round(
+                    (time.perf_counter() - t_pass) * 1000, 3)
+                reported = getattr(result, "duration_ms", None)
+                record["reported_latency_ms"] = (
+                    round(float(reported), 3)
+                    if reported is not None else None)
                 passes_used = pass_num
+                record["counted_in_passes_used"] = True
 
                 # Score the refine output
                 refined_text = result.text
                 scored_refined = self._score_raw_text(refined_text, retrieved_qids)
+                record["score"] = round(scored_refined, 6)
+                record["text_chars"] = len(refined_text)
 
                 logger.debug(
                     "FragmentSalvage refine pass %d: score=%.3f (prev=%.3f)",
                     pass_num, scored_refined, current_best_score,
                 )
 
-                if scored_refined > current_best_score:
+                # TF-088 (D-SALV-2): safety gate BEFORE the
+                # score gate — a fabricated pass is never
+                # adopted, however well it scores; the attempt
+                # still counts in passes_used (TF-087 naming).
+                safety_problems = fabrication_problems(
+                    [current_best_text, *fragments,
+                     *(rec.cue for rec in
+                       bundle.activated_records)],
+                    refined_text, retrieved_qids)
+                # TF-096 (D-SALV-3): the voice gate, beside
+                # TF-088's — with a persona in force, a pass
+                # introducing a new avoid violation against
+                # the current best text is never adopted,
+                # however well it scores; the attempt still
+                # counts in passes_used (TF-087 naming).
+                voice_new = (
+                    voice_problems(
+                        persona_expectation, current_best_text,
+                        refined_text)
+                    if persona_expectation is not None else []
+                )
+                record["fabrication_problems"] = list(safety_problems)
+                record["voice_problems"] = list(voice_new)
+                if safety_problems:
+                    record["outcome"] = "rejected_fabrication"
+                    logger.warning(
+                        "FragmentSalvage refine pass %d rejected "
+                        "as fabrication: %s",
+                        pass_num, safety_problems)
+                elif voice_new:
+                    record["outcome"] = "rejected_voice"
+                    logger.warning(
+                        "FragmentSalvage refine pass %d rejected "
+                        "as voice-breaking: %s",
+                        pass_num, voice_new)
+                elif scored_refined > current_best_score:
+                    record["outcome"] = "adopted"
                     current_best_text = refined_text
                     current_best_score = scored_refined
                     # Update fragments for next pass from the refined text
@@ -353,13 +626,17 @@ class FragmentSalvage:
                             )
                             for t in next_fragments
                         ]
+                else:
+                    record["outcome"] = "not_improved"
 
             except Exception as e:
+                record["outcome"] = "failed"
+                record["error"] = str(e)
                 logger.warning("FragmentSalvage refine pass %d failed: %s", pass_num, e)
                 break
 
         if passes_used == 0:
-            return None
+            return None, pass_records
 
         cited = set(_QID_RE.findall(current_best_text))
         return SalvageResult(
@@ -370,7 +647,7 @@ class FragmentSalvage:
             best_draft_score=best_draft.composite,
             fragments_kept=len(fragments),
             salvage_path=f"refine_pass_{passes_used}",
-        )
+        ), pass_records
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 
