@@ -3,10 +3,21 @@ benchmark_profiles.py — Per-hardware-profile benchmarking for ThoughtForge.
 
 Measures:
   - Citation accuracy (target: >85% of retrieved QIDs cited)
-  - Response length adequacy (words per turn)
+  - Response length adequacy (words per turn; MODEL_CARD target
+    avg >= 30 words, checked by BenchmarkResult.passes_avg_words_target)
   - Per-turn latency (ms)
-  - Token efficiency (useful words / total words)
+  - Min-words met rate — filed in the result under the legacy field
+    name `token_efficiency`: the fraction of successful turns whose
+    response meets the query's min_response_words. It is NOT a
+    useful-words/total-words ratio; no such ratio is measured
+    anywhere in this tree (TF-121, D-BENCH-2).
   - Enforcement gate pass rate
+
+TF-121 (D-BENCH-1 share): `profile_id` is validated against the
+shipped hardware profiles (hardware_profiles/*.json) and an unknown
+profile raises ValueError by name — it no longer runs silently.
+The profile is still not APPLIED to the core (ThoughtForgeCore has
+no profile parameter); that share is TF-128's.
 
 Usage:
     from benchmarks.benchmark_profiles import ProfileBenchmark
@@ -17,6 +28,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import math
 import statistics
 import time
 from dataclasses import dataclass, field
@@ -51,6 +63,20 @@ _DEFAULT_QUERIES: list[BenchmarkQuery] = [
     BenchmarkQuery("What does the word 'wyrd' mean in Old Norse context?", "Norse language", 15),
 ]
 
+# Warm-up turns run this dedicated query, never a measured one
+# (TF-121, D-BENCH-6: warm-up used to be drawn from the measured
+# set itself, so query[0] was warmed and then measured again).
+WARM_UP_QUERY = BenchmarkQuery("Warm up the forge.", "warm-up", 0)
+
+_HARDWARE_PROFILES_DIR = Path(__file__).resolve().parent.parent / "hardware_profiles"
+
+
+def known_profile_ids() -> list[str]:
+    """The shipped hardware profile ids (hardware_profiles/*.json)."""
+    if not _HARDWARE_PROFILES_DIR.is_dir():
+        return []
+    return sorted(p.stem for p in _HARDWARE_PROFILES_DIR.glob("*.json"))
+
 
 # ── Result types ──────────────────────────────────────────────────────────────
 
@@ -65,6 +91,7 @@ class TurnResult:
     enforcement_passed: bool
     confidence: float
     error: str = ""
+    quality_tier: str = ""   # the turn score's tier, when the core filed one
 
 
 @dataclass
@@ -76,12 +103,16 @@ class BenchmarkResult:
     failed_turns: int
 
     # Core metrics
-    citation_accuracy: float        # fraction of turns with ≥1 citation (when QIDs retrieved)
+    citation_accuracy: float        # fraction of successful turns carrying ≥1 citation
+                                    # (denominator: all successful turns; any citation
+                                    # string counts — TF-121, D-BENCH-2)
     avg_response_words: float
     avg_latency_ms: float
     median_latency_ms: float
     p95_latency_ms: float
-    token_efficiency: float         # avg_response_words / max(1, avg_response_words + filler)
+    token_efficiency: float         # legacy name: the min-words met rate — fraction of
+                                    # successful turns meeting their query's
+                                    # min_response_words (TF-121, D-BENCH-2)
     enforcement_pass_rate: float    # fraction of turns enforcement_passed=True
     avg_confidence: float
 
@@ -93,12 +124,18 @@ class BenchmarkResult:
     # Targets (from BUILD_PLAN_v1)
     CITATION_TARGET: float = 0.85
     ENFORCEMENT_TARGET: float = 0.90
+    # MODEL_CARD's "avg response words ≥ 30" target — checked nowhere
+    # before TF-121 (D-BENCH-2); now judged like the other two.
+    AVG_WORDS_TARGET: float = 30.0
 
     def passes_citation_target(self) -> bool:
         return self.citation_accuracy >= self.CITATION_TARGET
 
     def passes_enforcement_target(self) -> bool:
         return self.enforcement_pass_rate >= self.ENFORCEMENT_TARGET
+
+    def passes_avg_words_target(self) -> bool:
+        return self.avg_response_words >= self.AVG_WORDS_TARGET
 
     def summary(self) -> str:
         """Human-readable benchmark summary."""
@@ -109,7 +146,8 @@ class BenchmarkResult:
             + (" ✓" if self.passes_citation_target() else " ✗"),
             f"  Enforcement  : {self.enforcement_pass_rate:.1%}  (target ≥90%)"
             + (" ✓" if self.passes_enforcement_target() else " ✗"),
-            f"  Avg words    : {self.avg_response_words:.1f}",
+            f"  Avg words    : {self.avg_response_words:.1f}  (target ≥30)"
+            + (" ✓" if self.passes_avg_words_target() else " ✗"),
             f"  Avg latency  : {self.avg_latency_ms:.0f}ms  (p95: {self.p95_latency_ms:.0f}ms)",
             f"  Avg confidence: {self.avg_confidence:.3f}",
             f"  Token eff.   : {self.token_efficiency:.1%}",
@@ -149,6 +187,12 @@ class ProfileBenchmark:
         Returns:
             BenchmarkResult with all metrics populated.
         """
+        known = known_profile_ids()
+        if known and profile_id not in known:
+            raise ValueError(
+                f"unknown hardware profile {profile_id!r} — known profiles: "
+                f"{', '.join(known)} (TF-121, D-BENCH-1: a bogus profile "
+                "no longer runs silently)")
         queries = queries or _DEFAULT_QUERIES
         notes: list[str] = []
 
@@ -157,10 +201,11 @@ class ProfileBenchmark:
 
         logger.info("ProfileBenchmark: running %d queries on profile=%s", len(queries), profile_id)
 
-        # Warm-up
-        for i in range(min(warm_up_turns, len(queries))):
+        # Warm-up: the dedicated warm-up query only — a measured
+        # query is never warmed (TF-121, D-BENCH-6).
+        for _ in range(warm_up_turns):
             try:
-                core.think(queries[i].text)
+                core.think(WARM_UP_QUERY.text)
             except Exception:
                 pass
 
@@ -190,6 +235,7 @@ class ProfileBenchmark:
             enforcement_passed = bool(getattr(result, "enforcement_passed", False))
             scores = getattr(result, "scores", None)
             confidence = float(scores.composite if scores and hasattr(scores, "composite") else 0.0)
+            quality_tier = str(getattr(scores, "quality_tier", "") or "") if scores else ""
 
             return TurnResult(
                 query=bq.text,
@@ -199,6 +245,7 @@ class ProfileBenchmark:
                 citations=citations,
                 enforcement_passed=enforcement_passed,
                 confidence=confidence,
+                quality_tier=quality_tier,
             )
 
         except Exception as e:
@@ -253,18 +300,28 @@ class ProfileBenchmark:
         word_counts = [t.response_words for t in successful]
         avg_words = statistics.mean(word_counts)
 
-        # Latency stats
+        # Latency stats. p95 by nearest-rank (TF-121, D-BENCH-6: the
+        # old index int(n*0.95)-1 picked ~p90 at n=10 and printed a
+        # "p95" below the mean).
         latencies = [t.latency_ms for t in successful]
         avg_latency = statistics.mean(latencies)
         median_latency = statistics.median(latencies)
         sorted_latencies = sorted(latencies)
-        p95_idx = max(0, int(len(sorted_latencies) * 0.95) - 1)
+        p95_idx = max(0, math.ceil(0.95 * len(sorted_latencies)) - 1)
         p95_latency = sorted_latencies[p95_idx]
 
-        # Token efficiency: proxy = avg_words / (avg_words + penalty for very short/long)
-        min_q_words = statistics.mean([bq.min_response_words for bq in queries])
+        # Min-words met rate (filed as token_efficiency, the legacy
+        # field name — TF-121, D-BENCH-2): the fraction of successful
+        # turns meeting their query's min_response_words.
         meets_min = sum(1 for t, bq in zip(successful, queries) if t.response_words >= bq.min_response_words)
         token_efficiency = meets_min / len(successful)
+
+        # Quality tier distribution (TF-121, D-BENCH-6: the field was
+        # declared and never populated — always {}).
+        quality_tiers: dict[str, int] = {}
+        for t in successful:
+            tier = t.quality_tier or "unscored"
+            quality_tiers[tier] = quality_tiers.get(tier, 0) + 1
 
         # Enforcement pass rate
         enforcement_pass_rate = sum(1 for t in successful if t.enforcement_passed) / len(successful)
@@ -285,6 +342,7 @@ class ProfileBenchmark:
             token_efficiency=token_efficiency,
             enforcement_pass_rate=enforcement_pass_rate,
             avg_confidence=avg_confidence,
+            quality_tiers=quality_tiers,
             turn_results=turns,
             notes=notes,
         )
@@ -309,7 +367,11 @@ def main() -> None:
     """Run benchmark from command line: python -m benchmarks.benchmark_profiles [profile]"""
     import sys
     profile = sys.argv[1] if len(sys.argv) > 1 else "desktop_cpu"
-    result = ProfileBenchmark().run(profile_id=profile)
+    try:
+        result = ProfileBenchmark().run(profile_id=profile)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(2)
     print(result.summary())
 
 

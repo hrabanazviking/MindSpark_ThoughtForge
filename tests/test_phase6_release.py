@@ -288,9 +288,15 @@ class TestPersonaConsistencyScorer:
         from benchmarks.persona_consistency import PersonaConsistencyScorer
         return PersonaConsistencyScorer()
 
-    def test_empty_input_returns_perfect_score(self, scorer):
+    def test_empty_input_scores_zero_not_vacuous_pass(self, scorer):
+        # Updated in the open by TF-122 (D-BENCH-4): this test
+        # pinned the vacuous 1.0 PASS on an empty batch — the
+        # defect TF-010 filed. An empty batch now scores 0.0
+        # and does not pass (REVIEW), matching
+        # score_persona_turns' shape in the cognition layer.
         result = scorer.score([])
-        assert result.consistency_score == 1.0
+        assert result.consistency_score == 0.0
+        assert result.passes is False
         assert result.total_turns == 0
 
     def test_clean_norse_responses_pass(self, scorer):

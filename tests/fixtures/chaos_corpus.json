@@ -1,0 +1,462 @@
+{
+  "entries": [
+    {
+      "expected_outcome": "rescued",
+      "family": "truncation",
+      "id": "chaos_truncation_cut_mid_sentence",
+      "owner": "TF-090",
+      "prompt": "When does the ferry leave, and what should I bring?",
+      "rationale": "One complete sentence stands before the cut; TF-090's truncation repair cuts to it and records the dropped tail verbatim.",
+      "signals": {
+        "truncation_suspect": true
+      },
+      "text": "The ferry leaves at dawn from the north landing. Travellers should bring a warm coat and the lantern keeper checks the"
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "truncation",
+      "id": "chaos_truncation_cut_mid_word",
+      "owner": "TF-090",
+      "prompt": "How long does the crossing take, and who records the river level?",
+      "rationale": "The stream died mid-word in the second sentence; the first complete sentence is honestly rescuable by cutting, never by completing the word.",
+      "signals": {
+        "truncation_suspect": true
+      },
+      "text": "The ferry leaves at dawn from the north landing. The crossing takes eleven minutes in calm water and the river level is recorded each mor"
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "truncation",
+      "id": "chaos_truncation_no_complete_sentence",
+      "owner": "TF-090",
+      "prompt": "What does the lantern keeper do each morning?",
+      "rationale": "No complete sentence exists to cut back to; ending the sentence would mean inventing its ending, so the honest verdict is refusal.",
+      "signals": {
+        "truncation_suspect": true
+      },
+      "text": "The lantern keeper checks the river level and then she"
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "loop_sentence",
+      "id": "chaos_loop_sentence_run",
+      "owner": "TF-091",
+      "prompt": "What can you hear at the landing in the morning?",
+      "rationale": "A period-1 sentence run far past TF-091's threshold of three; cutting the repeats leaves the one true sentence.",
+      "signals": {},
+      "text": "The bell rings across the water. The bell rings across the water. The bell rings across the water. The bell rings across the water. The bell rings across the water."
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "loop_sentence",
+      "id": "chaos_loop_sentence_in_the_middle",
+      "owner": "TF-091",
+      "prompt": "Describe the morning at the ferry landing.",
+      "rationale": "The loop sits between sound sentences on both sides; TF-091 cuts the repeats and the surrounding answer survives whole.",
+      "signals": {},
+      "text": "The ferry leaves at dawn. The bell rings. The bell rings. The bell rings. The bell rings. Then the harbour goes quiet and Wrenna records the river level."
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "loop_sentence",
+      "id": "chaos_loop_sentence_case_variants",
+      "owner": "TF-091",
+      "prompt": "What sound marks the first ferry?",
+      "rationale": "Casing and punctuation vary but the normalised sentence repeats past the threshold; TF-091's normalisation still names it one loop.",
+      "signals": {},
+      "text": "The bell rings at dawn. the bell rings at dawn! THE BELL RINGS AT DAWN. The bell rings at dawn."
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "loop_cycle",
+      "id": "chaos_loop_cycle_two_sentence",
+      "owner": "TF-091",
+      "prompt": "What happens at the landing each morning?",
+      "rationale": "A period-2 sentence cycle repeated three times; TF-091 keeps one cycle and cuts the rest.",
+      "signals": {},
+      "text": "The bell rings. The ferry leaves. The bell rings. The ferry leaves. The bell rings. The ferry leaves."
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "loop_cycle",
+      "id": "chaos_loop_cycle_with_partial_tail",
+      "owner": "TF-091",
+      "prompt": "Tell me about the morning routine at the landing.",
+      "rationale": "A period-2 cycle repeated three times plus a truncated partial repeat at the tail; TF-091 cuts the cycle's repeats (the partial tail itself is the truncation gate's share, never completed).",
+      "signals": {},
+      "text": "Wrenna lights the lantern. The bell rings twice. Wrenna lights the lantern. The bell rings twice. Wrenna lights the lantern. The bell rings twice. Wrenna lights the lan"
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "loop_word",
+      "id": "chaos_loop_word_repeat",
+      "owner": "TF-091",
+      "prompt": "When does the ferry leave?",
+      "rationale": "A two-word loop inside one sentence with no punctuation to save it; TF-091's word-loop cut leaves a readable sentence.",
+      "signals": {},
+      "text": "the ferry the ferry the ferry the ferry leaves at dawn from the north landing today"
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "loop_word",
+      "id": "chaos_loop_word_stutter",
+      "owner": "TF-091",
+      "prompt": "Who keeps the lantern at the landing?",
+      "rationale": "A single-word stutter at the sentence head; TF-091's word-loop rule covers the one-word unit as well as phrases.",
+      "signals": {},
+      "text": "The the the the lantern keeper is Wrenna, who records the river level each morning in chalk."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "hallucination",
+      "id": "chaos_hallucination_invented_price",
+      "owner": "TF-088",
+      "prompt": "How much does the ferry crossing cost?",
+      "rationale": "Prices, a child fare and a season ticket are invented whole: no source in the synthetic world states any fare. TF-088's line names new numbers as fabrication; a draft-side invention is generation's fault, and the corpus demands the stack not pass it clean — TF-101 scores whether it does.",
+      "signals": {},
+      "text": "The ferry crossing costs four silver coins for adults and two for children, and a season ticket costs forty coins from the harbour office."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "hallucination",
+      "id": "chaos_hallucination_invented_destinations",
+      "owner": "TF-088",
+      "prompt": "Where does the ferry go?",
+      "rationale": "Every destination and the twice-daily schedule are invented named entities; the synthetic reference names no ferry destination at all. New named entities are fabrication under TF-088's rule.",
+      "signals": {},
+      "text": "The ferry sails to Millbrook, Stonehaven and the Salt Islands, calling at each harbour twice a day in summer."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "hallucination",
+      "id": "chaos_hallucination_negation_flip",
+      "owner": "TF-088",
+      "prompt": "Does the ferry run after the second tide bell?",
+      "rationale": "The synthetic fact is the opposite: no ferry runs after the second tide bell. A polarity flip is content fabrication under TF-088's rule, not a style slip.",
+      "signals": {
+        "records": "lantern_hollow_synthetic"
+      },
+      "text": "Yes, the ferry runs all through the night after the second tide bell, so travellers can cross at any hour they like."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "hallucination",
+      "id": "chaos_hallucination_common_word_elaboration",
+      "owner": "TF-088",
+      "prompt": "When does the ferry leave?",
+      "rationale": "TF-088's filed residual shape: facts added in plain common words (a keeper, a red lantern over an office, a winter timetable, night boats that contradict the tide-bell rule) with no marker a mechanical guard can name. Filed so TF-101 and TF-104's gate must face the residual class, not only the marker tier.",
+      "signals": {},
+      "text": "The ferry leaves at dawn, when the keeper hangs a red lantern over the harbour office and the winter timetable is chalked beside the ferry post for the night boats."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "fabricated_citation",
+      "id": "chaos_citation_foreign_qid",
+      "owner": "TF-049/TF-093",
+      "prompt": "How long does the crossing take?",
+      "rationale": "Q999999 is a foreign marker: no retrieved record owns it. TF-049's per-claim check fails an answer carrying a citation no record owns, however true its first clause sounds.",
+      "signals": {
+        "records": "lantern_hollow_synthetic",
+        "retrieved_qids": [
+          "Q123"
+        ]
+      },
+      "text": "The crossing takes eleven minutes in calm water, as recorded for the harbour at Q999999, and the tide tables confirm the same figure for every season of the year."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "fabricated_citation",
+      "id": "chaos_citation_invented_reference",
+      "owner": "TF-049/TF-093",
+      "prompt": "When does the ferry stop running?",
+      "rationale": "A plausible-looking source, year and page that do not exist in the synthetic reference set. The conclusion happens to match the true fact; the citation is still fabricated, and a true claim does not launder a false source.",
+      "signals": {
+        "records": "lantern_hollow_synthetic"
+      },
+      "text": "According to the Hollow Almanac for 1897, page 214, the ferry stops running at the second tide bell, a rule the almanac says was set down by the first lantern keeper."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "fabricated_citation",
+      "id": "chaos_citation_uncited_claim",
+      "owner": "TF-049/TF-093",
+      "prompt": "Where is the lantern oil kept?",
+      "rationale": "The first claim matches a retrieved reference record word for word in substance but carries none of its markers: TF-049's cite-or-explain rule flags a matched claim that does not cite its record. Filed as refused-side because the policy surface must not pass it clean; TF-101 scores the surface's flagged verdict against this class.",
+      "signals": {
+        "records": "lantern_hollow_synthetic"
+      },
+      "text": "Lantern oil is kept in the hollow stores, in the stone room behind the mill where the spare wicks and lamp glass are shelved for the winter months ahead."
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "format_collapse",
+      "id": "chaos_format_trailing_comma",
+      "owner": "TF-090",
+      "prompt": "Give the ferry facts as JSON with keys ferry and crossing_minutes.",
+      "rationale": "One trailing comma is the whole collapse; TF-090 drops it, a repair that removes punctuation and invents nothing.",
+      "signals": {
+        "expected_format": "object",
+        "required_keys": [
+          "ferry",
+          "crossing_minutes"
+        ],
+        "structured": true
+      },
+      "text": "{\"ferry\": \"dawn\", \"crossing_minutes\": 11,}"
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "format_collapse",
+      "id": "chaos_format_truncated_json",
+      "owner": "TF-090",
+      "prompt": "Give the ferry facts as JSON with keys ferry and crossing_minutes.",
+      "rationale": "The stream died after a complete pair set; TF-090 drops the incomplete trailing element and closes the container — the required keys survive on content already present.",
+      "signals": {
+        "expected_format": "object",
+        "required_keys": [
+          "ferry",
+          "crossing_minutes"
+        ],
+        "structured": true
+      },
+      "text": "{\"ferry\": \"dawn\", \"crossing_minutes\": 11, \"tide\": "
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "format_collapse",
+      "id": "chaos_format_prose_when_json_asked",
+      "owner": "TF-090",
+      "prompt": "Give the ferry facts as JSON with keys ferry and crossing_minutes.",
+      "rationale": "A structured ask answered in prose has no JSON span to repair; dressing prose as structure would be invention, so TF-090 refuses with no_json_span.",
+      "signals": {
+        "expected_format": "object",
+        "required_keys": [
+          "ferry",
+          "crossing_minutes"
+        ],
+        "structured": true
+      },
+      "text": "The ferry leaves at dawn and the crossing takes eleven minutes in calm water."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "format_collapse",
+      "id": "chaos_format_missing_required_key",
+      "owner": "TF-090",
+      "prompt": "Give the ferry facts as JSON with keys ferry and tide.",
+      "rationale": "Valid JSON missing a required key: the schema is a gate, not a repair target — TF-090 never invents the missing field, so it refuses.",
+      "signals": {
+        "expected_format": "object",
+        "required_keys": [
+          "ferry",
+          "tide"
+        ],
+        "structured": true
+      },
+      "text": "{\"ferry\": \"dawn\"}"
+    },
+    {
+      "expected_outcome": "rescued",
+      "family": "language_drift",
+      "id": "chaos_drift_minority_spanish",
+      "owner": "TF-092",
+      "prompt": "When does the ferry leave, and who records the river level?",
+      "rationale": "One off-language sentence trails an otherwise English answer: TF-092 pulls back by deletion only, and the English majority survives as the answer.",
+      "signals": {
+        "expected_language": "en"
+      },
+      "text": "The ferry leaves at dawn from the north landing. Wrenna records the river level each morning in chalk on the mill door. El ferry sale al amanecer desde el muelle norte."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "language_drift",
+      "id": "chaos_drift_majority_spanish",
+      "owner": "TF-092",
+      "prompt": "When does the ferry leave?",
+      "rationale": "The drift is the majority of the answer: TF-092 flags it verbatim rather than dressing the one English sentence as the answer, so the corpus scores it refused-side — never passed clean, never silently cut.",
+      "signals": {
+        "expected_language": "en"
+      },
+      "text": "The ferry leaves at dawn. El ferry sale al amanecer desde el muelle norte. El muelle norte esta tranquilo y el rio esta bajo esta manana."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "language_drift",
+      "id": "chaos_drift_whole_answer_spanish",
+      "owner": "TF-092",
+      "prompt": "Who records the river level?",
+      "rationale": "The whole answer wandered off-language: there is no on-language text to rescue, and TF-092 flags the whole answer rather than translating or passing it.",
+      "signals": {
+        "expected_language": "en"
+      },
+      "text": "El ferry sale al amanecer. El muelle norte esta tranquilo hoy."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "persona_voice_loss",
+      "id": "chaos_voice_handwaving",
+      "owner": "TF-096",
+      "prompt": "How long does the ferry crossing take?",
+      "rationale": "Offered against the in-voice source in source_text, this text introduces the synthetic persona's avoid entry 'vague handwaving': TF-096's relative judgement names it a new violation, so a refine or selection step must not adopt it over the source.",
+      "signals": {
+        "persona": "wrenna_synthetic"
+      },
+      "source_text": "According to Q123, the ferry crossing takes eleven minutes in calm water. Wrenna records the river level each morning in chalk on the mill door.",
+      "text": "According to Q123, it is hard to say — really just vague handwaving on my part, but the river does what it does, and the ferry crossing takes eleven minutes in calm water while Wrenna records the river level each morning in chalk on the mill door, and travellers should simply wait and see."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "persona_voice_loss",
+      "id": "chaos_voice_repetition",
+      "owner": "TF-096",
+      "prompt": "How long does the ferry crossing take?",
+      "rationale": "The output introduces the avoid entry 'repetition' that its in-voice source does not carry; TF-096 rejects a step whose only voice change is a new violation.",
+      "signals": {
+        "persona": "wrenna_synthetic"
+      },
+      "source_text": "According to Q123, the ferry crossing takes eleven minutes in calm water. Wrenna records the river level each morning in chalk on the mill door.",
+      "text": "According to Q123, the ferry, the ferry — repetition aside, it takes eleven minutes in calm water, and Wrenna records the river level each morning in chalk on the mill door, and the crossing is a pleasant crossing in calm water for every traveller who comes down to the river today."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "persona_voice_loss",
+      "id": "chaos_voice_invented_crossings",
+      "owner": "TF-096",
+      "prompt": "How long does the ferry crossing take?",
+      "rationale": "The output introduces the avoid entry 'invented crossings after the second tide bell' — a voice break that is also a factual invention; TF-096's guard owns the adoption decision against the source.",
+      "signals": {
+        "persona": "wrenna_synthetic"
+      },
+      "source_text": "According to Q123, the ferry crossing takes eleven minutes in calm water. Wrenna records the river level each morning in chalk on the mill door.",
+      "text": "According to Q123, there may be invented crossings after the second tide bell if the night looks calm enough, and the ferry crossing takes eleven minutes in calm water while Wrenna records the river level each morning in chalk on the mill door."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "genericness",
+      "id": "chaos_generic_filler_non_answer",
+      "owner": "TF-093",
+      "prompt": "When does the ferry leave?",
+      "rationale": "Fluent filler that answers nothing: no time, no place, no fact. The corpus demands the stack not pass it clean; TF-101 scores the length/genericness legs against it, and any pass-clean here is a scored gap, not a corpus error.",
+      "signals": {},
+      "text": "It is important to note that ferry times can depend on many different factors, and there are various things travellers may wish to consider when planning a journey of this kind in general."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "genericness",
+      "id": "chaos_generic_vague_restatement",
+      "owner": "TF-093",
+      "prompt": "Who records the river level?",
+      "rationale": "The question restated as its own answer: grammatical, on-topic in shape, and empty of the one name asked for. A genericness failure the corpus files in words, since no phrase list alone names it.",
+      "signals": {},
+      "text": "The river level is something that gets recorded by someone as part of the usual arrangements, in the normal way that such things are generally handled around the landing."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "refusal_shaped",
+      "id": "chaos_refusal_cannot_provide",
+      "owner": "TF-093/TF-095",
+      "prompt": "When does the ferry leave?",
+      "rationale": "A refusal-shaped non-answer to a benign factual ask the synthetic reference answers plainly. The enforcement gate's hard generic phrases name it; TF-095 owns telling the user honestly rather than dressing the refusal as an answer.",
+      "signals": {},
+      "text": "I cannot provide information about ferry times, so you will need to find that out from another source instead."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "refusal_shaped",
+      "id": "chaos_refusal_unable_to_help",
+      "owner": "TF-093/TF-095",
+      "prompt": "What does Wrenna do when the river runs high?",
+      "rationale": "Polite inability in place of an answer the store holds (the red lantern rule). Refusal-shaped: the text performs a boundary that no policy set, and must not pass as a response.",
+      "signals": {},
+      "text": "I am unable to help with that question about the river, but I hope you are able to find the answer you are looking for somewhere."
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "empty_or_short",
+      "id": "chaos_empty_output",
+      "owner": "TF-093",
+      "prompt": "When does the ferry leave?",
+      "rationale": "The degenerate output: nothing at all. TF-093's surface refuses empty output by name (empty_output) — the one entry whose text is empty by design.",
+      "signals": {},
+      "text": ""
+    },
+    {
+      "expected_outcome": "refused",
+      "family": "empty_or_short",
+      "id": "chaos_short_non_answer",
+      "owner": "TF-093",
+      "prompt": "When does the ferry leave and where does it leave from?",
+      "rationale": "Two words against a two-part ask: the length leg flags it as too short to be a useful answer, so the corpus scores it refused-side rather than passed clean.",
+      "signals": {},
+      "text": "Ferry dawn."
+    },
+    {
+      "expected_outcome": "passed-clean",
+      "family": "clean_control",
+      "id": "chaos_clean_prose",
+      "owner": "TF-093",
+      "prompt": "When does the ferry leave, and who records the river level?",
+      "rationale": "Control: a plain, complete, on-language answer. Every gate must leave it byte-identical — a rescue applied here would be corruption, not rescue.",
+      "signals": {},
+      "text": "The ferry leaves at dawn from the north landing. Wrenna records the river level each morning in chalk on the mill door."
+    },
+    {
+      "expected_outcome": "passed-clean",
+      "family": "clean_control",
+      "id": "chaos_clean_structured_json",
+      "owner": "TF-090",
+      "prompt": "Give the ferry facts as JSON with keys ferry and crossing_minutes.",
+      "rationale": "Control: valid JSON satisfying its schema. TF-090's rule is that valid output passes untouched, verdict valid, no repairs.",
+      "signals": {
+        "expected_format": "object",
+        "required_keys": [
+          "ferry",
+          "crossing_minutes"
+        ],
+        "structured": true
+      },
+      "text": "{\"ferry\": \"dawn\", \"crossing_minutes\": 11}"
+    },
+    {
+      "expected_outcome": "passed-clean",
+      "family": "clean_control",
+      "id": "chaos_clean_cited_claim",
+      "owner": "TF-049/TF-093",
+      "prompt": "Who is Odin?",
+      "rationale": "Control: a claim matching a retrieved record and citing that record's own marker inside the claim — TF-049's cite-or-explain shape, satisfied.",
+      "signals": {
+        "records": "lantern_hollow_synthetic",
+        "retrieved_qids": [
+          "Q123"
+        ]
+      },
+      "text": "Odin is chief god of Norse mythology [Q123]."
+    },
+    {
+      "expected_outcome": "passed-clean",
+      "family": "clean_control",
+      "id": "chaos_clean_emphasis_double_repeat",
+      "owner": "TF-091",
+      "prompt": "What sound marks the first ferry?",
+      "rationale": "Control: a sentence said twice is emphasis under TF-091's threshold, not a loop. The loop gate must leave it alone — over-cutting clean text is the failure this control exists to catch.",
+      "signals": {},
+      "text": "The bell rings. The bell rings. Wrenna smiles at the sound from the mill door."
+    },
+    {
+      "expected_outcome": "passed-clean",
+      "family": "clean_control",
+      "id": "chaos_clean_spanish_answer",
+      "owner": "TF-092",
+      "prompt": "¿Cuándo sale el ferry?",
+      "rationale": "Control: a wholly Spanish answer to a Spanish ask, judged against expected_language es. Drift is wandering from the ask's language, not the presence of another language.",
+      "signals": {
+        "expected_language": "es"
+      },
+      "text": "El ferry sale al amanecer desde el muelle norte. El cruce dura once minutos con el agua tranquila."
+    }
+  ],
+  "format": "thoughtforge-chaos-corpus/1",
+  "synthetic": true,
+  "version": 1,
+  "world": "Lantern Hollow on the River Sarn (TF-017's invented world; Wrenna the Lantern-Keeper). SYNTHETIC_FIXTURE: every entry is invented, real-shaped, and carries no canon or persona material."
+}

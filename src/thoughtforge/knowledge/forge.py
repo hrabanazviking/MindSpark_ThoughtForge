@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from thoughtforge.etl.embedding_discipline import canonical_model_name
+from thoughtforge.etl.poisoned_source import screen_result_record
 from thoughtforge.etl.embeddings import (
     encode_single,
     vector_search_entities,
@@ -83,6 +84,15 @@ class KnowledgeForge:
         # (query / thresholds / fired / rejected-with-reasons),
         # for the memory inspector (knowledge/inspector.py).
         self._last_retrieval_report: dict[str, Any] | None = None
+        # TF-116: the most recent retrieve() / sql_retrieve() /
+        # vector_retrieve() call's poison-screen exclusions
+        # (knowledge rows planted directly in the store file
+        # are stopped here, at retrieval).
+        self._poison_screened_out: list[dict[str, Any]] = []
+        # While retrieve() runs, both legs also append to
+        # this collection so the report names every leg's
+        # exclusions even though each leg reports its own.
+        self._poison_collect: list[dict[str, Any]] | None = None
 
     @property
     def last_retrieval_report(self) -> dict[str, Any] | None:
@@ -94,6 +104,43 @@ class KnowledgeForge:
         if self._last_retrieval_report is None:
             return None
         return copy.deepcopy(self._last_retrieval_report)
+
+    @property
+    def last_poison_screened_out(self) -> list[dict[str, Any]]:
+        """TF-116: a detached copy of the last retrieval
+        call's poison-screen exclusions."""
+        import copy
+
+        return copy.deepcopy(self._poison_screened_out)
+
+    def _apply_poison_screen(
+        self, results: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """TF-116 (D-POISON-2): exclude non-pass results,
+        naming each exclusion in ``_poison_screened_out``.
+
+        The screen reads result text only (etl/
+        poisoned_source.screen_result_record, TF-062's
+        classes): a benign result is returned untouched.
+        """
+        kept: list[dict[str, Any]] = []
+        for record in results:
+            screening = screen_result_record(record)
+            if screening.verdict == "pass":
+                kept.append(record)
+                continue
+            record_id, record_type = self._record_identity(record)
+            entry = {
+                "record_id": record_id,
+                "record_type": record_type,
+                "source": str(record.get("source", "")),
+                "verdict": screening.verdict,
+                "classes": screening.classes,
+            }
+            self._poison_screened_out.append(entry)
+            if self._poison_collect is not None:
+                self._poison_collect.append(dict(entry))
+        return kept
 
     # ── Primary retrieval API ──────────────────────────────────────────────────
 
@@ -125,6 +172,11 @@ class KnowledgeForge:
                         None keeps the standing top_k.
         """
         records: list[dict[str, Any]] = []
+        # TF-116: this call's exclusions are collected
+        # across both legs (each leg reports its own in
+        # _poison_screened_out; the collection aggregates).
+        self._poison_screened_out = []
+        self._poison_collect = []
 
         if path in ("sql", "hybrid"):
             sql_limit = top_k * 2
@@ -142,6 +194,11 @@ class KnowledgeForge:
                 # Avoid duplicates from SQL pass
                 if not any(x.get("qid") == r.get("qid") for x in records):
                     records.append(r)
+
+        # TF-116: the collection is this call's whole
+        # screened_out; close it before scoring.
+        self._poison_screened_out = list(self._poison_collect)
+        self._poison_collect = None
 
         # Score and rank
         scored = self._score_records(records, query)
@@ -178,6 +235,9 @@ class KnowledgeForge:
             "considered": len(scored),
             "fired": [self._record_identity(r)[0] for r in fired],
             "rejected": rejected,
+            # TF-116: rows the poison screen excluded before
+            # scoring (planted poison never reaches a bundle).
+            "screened_out": list(self._poison_screened_out),
         }
         scored = fired
 
@@ -201,6 +261,8 @@ class KnowledgeForge:
         Returns raw result dicts with source metadata.
         """
         results: list[dict[str, Any]] = []
+        # TF-116: this call's own exclusions.
+        self._poison_screened_out = []
         conn = get_connection(self.db_path, read_only=True)
 
         try:
@@ -331,7 +393,7 @@ class KnowledgeForge:
         finally:
             conn.close()
 
-        return results
+        return self._apply_poison_screen(results)
 
     # ── Vector retrieval ───────────────────────────────────────────────────────
 
@@ -345,6 +407,8 @@ class KnowledgeForge:
         Vector-based semantic retrieval using cosine similarity on pre-computed embeddings.
         """
         results: list[dict[str, Any]] = []
+        # TF-116: this call's own exclusions.
+        self._poison_screened_out = []
 
         # TF-053: each vector leg degrades on its own. A missing
         # embedding package or uncached model is an availability
@@ -384,7 +448,7 @@ class KnowledgeForge:
                     type(exc).__name__, exc,
                 )
 
-        return results
+        return self._apply_poison_screen(results)
 
     # ── Scoring ────────────────────────────────────────────────────────────────
 

@@ -224,6 +224,13 @@ class ThoughtForgeCore:
         # after think() returns (was built and discarded — CORE_LOOP
         # §8-F3). Trace *export* of it is TF-038's slice.
         self._last_turn_state: RuntimeTurnState | None = None
+        # TF-084: this turn's inference recorder (inference/
+        # joined_trace.py) — created per turn in _run_turn,
+        # continued across a resume of the same turn, and read
+        # by last_turn_joined_trace(). Recording is guard-
+        # wrapped (see _record_inference): a trace is a record,
+        # never a gate on the turn it describes.
+        self._trace_recorder: Any = None
         # TF-029: the will layer — one goal ledger per core instance
         # (a conversation's standing goal, persisted across turns;
         # cognition/will.py). Observed after each turn's scaffold
@@ -385,6 +392,23 @@ class ThoughtForgeCore:
         return export_turn_trace(
             self._last_turn_state, conversation=conversation
         )
+
+    def last_turn_joined_trace(self) -> dict[str, Any] | None:
+        """TF-084: the last turn's ONE exportable story — the
+        TF-038 cognition trace joined with this turn's
+        inference calls (inference/joined_trace.py): every
+        leaf generation call the turn made, in order, with
+        its request parameters, sizes, latencies, outcome
+        and exact error, plus a reconciliation derived from
+        the two sections. None before the first turn. A
+        MINOR addition under TF-034's rules, recorded in
+        core_docs POST_FREEZE_ADDITIONS beside
+        ``last_turn_trace``."""
+        if self._last_turn_state is None:
+            return None
+        from thoughtforge.inference.joined_trace import join_traces
+
+        return join_traces(self.last_turn_trace(), self._trace_recorder)
 
     def last_turn_inspector(self) -> dict[str, Any] | None:
         """TF-061: the last turn's memory inspector export —
@@ -639,6 +663,15 @@ class ThoughtForgeCore:
             )
         assert turn.input_sketch is not None and turn.scaffold is not None
         assert turn.memory_bundle is not None
+        # TF-084: a resume continues the SAME turn's recorder
+        # when it is still this core's (the normal case — the
+        # cut turn was this core's last); a recorder from
+        # another turn is replaced, never merged.
+        if self._trace_recorder is None \
+                or self._trace_recorder.turn_id != turn.turn_id:
+            from thoughtforge.inference.joined_trace import InferenceRecorder
+
+            self._trace_recorder = InferenceRecorder(turn_id=turn.turn_id)
         turn.resume_count += 1
         turn.interrupted = False
         turn.interrupt_reason = ""
@@ -716,6 +749,11 @@ class ThoughtForgeCore:
         turn_id = self._mint_id("turn", 8)
         turn = RuntimeTurnState(turn_id=turn_id)
         self._last_turn_state = turn
+        # TF-084: a fresh inference recorder for this turn's
+        # joined trace (inference/joined_trace.py).
+        from thoughtforge.inference.joined_trace import InferenceRecorder
+
+        self._trace_recorder = InferenceRecorder(turn_id=turn_id)
         # TF-035: this thread's own turn, for think()'s read-back.
         self._turn_local.turn = turn
         t_start = time.perf_counter()
@@ -997,6 +1035,83 @@ class ThoughtForgeCore:
             failure = GenerationFailure(stage=stage, mode=mode, detail=detail)
         turn.generation_failures.append(failure)
 
+    # ── TF-084: inference recording for the joined trace ─────────────────────
+
+    def _record_inference(self, **kwargs: Any) -> None:
+        """Record one leaf inference call on this turn's recorder.
+
+        Guard-wrapped by rule (TF-084 ``tracing_never_breaks_a_turn``):
+        any recorder failure is debug-logged and swallowed — the
+        turn proceeds exactly as it would untraced.
+        """
+        try:
+            if self._trace_recorder is not None:
+                self._trace_recorder.record_call(**kwargs)
+        except Exception:  # noqa: BLE001 — a trace is a record, not a gate
+            logger.debug("inference recording failed", exc_info=True)
+
+    def _backend_fallback_attempts(self) -> list[dict[str, Any]] | None:
+        """The unified backend's fallback attempts, if it is a chain."""
+        report = getattr(self._unified_backend, "last_report", None)
+        attempts = getattr(report, "attempts", None)
+        if not attempts:
+            return None
+        out: list[dict[str, Any]] = []
+        for attempt in attempts:
+            if hasattr(attempt, "to_dict"):
+                out.append(attempt.to_dict())
+            else:
+                out.append({
+                    "backend": getattr(attempt, "backend", ""),
+                    "outcome": getattr(attempt, "outcome", ""),
+                    "detail": getattr(attempt, "detail", ""),
+                })
+        return out
+
+    def _stream_error_detail(self) -> str:
+        """TF-084 (D-HON-1): the exact error a streamed unified
+        backend swallowed, or "" when it carries none.
+
+        The default generate_stream yields nothing on an error
+        response but stashes that response on
+        ``last_stream_response``; a FallbackBackend instead
+        files its attempts in ``last_report``. Either channel
+        gives the streamed path the plain path's exact detail.
+        """
+        backend = self._unified_backend
+        stash = getattr(backend, "last_stream_response", None)
+        error = getattr(stash, "error", "") if stash is not None else ""
+        if error:
+            return str(error)
+        attempts = self._backend_fallback_attempts()
+        if attempts:
+            failed = [a for a in attempts if a.get("outcome") != "served"]
+            if failed:
+                return "; ".join(
+                    f"{a.get('backend')}: {a.get('outcome')}"
+                    + (f" ({a.get('detail')})" if a.get("detail") else "")
+                    for a in failed
+                )
+        return ""
+
+    def _prompt_token_count(self, prompt: str) -> int | None:
+        """The unified backend's own count of a prompt, guarded."""
+        try:
+            return self._unified_backend.count_tokens(prompt)
+        except Exception:  # noqa: BLE001 — a count is colour, not a gate
+            return None
+
+    def _engine_name(self) -> str:
+        """The local engine's backend name, defensively resolved
+        (a property on the real engine, absent on stub engines)."""
+        try:
+            name = getattr(self._engine, "backend_name", None)
+            if callable(name):
+                name = name()
+            return str(name) if name else "turboquant_engine"
+        except Exception:  # noqa: BLE001 — naming never gates a turn
+            return "turboquant_engine"
+
     def _retrieve(self, sketch: InputSketch) -> MemoryActivationBundle:
         """Retrieve knowledge records. Returns empty bundle if DB unavailable.
 
@@ -1077,6 +1192,13 @@ class ThoughtForgeCore:
             except Exception as e:
                 logger.warning("Failed to load model: %s — running knowledge-only", e)
                 self._record_failure(turn, "model_load", exc=e)
+                self._record_inference(
+                    kind="model_load", source="turboquant_engine",
+                    backend="turboquant_engine",
+                    model=str(self._model_path),
+                    outcome="exception",
+                    error=f"{type(e).__name__}: {e}",
+                )
                 return candidates
 
         # Route through UnifiedBackend when no local engine is loaded
@@ -1109,6 +1231,8 @@ class ThoughtForgeCore:
                 mode=mode,
                 memory_cues=memory_cues,
             )
+            _seed = self._next_generation_seed()
+            _t_call = time.perf_counter()
             try:
                 from thoughtforge.inference.turboquant import GenerationParams
                 result = self._engine.generate(
@@ -1117,9 +1241,10 @@ class ThoughtForgeCore:
                         temperature=_mode_temperature(mode),
                         # TF-036: one seeded draw per generation
                         # call in determinism mode; None otherwise.
-                        seed=self._next_generation_seed(),
+                        seed=_seed,
                     ),
                 )
+                _wall_ms = (time.perf_counter() - _t_call) * 1000
                 if not result.text or not result.text.strip():
                     # TF-031: an empty completion is a failure, not
                     # a candidate — nothing was answered.
@@ -1127,6 +1252,25 @@ class ThoughtForgeCore:
                     self._record_failure(
                         turn, "candidate",
                         "engine returned no text (empty generation)", mode=mode,
+                    )
+                    self._record_inference(
+                        kind="engine_generate", source="turboquant_engine",
+                        backend=self._engine_name(),
+                        mode=mode,
+                        profile_id=getattr(result, "profile_id", None) or None,
+                        model=getattr(result, "model_path", "") or None,
+                        prompt_chars=len(prompt),
+                        prompt_tokens=getattr(result, "tokens_prompt", None),
+                        prompt_tokens_basis="engine_usage",
+                        temperature=_mode_temperature(mode), seed=_seed,
+                        text_chars=len(result.text or ""),
+                        tokens_generated=result.tokens_generated,
+                        tokens_basis="engine_reported",
+                        finish_reason=getattr(result, "stopped_reason", "") or "",
+                        latency_ms=_wall_ms,
+                        reported_latency_ms=getattr(result, "duration_ms", None),
+                        outcome="empty",
+                        error="engine returned no text (empty generation)",
                     )
                     continue
                 cid = self._mint_id("cand", 6)
@@ -1137,11 +1281,46 @@ class ThoughtForgeCore:
                     token_estimate=result.tokens_generated,
                     scores=_score_candidate(result.text, sketch, scaffold),
                 ))
+                self._record_inference(
+                    kind="engine_generate", source="turboquant_engine",
+                    backend=self._engine_name(),
+                    mode=mode,
+                    profile_id=getattr(result, "profile_id", None) or None,
+                    model=getattr(result, "model_path", "") or None,
+                    prompt_chars=len(prompt),
+                    prompt_tokens=getattr(result, "tokens_prompt", None),
+                    prompt_tokens_basis="engine_usage",
+                    temperature=_mode_temperature(mode), seed=_seed,
+                    text_chars=len(result.text or ""),
+                    tokens_generated=result.tokens_generated,
+                    tokens_basis="engine_reported",
+                    finish_reason=getattr(result, "stopped_reason", "") or "",
+                    latency_ms=_wall_ms,
+                    reported_latency_ms=getattr(result, "duration_ms", None),
+                    outcome="served",
+                )
             except TurnInterrupted:
+                self._record_inference(
+                    kind="engine_generate", source="turboquant_engine",
+                    backend=self._engine_name(),
+                    mode=mode, prompt_chars=len(prompt),
+                    temperature=_mode_temperature(mode), seed=_seed,
+                    latency_ms=(time.perf_counter() - _t_call) * 1000,
+                    outcome="interrupted",
+                )
                 raise
             except Exception as e:
                 logger.warning("Candidate generation failed (mode=%s): %s", mode, e)
                 self._record_failure(turn, "candidate", exc=e, mode=mode)
+                self._record_inference(
+                    kind="engine_generate", source="turboquant_engine",
+                    backend=self._engine_name(),
+                    mode=mode, prompt_chars=len(prompt),
+                    temperature=_mode_temperature(mode), seed=_seed,
+                    latency_ms=(time.perf_counter() - _t_call) * 1000,
+                    outcome="exception",
+                    error=f"{type(e).__name__}: {e}",
+                )
 
         return candidates
 
@@ -1171,6 +1350,8 @@ class ThoughtForgeCore:
             mode=mode,
             memory_cues=memory_cues,
         )
+        _seed = self._next_generation_seed()
+        _t_call = time.perf_counter()
         try:
             req = GenerationRequest(
                 prompt=prompt,
@@ -1179,12 +1360,34 @@ class ThoughtForgeCore:
                 # 512 when no profile was selected.
                 max_tokens=self._conversation_config.generation_max_tokens(),
                 # TF-036: the per-call seed (None when unseeded).
-                seed=self._next_generation_seed(),
+                seed=_seed,
             )
             resp = self._unified_backend.generate(req)
+            _wall_ms = (time.perf_counter() - _t_call) * 1000
+            _base = dict(
+                kind="backend_generate", source="unified_backend",
+                mode=mode, prompt_chars=len(prompt),
+                prompt_tokens=self._prompt_token_count(prompt),
+                prompt_tokens_basis="backend_count",
+                temperature=_mode_temperature(mode),
+                max_tokens=req.max_tokens, seed=_seed,
+                latency_ms=_wall_ms,
+                reported_latency_ms=resp.latency_ms or None,
+                fallback_attempts=self._backend_fallback_attempts(),
+            )
             if resp.error:
                 logger.warning("UnifiedBackend error: %s", resp.error)
                 self._record_failure(turn, "backend", resp.error, mode=mode)
+                self._record_inference(
+                    **_base,
+                    backend=resp.backend_used
+                    or self._unified_backend.backend_name(),
+                    text_chars=len(resp.text or ""),
+                    tokens_generated=resp.tokens_generated,
+                    tokens_basis="backend_reported",
+                    finish_reason=resp.finish_reason,
+                    outcome="error", error=resp.error,
+                )
                 return []
             if not resp.text or not resp.text.strip():
                 logger.warning("UnifiedBackend returned no text (mode=%s)", mode)
@@ -1192,8 +1395,29 @@ class ThoughtForgeCore:
                     turn, "backend",
                     "backend returned no text (empty generation)", mode=mode,
                 )
+                self._record_inference(
+                    **_base,
+                    backend=resp.backend_used
+                    or self._unified_backend.backend_name(),
+                    text_chars=len(resp.text or ""),
+                    tokens_generated=resp.tokens_generated,
+                    tokens_basis="backend_reported",
+                    finish_reason=resp.finish_reason,
+                    outcome="empty",
+                    error="backend returned no text (empty generation)",
+                )
                 return []
             cid = self._mint_id("cand", 6)
+            self._record_inference(
+                **_base,
+                backend=resp.backend_used
+                or self._unified_backend.backend_name(),
+                text_chars=len(resp.text or ""),
+                tokens_generated=resp.tokens_generated,
+                tokens_basis="backend_reported",
+                finish_reason=resp.finish_reason,
+                outcome="served",
+            )
             return [CandidateRecord(
                 candidate_id=cid,
                 mode=mode,
@@ -1204,6 +1428,20 @@ class ThoughtForgeCore:
         except Exception as e:
             logger.warning("UnifiedBackend generate failed: %s", e)
             self._record_failure(turn, "backend", exc=e, mode=mode)
+            self._record_inference(
+                kind="backend_generate", source="unified_backend",
+                backend=self._unified_backend.backend_name(),
+                mode=mode, prompt_chars=len(prompt),
+                prompt_tokens=self._prompt_token_count(prompt),
+                prompt_tokens_basis="backend_count",
+                temperature=_mode_temperature(mode),
+                max_tokens=self._conversation_config.generation_max_tokens(),
+                seed=_seed,
+                latency_ms=(time.perf_counter() - _t_call) * 1000,
+                outcome="exception",
+                error=f"{type(e).__name__}: {e}",
+                fallback_attempts=self._backend_fallback_attempts(),
+            )
             return []
 
     # ── TF-026: streamed candidate generation ─────────────────────────────
@@ -1241,6 +1479,13 @@ class ThoughtForgeCore:
             except Exception as e:
                 logger.warning("Failed to load model: %s — running knowledge-only", e)
                 self._record_failure(turn, "model_load", exc=e)
+                self._record_inference(
+                    kind="model_load", source="turboquant_engine",
+                    backend="turboquant_engine",
+                    model=str(self._model_path),
+                    outcome="exception",
+                    error=f"{type(e).__name__}: {e}",
+                )
                 return candidates
 
         if self._engine is None and self._unified_backend is not None:
@@ -1269,14 +1514,21 @@ class ThoughtForgeCore:
             )
             cid = self._mint_id("cand", 6)
             yield StreamEvent(kind="candidate_start", turn_id=turn_id, mode=mode, candidate_id=cid)
+            _seed = self._next_generation_seed()
+            _t_call = time.perf_counter()
+            _chunks = 0
+            _native = False
+            _tokens_basis = "word_count_after_stream"
+            _reported_ms: float | None = None
             try:
                 from thoughtforge.inference.turboquant import GenerationParams
                 params = GenerationParams(
                     temperature=_mode_temperature(mode),
-                    seed=self._next_generation_seed(),
+                    seed=_seed,
                 )
                 native_stream = getattr(self._engine, "generate_stream", None)
                 if callable(native_stream):
+                    _native = True
                     parts: list[str] = []
                     for delta in native_stream(prompt, params=params):
                         # TF-027 cut point: before each chunk is
@@ -1284,6 +1536,7 @@ class ThoughtForgeCore:
                         # whole — the partial candidate never lands.
                         check_interrupt(turn, interrupt)
                         parts.append(delta)
+                        _chunks += 1
                         yield StreamEvent(
                             kind="chunk", turn_id=turn_id, mode=mode,
                             candidate_id=cid, text=delta, native=True,
@@ -1296,12 +1549,26 @@ class ThoughtForgeCore:
                     result = self._engine.generate(prompt, params=params)
                     text = result.text
                     token_estimate = result.tokens_generated
+                    _tokens_basis = "engine_reported"
+                    _reported_ms = getattr(result, "duration_ms", None)
                     for chunk in chunk_words(text):
                         check_interrupt(turn, interrupt)
+                        _chunks += 1
                         yield StreamEvent(
                             kind="chunk", turn_id=turn_id, mode=mode,
                             candidate_id=cid, text=chunk, native=False,
                         )
+                _wall_ms = (time.perf_counter() - _t_call) * 1000
+                _base = dict(
+                    kind="engine_stream", source="turboquant_engine",
+                    backend=self._engine_name(), mode=mode,
+                    profile_id=getattr(self._engine, "profile_id", None),
+                    prompt_chars=len(prompt),
+                    temperature=_mode_temperature(mode), seed=_seed,
+                    streamed=True, native=_native,
+                    latency_ms=_wall_ms, reported_latency_ms=_reported_ms,
+                    chunks=_chunks,
+                )
                 if not text or not text.strip():
                     # TF-031: a stream that completes empty produced
                     # no candidate — a failure, stated as such.
@@ -1309,6 +1576,13 @@ class ThoughtForgeCore:
                     self._record_failure(
                         turn, "candidate",
                         "engine returned no text (empty generation)", mode=mode,
+                    )
+                    self._record_inference(
+                        **_base, text_chars=len(text or ""),
+                        tokens_generated=token_estimate,
+                        tokens_basis=_tokens_basis,
+                        outcome="empty",
+                        error="engine returned no text (empty generation)",
                     )
                     yield StreamEvent(
                         kind="candidate_error", turn_id=turn_id, mode=mode,
@@ -1323,17 +1597,43 @@ class ThoughtForgeCore:
                     token_estimate=token_estimate,
                     scores=_score_candidate(text, sketch, scaffold),
                 ))
+                self._record_inference(
+                    **_base, text_chars=len(text),
+                    tokens_generated=token_estimate,
+                    tokens_basis=_tokens_basis,
+                    outcome="served",
+                )
                 yield StreamEvent(
                     kind="candidate_end", turn_id=turn_id, mode=mode,
                     candidate_id=cid, text=text,
                 )
             except TurnInterrupted:
+                self._record_inference(
+                    kind="engine_stream", source="turboquant_engine",
+                    backend=self._engine_name(), mode=mode,
+                    prompt_chars=len(prompt),
+                    temperature=_mode_temperature(mode), seed=_seed,
+                    streamed=True, native=_native,
+                    latency_ms=(time.perf_counter() - _t_call) * 1000,
+                    outcome="interrupted", chunks=_chunks,
+                )
                 raise
             except Exception as e:
                 # A partial stream is discarded whole: a candidate
                 # is its completed text or it is not a candidate.
                 logger.warning("Streamed candidate generation failed (mode=%s): %s", mode, e)
                 self._record_failure(turn, "candidate", exc=e, mode=mode)
+                self._record_inference(
+                    kind="engine_stream", source="turboquant_engine",
+                    backend=self._engine_name(), mode=mode,
+                    prompt_chars=len(prompt),
+                    temperature=_mode_temperature(mode), seed=_seed,
+                    streamed=True, native=_native,
+                    latency_ms=(time.perf_counter() - _t_call) * 1000,
+                    outcome="exception",
+                    error=f"{type(e).__name__}: {e}",
+                    chunks=_chunks,
+                )
                 yield StreamEvent(
                     kind="candidate_error", turn_id=turn_id, mode=mode,
                     candidate_id=cid, text=str(e),
@@ -1371,6 +1671,9 @@ class ThoughtForgeCore:
         )
         cid = self._mint_id("cand", 6)
         yield StreamEvent(kind="candidate_start", turn_id=turn_id, mode=mode, candidate_id=cid)
+        _seed = self._next_generation_seed()
+        _t_call = time.perf_counter()
+        _backend_chunks = 0
         try:
             req = GenerationRequest(
                 prompt=prompt,
@@ -1379,7 +1682,7 @@ class ThoughtForgeCore:
                 # cap, or the standing 512.
                 max_tokens=self._conversation_config.generation_max_tokens(),
                 # TF-036: the per-call seed (None when unseeded).
-                seed=self._next_generation_seed(),
+                seed=_seed,
             )
             backend = self._unified_backend
             # Native only when the backend class overrides the
@@ -1391,6 +1694,7 @@ class ThoughtForgeCore:
                 # TF-027 cut point: before each chunk is delivered.
                 check_interrupt(turn, interrupt)
                 parts.append(chunk)
+                _backend_chunks += 1
                 if native:
                     yield StreamEvent(
                         kind="chunk", turn_id=turn_id, mode=mode,
@@ -1404,18 +1708,45 @@ class ThoughtForgeCore:
                             candidate_id=cid, text=piece, native=False,
                         )
             text = "".join(parts) if native else (parts[0] if parts else "")
+            _wall_ms = (time.perf_counter() - _t_call) * 1000
+            _base = dict(
+                kind="backend_stream", source="unified_backend",
+                backend=backend.backend_name(), mode=mode,
+                prompt_chars=len(prompt),
+                prompt_tokens=self._prompt_token_count(prompt),
+                prompt_tokens_basis="backend_count",
+                temperature=_mode_temperature(mode),
+                max_tokens=req.max_tokens, seed=_seed,
+                streamed=True, native=native,
+                latency_ms=_wall_ms, chunks=_backend_chunks,
+                fallback_attempts=self._backend_fallback_attempts(),
+            )
             if not text:
                 # The default stream yields nothing on a backend
                 # error (GenerationResponse.error) — no candidate,
                 # exactly as _generate_via_unified_backend returns [].
                 # TF-031: recorded on the turn as a backend failure.
+                # TF-084 (D-HON-1 FIXED): the exact error is
+                # recovered from the backend's stash / fallback
+                # report when it carries one, so the streamed
+                # record now matches the plain path's detail;
+                # the generic line stands only for a genuinely
+                # detail-less empty.
+                _detail = self._stream_error_detail()
+                _failure_detail = _detail or \
+                    "backend returned no text (error or empty)"
                 self._record_failure(
-                    turn, "backend",
-                    "backend returned no text (error or empty)", mode=mode,
+                    turn, "backend", _failure_detail, mode=mode,
+                )
+                self._record_inference(
+                    **_base, text_chars=0, tokens_generated=0,
+                    tokens_basis="word_count_after_stream",
+                    outcome="error" if _detail else "empty",
+                    error=_failure_detail,
                 )
                 yield StreamEvent(
                     kind="candidate_error", turn_id=turn_id, mode=mode,
-                    candidate_id=cid, text="backend returned no text (error or empty)",
+                    candidate_id=cid, text=_failure_detail,
                 )
                 return candidates
             candidate = CandidateRecord(
@@ -1426,16 +1757,47 @@ class ThoughtForgeCore:
                 scores=_score_candidate(text, sketch, scaffold),
             )
             candidates.append(candidate)
+            self._record_inference(
+                **_base, text_chars=len(text),
+                tokens_generated=len(text.split()),
+                tokens_basis="word_count_after_stream",
+                outcome="served",
+            )
             yield StreamEvent(
                 kind="candidate_end", turn_id=turn_id, mode=mode,
                 candidate_id=cid, text=text,
             )
             return candidates
         except TurnInterrupted:
+            self._record_inference(
+                kind="backend_stream", source="unified_backend",
+                backend=self._unified_backend.backend_name(),
+                mode=mode, prompt_chars=len(prompt),
+                temperature=_mode_temperature(mode),
+                max_tokens=self._conversation_config.generation_max_tokens(),
+                seed=_seed, streamed=True,
+                latency_ms=(time.perf_counter() - _t_call) * 1000,
+                outcome="interrupted", chunks=_backend_chunks,
+            )
             raise
         except Exception as e:
             logger.warning("UnifiedBackend streamed generate failed: %s", e)
             self._record_failure(turn, "backend", exc=e, mode=mode)
+            self._record_inference(
+                kind="backend_stream", source="unified_backend",
+                backend=self._unified_backend.backend_name(),
+                mode=mode, prompt_chars=len(prompt),
+                prompt_tokens=self._prompt_token_count(prompt),
+                prompt_tokens_basis="backend_count",
+                temperature=_mode_temperature(mode),
+                max_tokens=self._conversation_config.generation_max_tokens(),
+                seed=_seed, streamed=True,
+                latency_ms=(time.perf_counter() - _t_call) * 1000,
+                outcome="exception",
+                error=f"{type(e).__name__}: {e}",
+                chunks=_backend_chunks,
+                fallback_attempts=self._backend_fallback_attempts(),
+            )
             yield StreamEvent(
                 kind="candidate_error", turn_id=turn_id, mode=mode,
                 candidate_id=cid, text=str(e),
@@ -1509,6 +1871,18 @@ class ThoughtForgeCore:
             # TF-036: one seeded draw per compose for the salvage
             # refine passes (None when determinism mode is off).
             generation_seed=self._next_generation_seed(),
+            # TF-096: the persona in force, so salvage's
+            # selection and refine adoption guard the voice
+            # (None when no persona is loaded — the guard is
+            # inert and every leg is as before).
+            persona_expectation=self._persona_expectation,
+            # TF-098: the selected profile's id, so salvage
+            # itself enforces that profile's refine-pass cap
+            # at the engine-call site (the max_passes above
+            # is already the resolved cap, so the effective
+            # count through the core is unchanged; None when
+            # no profile is selected, as before).
+            profile_id=self._conversation_config.profile_id,
         )
 
         # Run EnforcementGate — TF-049: with the bundle's
@@ -1542,6 +1916,10 @@ class ThoughtForgeCore:
             salvage_path=salvage_result.salvage_path,
             retrieval_confidence=bundle.retrieval_confidence,
             mode="full",
+            # TF-097: the rescue record rides the final
+            # into the TF-038 trace (and so into TF-084's
+            # joined trace, which carries cognition whole).
+            rescue_record=salvage_result.rescue_record,
         )
 
     def _knowledge_only_response(
@@ -1630,6 +2008,8 @@ class ThoughtForgeCore:
             scaffold=scaffold,
             memory_cues=memory_cues,
         )
+        _seed = self._next_generation_seed()
+        _t_call = time.perf_counter()
         try:
             from thoughtforge.inference.turboquant import GenerationParams
             result = self._engine.generate(
@@ -1638,8 +2018,31 @@ class ThoughtForgeCore:
                     temperature=0.45,
                     # TF-036: the repair pass is a generation call
                     # too — it draws from the same seeded stream.
-                    seed=self._next_generation_seed(),
+                    seed=_seed,
                 ),
+            )
+            # TF-084: the repair call rides the joined trace as
+            # its own kind — it produces a final, not a
+            # candidate, and the reconciliation files its
+            # tokens separately for exactly that reason.
+            self._record_inference(
+                kind="engine_repair", source="turboquant_engine",
+                backend=self._engine_name(), mode="repair",
+                profile_id=getattr(result, "profile_id", None) or None,
+                model=getattr(result, "model_path", "") or None,
+                prompt_chars=len(repair_prompt),
+                prompt_tokens=getattr(result, "tokens_prompt", None),
+                prompt_tokens_basis="engine_usage",
+                temperature=0.45, seed=_seed,
+                text_chars=len(result.text or ""),
+                tokens_generated=result.tokens_generated,
+                tokens_basis="engine_reported",
+                finish_reason=getattr(result, "stopped_reason", "") or "",
+                latency_ms=(time.perf_counter() - _t_call) * 1000,
+                reported_latency_ms=getattr(result, "duration_ms", None),
+                outcome="served" if (result.text or "").strip() else "empty",
+                error="" if (result.text or "").strip()
+                else "engine returned no text (empty generation)",
             )
             scores = _score_final(result.text, sketch, scaffold)
             rid = self._mint_id("resp", 8)
@@ -1662,6 +2065,15 @@ class ThoughtForgeCore:
             # answer — the composed answer the user holds is real
             # and complete; nothing was fabricated (error_honesty).
             self._record_failure(turn, "repair", exc=e)
+            self._record_inference(
+                kind="engine_repair", source="turboquant_engine",
+                backend=self._engine_name(), mode="repair",
+                prompt_chars=len(repair_prompt),
+                temperature=0.45, seed=_seed,
+                latency_ms=(time.perf_counter() - _t_call) * 1000,
+                outcome="exception",
+                error=f"{type(e).__name__}: {e}",
+            )
             return previous
 
 

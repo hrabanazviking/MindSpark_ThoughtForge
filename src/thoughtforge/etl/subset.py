@@ -79,10 +79,13 @@ class EdgeSubsetBuilder:
     to the top-N by popularity_score (a proxy for retrieval utility).
     Associated statements and reference chunks for kept entities are included.
 
-    Typical reductions:
-      pi_zero:    50K entities  → ~50MB DB (from 100GB+ full dump)
-      phone_low:  80K entities  → ~80MB DB
-      pi_5:      200K entities  → ~200MB DB
+    Typical reductions: NOT STATED — the builder's earlier
+    docstring claimed per-profile output sizes (~50MB /
+    ~80MB / ~200MB) that were never measured anywhere
+    (D-SUBSET-2, TF-110). A subset's size is a measured
+    file fact, not an entity-count guess: TF-110's
+    ``subset_craft`` measures every build and trims it
+    against the profile's byte budget.
     """
 
     def build(
@@ -126,6 +129,26 @@ class EdgeSubsetBuilder:
             output_path = source_db.parent / f"{stem}_{profile_id}.db"
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # TF-110 (D-SUBSET-3): a build is a NEW artefact.
+        # The builder used to connect to an existing output
+        # file and INSERT OR IGNORE into it, so a re-build
+        # with a smaller limit reported the smaller count
+        # while the file still held the earlier, larger
+        # subset (probed: re-build at limit 2 onto a limit-5
+        # output reported 2, file held 5 entities). Refuse
+        # to build over the source itself, and start every
+        # build from no file.
+        if output_path.resolve() == source_db.resolve():
+            raise ValueError(
+                "subset output must not be the source DB itself: "
+                f"{output_path}"
+            )
+        for stale in (output_path,
+                      Path(str(output_path) + "-wal"),
+                      Path(str(output_path) + "-shm")):
+            if stale.exists():
+                stale.unlink()
 
         logger.info(
             "EdgeSubsetBuilder: building %s subset → %s (limit=%s)",
@@ -187,6 +210,15 @@ class EdgeSubsetBuilder:
 
             dst.commit()
 
+            # TF-110: compact before anyone measures this
+            # file — a subset's reported size must be the
+            # artefact's real size, not its build-time
+            # high-water mark.
+            try:
+                dst.execute("VACUUM")
+            except sqlite3.OperationalError as exc:
+                notes.append(f"vacuum skipped: {exc}")
+
             return SubsetResult(
                 profile_id=profile_id,
                 source_db=source_db,
@@ -238,14 +270,20 @@ class EdgeSubsetBuilder:
         entity_limit: int,
     ) -> int:
         """Copy top-N entities by popularity_score into dest DB."""
+        # TF-110 (D-SUBSET-4): ties in popularity_score
+        # break by qid, so the same source always yields
+        # the same subset — the old ORDER BY popularity
+        # alone left tied rows to SQLite's unspecified
+        # scan order.
         if entity_limit > 0:
             query = (
                 "SELECT * FROM entities "
-                "ORDER BY popularity_score DESC "
+                "ORDER BY popularity_score DESC, qid ASC "
                 f"LIMIT {entity_limit}"
             )
         else:
-            query = "SELECT * FROM entities ORDER BY popularity_score DESC"
+            query = ("SELECT * FROM entities "
+                     "ORDER BY popularity_score DESC, qid ASC")
 
         try:
             rows = src.execute(query).fetchall()
@@ -313,14 +351,29 @@ class EdgeSubsetBuilder:
         """Copy reference_chunks table (proportionally capped for edge profiles)."""
         try:
             # Cap reference chunks proportionally: same ratio as entity limit
+            # TF-110 (D-SUBSET-2): the cap used to floor at
+            # 1000 (max(1000, limit // 10)), so a build
+            # limited to 5 entities still copied up to 1000
+            # chunks — the largest text in the store rode
+            # along unjudged (probed: 5 entities, all 50
+            # chunks, 1.24 MB). The proportion is the rule,
+            # with no floor.
             chunk_limit = 0
             if entity_limit > 0:
-                chunk_limit = max(1000, entity_limit // 10)
+                chunk_limit = entity_limit // 10
 
             if chunk_limit > 0:
+                # TF-105 (D-SUBSET-1, fixed): this query used to
+                # ORDER BY retrieval_score — a column the schema
+                # has never carried — so every limited build raised
+                # OperationalError, landed in the except below, and
+                # copied ZERO reference chunks while still reporting
+                # success. There is no per-chunk value score in the
+                # schema to order by; chunk_id (insertion order) is
+                # the honest deterministic order that stands.
                 rows = src.execute(
                     "SELECT * FROM reference_chunks "
-                    "ORDER BY retrieval_score DESC "
+                    "ORDER BY chunk_id "
                     f"LIMIT {chunk_limit}"
                 ).fetchall()
             else:

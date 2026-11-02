@@ -543,9 +543,14 @@ class TurboQuantEngine:
             verbose=self._verbose,
         )
 
+        # TF-083 (D-GPU-1): log the EFFECTIVE layer count from
+        # the built kwargs — build_llama_kwargs clamps a caller
+        # count to 0 for a backend that declares no offload, so
+        # the pre-clamp resolved value would misstate the load.
         logger.info(
             "Loading model: %s (ctx=%d, gpu_layers=%d, backend=%s)",
-            self.model_path.name, n_ctx, n_gpu, self._backend.name,
+            self.model_path.name, n_ctx, kwargs["n_gpu_layers"],
+            self._backend.name,
         )
 
         t_start = time.perf_counter()
