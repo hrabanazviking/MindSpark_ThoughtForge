@@ -134,7 +134,7 @@ Every value below is copied exactly from the `phone_low` profile's own definitio
 
 ## 8. Docket
 
-TF-159 has **no share** of TF-016 and found no new defect in existing code, so this slice does not edit the docket and adds no entry. TF-016 totals stand unchanged (137 entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT), verified live against the docket header and filed in the open here.
+TF-159 has **no share** of TF-016 and found no new defect in existing code, so this slice does not edit the docket and adds no entry. TF-016 totals stand unchanged (137 entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT), verified live against the docket header and filed in the open here.
 
 ## 9. The probes
 

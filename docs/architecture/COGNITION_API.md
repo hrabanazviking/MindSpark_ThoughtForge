@@ -55,7 +55,7 @@ After a turn on a real core, the trace is obtained from the core's `last_turn_jo
 
 ## 6. Docket
 
-TF-154 has **no share** of TF-016 and found no new defect in existing code, so this slice does not edit the docket and adds no entry. TF-016 totals stand unchanged (137 entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT), filed in the open here.
+TF-154 has **no share** of TF-016 and found no new defect in existing code, so this slice does not edit the docket and adds no entry. TF-016 totals stand unchanged (137 entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT), filed in the open here.
 
 ## 7. The probes
 

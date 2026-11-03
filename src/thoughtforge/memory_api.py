@@ -107,7 +107,7 @@ TF-153's service shape.
 finds no new defect in existing code; it does
 NOT edit ``docs/audit/TF-016_BUG_AND_GAP_DOCKET.md``.
 TF-016 totals stand unchanged (137 entries —
-32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4
+31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4
 CLOSED-BY-VERDICT), filed in the open here and
 in the render.
 
@@ -1139,8 +1139,8 @@ def render_memory_api_markdown() -> str:
         "TF-155 has **no share** of TF-016 and found no "
         "new defect in existing code, so this slice does "
         "not edit the docket and adds no entry. TF-016 "
-        "totals stand unchanged (137 entries — 32 OPEN / "
-        "1 OPEN-ENVIRONMENT / 100 FIXED / 4 "
+        "totals stand unchanged (137 entries — 31 OPEN / "
+        "1 OPEN-ENVIRONMENT / 101 FIXED / 4 "
         "CLOSED-BY-VERDICT), filed in the open here.")
     lines.append("")
     lines.append("## 7. The probes")
@@ -1339,11 +1339,11 @@ def memory_api_problems() -> list[str]:
 
     docket_text = _DOCKET.read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", docket_text)
-    if "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, 100 FIXED" \
+    if "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, 101 FIXED" \
             not in normalized:
         problems.append(
             "docket: the header totals no longer file 137 "
-            "entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 "
+            "entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 "
             "FIXED; TF-155 must not move them")
 
     # The filed doc matches its render verbatim.

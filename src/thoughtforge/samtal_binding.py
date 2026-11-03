@@ -159,7 +159,7 @@ anything was built:
 finds no new defect in existing code; it does
 NOT edit ``docs/audit/TF-016_BUG_AND_GAP_DOCKET.md``.
 TF-016 totals stand unchanged (137 entries —
-32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4
+31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4
 CLOSED-BY-VERDICT), verified live against
 the docket header and filed in the open here
 and in the render.
@@ -1854,8 +1854,8 @@ def render_samtal_binding_markdown() -> str:
         "no new defect in existing code, so this "
         "slice does not edit the docket and adds no "
         "entry. TF-016 totals stand unchanged (137 "
-        "entries — 32 OPEN / 1 OPEN-ENVIRONMENT / "
-        "100 FIXED / 4 CLOSED-BY-VERDICT), verified "
+        "entries — 31 OPEN / 1 OPEN-ENVIRONMENT / "
+        "101 FIXED / 4 CLOSED-BY-VERDICT), verified "
         "live against the docket header and filed "
         "in the open here.")
     lines.append("")
@@ -2158,11 +2158,11 @@ def samtal_binding_problems() -> list[str]:
 
     docket_text = _DOCKET.read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", docket_text)
-    if "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, 100 FIXED" \
+    if "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, 101 FIXED" \
             not in normalized:
         problems.append(
             "docket: the header totals no longer file 137 "
-            "entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 "
+            "entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 "
             "FIXED; TF-157 must not move them")
 
     # The filed doc matches its render verbatim.

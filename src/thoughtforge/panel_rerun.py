@@ -86,8 +86,8 @@ baselines stand exactly as filed and
 **Docket**: none. TF-151 has no share of any
 TF-016 entry and finds no new defect; it does
 NOT edit the docket. TF-016 totals stand
-unchanged (137 — 32 OPEN / 1 OPEN-ENVIRONMENT /
-100 FIXED / 4 CLOSED-BY-VERDICT).
+unchanged (137 — 31 OPEN / 1 OPEN-ENVIRONMENT /
+101 FIXED / 4 CLOSED-BY-VERDICT).
 
 Proof grade: FIXTURE/STATIC — pinned
 synthetic-fixture baselines re-measured live on
@@ -516,7 +516,7 @@ def _limits_lines() -> list[str]:
         "public-claims filings do not move.",
         "- No docket change: TF-151 has no TF-016 share and "
         "found no defect; TF-016 totals stand unchanged (137 "
-        "— 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 "
+        "— 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 "
         "CLOSED-BY-VERDICT). TF-152 owns the Part VIII gate.",
         "- No canon or persona content is filed: only the "
         "estate's synthetic fixture scores, counts and verdict "
@@ -610,8 +610,8 @@ def render_panel_rerun_markdown() -> str:
     lines.append(
         "None. TF-151 has no share of any TF-016 entry and "
         "its re-runs found no defect. TF-016 totals stand "
-        "unchanged: 137 entries — 32 OPEN / 1 "
-        "OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT.")
+        "unchanged: 137 entries — 31 OPEN / 1 "
+        "OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT.")
     lines.append("")
     lines.append("## 6. The probes")
     lines.append("")
@@ -758,11 +758,11 @@ def panel_rerun_problems() -> list[str]:
 
     docket_text = _DOCKET.read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", docket_text)
-    if "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, 100 FIXED" \
+    if "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, 101 FIXED" \
             not in normalized:
         problems.append(
             "docket: the header totals no longer file 137 "
-            "entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 "
+            "entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 "
             "FIXED; TF-151 must not move them")
 
     # The filed doc matches its render verbatim.
