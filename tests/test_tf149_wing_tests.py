@@ -34,8 +34,8 @@ Pinned here:
   * the shipping-grade criteria: 6 rows,
   * D-WING-1 CLOSED-BY-VERDICT by TF-149, the
     last share its narrowings assign; TF-016
-    totals 137 — 32 OPEN / 1 OPEN-ENVIRONMENT /
-    100 FIXED / 4 CLOSED-BY-VERDICT; every prior
+    totals 137 — 31 OPEN / 1 OPEN-ENVIRONMENT /
+    101 FIXED / 4 CLOSED-BY-VERDICT; every prior
     narrowing's text preserved,
   * the probes: 7/7 against the pure validators,
   * the doc matches its render verbatim.
@@ -359,8 +359,8 @@ class TestDocAndDocket:
         docket = _read("docs/audit/TF-016_BUG_AND_GAP_DOCKET.md")
         normalized = re.sub(r"\s+", " ", docket)
         assert "137 entries" in docket
-        assert "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, " \
-            "100 FIXED" in normalized
+        assert "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, " \
+            "101 FIXED" in normalized
         assert "4 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part " \
             "IV gate verdict; D-WING-1 by TF-149)" in normalized
 

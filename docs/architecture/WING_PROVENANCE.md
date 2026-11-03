@@ -48,7 +48,7 @@ TF-144 filed that TF-150 completes the wing's provenance in the closing doc. It 
 
 ## 5. Docket
 
-None. D-WING-1 is already CLOSED-BY-VERDICT by TF-149, whose closure files TF-150/TF-152 as the owners of provenance/gate, not that entry. This slice adds no docket entry, reopens nothing, and TF-016 totals do not move: 137 entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT.
+None. D-WING-1 is already CLOSED-BY-VERDICT by TF-149, whose closure files TF-150/TF-152 as the owners of provenance/gate, not that entry. This slice adds no docket entry, reopens nothing, and TF-016 totals do not move: 137 entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT.
 
 ## 6. The probes
 
@@ -66,5 +66,5 @@ None. D-WING-1 is already CLOSED-BY-VERDICT by TF-149, whose closure files TF-15
 - Pre-import authorship UNKNOWN: who authored the wing's files before 2026-03-31, when they were written, and why `wyrdforge.models` was never committed are recorded nowhere in this repo — this slice files the questions and the absence, and invents no answers, dates or motives.
 - The import message '1' is filed verbatim and not interpreted: git records the character, not a meaning.
 - Provenance here covers the wing's code/docs history only; no character/persona content is republished or filed by this slice.
-- No README.md anywhere was touched, no wing file was changed, and the docket is untouched: D-WING-1 stands CLOSED-BY-VERDICT by TF-149 with TF-016 totals unchanged (137 — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT); TF-151 owns the panel re-run and TF-152 the Part VIII gate.
+- No README.md anywhere was touched, no wing file was changed, and the docket is untouched: D-WING-1 stands CLOSED-BY-VERDICT by TF-149 with TF-016 totals unchanged (137 — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT); TF-151 owns the panel re-run and TF-152 the Part VIII gate.
 - No live model was read; live behaviour is NOT PROVEN (TF-173 class), never claimed.

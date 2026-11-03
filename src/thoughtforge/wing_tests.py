@@ -121,8 +121,8 @@ closes the entry in the open as
 repaired into importability and will not be
 under this roadmap — its every part received an
 executed disposition. TF-016 totals move in the
-open (137 entries — 32 OPEN / 1
-OPEN-ENVIRONMENT / 100 FIXED / 4
+open (137 entries — 31 OPEN / 1
+OPEN-ENVIRONMENT / 101 FIXED / 4
 CLOSED-BY-VERDICT; the closing verdict is a
 verdict, not a repair, so the FIXED count does
 not move). TF-150 / TF-152 own provenance and
@@ -899,8 +899,8 @@ def render_wing_tests_markdown() -> str:
         "remaining wing test file fenced with its unadopted "
         "subject per TF-148, its persona test's intent "
         "superseded by TF-143's shipping tests). TF-016 "
-        "totals move in the open: 137 entries — 32 OPEN / 1 "
-        "OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT. "
+        "totals move in the open: 137 entries — 31 OPEN / 1 "
+        "OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT. "
         "TF-150 / TF-152 own provenance and the Part VIII "
         "gate, not this entry.")
     lines.append("")
@@ -958,11 +958,11 @@ def _docket_closure_problems() -> list[str]:
     problems: list[str] = []
     text = _DOCKET.read_text(encoding="utf-8")
     normalized = re.sub(r"\s+", " ", text)
-    if "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, 100 FIXED" \
+    if "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, 101 FIXED" \
             not in normalized:
         problems.append(
             "docket: the header totals do not file 137 entries "
-            "— 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED")
+            "— 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED")
     if "4 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate " \
             "verdict; D-WING-1 by TF-149)" not in normalized:
         problems.append(

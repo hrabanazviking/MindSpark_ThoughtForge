@@ -10,7 +10,7 @@ is assigned to the slice that fixes it, and an entry closes only
 when that slice banks with evidence. TF-192 (roadmap audit)
 verifies at the end that no entry is left open without a verdict.
 
-**Totals: 137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, 100 FIXED
+**Totals: 137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, 101 FIXED
 (D-CI-1 in Part I; D-DUP-1 by TF-025 in Part II; D-ORPHAN-1
 by TF-045 in Part III; D-DEAD-2, D-DEAD-3, D-EMB-1 and
 D-EMB-2 by TF-053 in Part III; D-VEC-1 and D-VEC-2 by
@@ -51,7 +51,7 @@ measuring sense; D-BENCH-7 by TF-133 in Part VII —
 consumption share; D-BENCH-19 by TF-134 in Part VII —
 measuring sense; D-BENCH-20 by TF-135 in Part VII;
 D-BENCH-21 by TF-136 in Part VII;
-D-BENCH-22 by TF-137 in Part VII), 4
+D-BENCH-22 by TF-137 in Part VII; D-CFG-4 by TF-160 in Part IX), 4
 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's Part IV gate
 verdict; D-WING-1 by TF-149).** Primary-owner parts: Part I 1 ·
 Part II 7 · Part III 16 · Part IV 35 · Part V 6 · Part VI 36 ·
@@ -1741,6 +1741,35 @@ Totals after TF-137: 137 entries — 33 OPEN,
 1 OPEN-ENVIRONMENT, 100 FIXED, 3
 CLOSED-BY-VERDICT.
 
+TF-160 fixed one standing entry in Part IX and
+added none — D-CFG-4 was measured open by that
+slice's live probes exactly as TF-009 filed it
+(the shipped `configs/user_config.yaml` carried
+`openai_api_key` and `hf_token` as raw keys,
+both values empty at the byte level, so no
+secret was in the tree) and fixed in scope by
+the same slice (the shipped file now carries
+`openai_api_key_ref` / `hf_token_ref` custody
+references in the kista-secret-source plugin's
+own `kista://service/field` form, and
+`src/thoughtforge/kista_custody.py` files the
+custody shape, governs every config in the
+tree by validator + live scan, and resolves
+references only through an injected resolver
+with the value delivered solely to a consumer
+callable — never serialised). Its filed
+remainders stand in the row: the factory's
+raw-key read path and the wizard's raw-key
+write path are TF-171's / TF-177's roads, and
+live Kista resolution is NOT PROVEN (TF-170).
+Every live pin of the old totals in the
+tree's checkers, renders and tests was
+followed to the new totals in the open in
+the same slice.
+Totals after TF-160: 137 entries — 31 OPEN,
+1 OPEN-ENVIRONMENT, 101 FIXED, 4
+CLOSED-BY-VERDICT.
+
 ## The docket
 
 | ID | Defect (evidence) | Fixing slice(s) | Part | Status |
@@ -1799,7 +1828,7 @@ CLOSED-BY-VERDICT.
 | D-CFG-1 | `default.yaml` is mostly a mirage: 27 of 34 keys SHADOWED by identical hard-coded constants, 2 DEAD; its retrieval weights are also name-drifted (`tone_match`/`user_preference` vs code's `tone_similarity`/`preference_relevance`), so naive wiring would drop 2 of 5 weights (TF-009) | TF-032 (live keys only, per TF-009's exact list) + TF-044 (scoring weights made tunable) | II | OPEN — **narrowed by TF-032**: the cognition config surface (`cognition/config_surface.py`) reads the one live cognition key (`personality_core_path`, carried through) and no shadowed/dead key — the unread keys are pinned by tests (`hardware.profile`, the file key `cognition.scaffold_depth`, user_config `profile`/`chat_*`); its selections are new `conversation.*` keys that existed in no shipped file. The remaining mirage is the scoring weights (TF-044) and the unwired/unstruck keys themselves. **Scoring share CLOSED by TF-044**: every scoring weight in the knowledge layer is now a named, censused constant (`knowledge/scoring_honesty.py` — writeback/genericness/fusion constants named, values unchanged; the forge scores from the census, docstring drift fixed), an AST checker pins 'no unnamed literal in a scoring function body', the yaml drift is pinned by name in the checker, and retrieval weights are tunable per profile (`weights_for_profile`, wired through KnowledgeForge; measured on TF-043 fixtures — zero-shift profiles reproduce the baseline exactly, the phone_low/pi_zero shift experiment measures a precision cost, recorded not hidden; TF-064 judges the shifts). What remains of D-CFG-1 is only the unwired/unstruck shadow keys themselves |
 | D-CFG-2 | Personality expressive fields DORMANT: traits, speech_style, behavior_rules and all 5 tuning weights are parsed and carried but steer nothing — only `avoid[:3]` + `record_id` are consumed (TF-009) | TF-030 (persona consistency hooks) + TF-141 (persona compiler verdict) | II | OPEN — **narrowed by TF-030**: traits / speech_style / behavior_rules now steer every prompt via the persona steering block (`cognition/persona.py`, `inject_persona`), and `avoid` is checkable through the hook; the remaining dormancy is exactly the 5 tuning weights — carried on `PersonaExpectation` for scorers, given no steering effect by TF-030's deliberate ruling (numbers are not prose; the compiler question is TF-141's) |
 | D-CFG-3 | `user_config.yaml` mixes 10 LIVE backend keys with 5 DEAD (profile / knowledge_db_built / chat_*); the factory's fallback key `openai_model` is read and written by the wizard but absent from the shipped file (TF-009) | TF-065 (backend contract) + TF-153 (service shape) | IV | OPEN — **narrowed by TF-065**: the backend share is ruled — the factory's live key set (11 keys, `openai_model` included) is pinned as contract data (`inference/backend_contract.BACKEND_CONFIG_KEYS`, AST-judged against `load_backend_from_config`'s own `cfg.get` reads, so the factory can neither lose a live key nor grow a read of a dead one unnoticed). The dead keys' removal from the shipped file and the wizard's shape stay TF-153's |
-| D-CFG-4 | Credential-shaped keys (`openai_api_key`, `hf_token`) live in a plain YAML file — empty in the shipped copy, so no secret is in the tree, but the shape is the defect (TF-009) | TF-160 (Kista custody) | IX | OPEN |
+| D-CFG-4 | Credential-shaped keys (`openai_api_key`, `hf_token`) live in a plain YAML file — empty in the shipped copy, so no secret is in the tree, but the shape is the defect (TF-009) | TF-160 (Kista custody) | IX | **FIXED by TF-160**: the shipped `configs/user_config.yaml` no longer carries the raw keys — `openai_api_key_ref` / `hf_token_ref` custody references (`kista://thoughtforge/<key>`, the kista-secret-source plugin's own reference form, filed as data in `src/thoughtforge/kista_custody.py`) stand in their place, and the custody module governs every config in the tree (its checker scans `configs/` live; its validator refuses the raw shape, empty or non-empty alike). Filed remainders, NOT claimed fixed: the backend factory still *reads* raw keys a user hand-writes into a local config (the validator refuses such a config), and the setup wizard still *writes* raw keys when a user enters one at setup time — TF-171 (security audit) and TF-177 (upgrade path) own those roads; live Kista resolution is NOT PROVEN (TF-170's gate) |
 | D-CFG-5 | No single config system: three loaders (cached `load_config()`, hand-parsing in unified_backend + validators/health/self-heal, the memory store's own personality load) never meet; no code path sees a merged view (TF-009 finding 1) | TF-032 + TF-153 | II | OPEN — **narrowed by TF-032**: for cognition, one merged resolved view now exists (`ConversationConfig` — persona path + profile + strategy + depth + candidate modes in one frozen object per conversation); the system-wide merged view stays TF-153's |
 | D-BENCH-1 | `benchmark_profiles`: `profile_id` is never validated (a bogus profile exits 0) and never applied — `ThoughtForgeCore` has no profile parameter; every profile measures the same ephemeral empty-store core (TF-010). Child of D-PROF-3 | TF-121 (harness) + TF-128 (profile panels) | VII | **FIXED by TF-128** (in the measuring sense): the validation share was FIXED by TF-121 — `ProfileBenchmark.run` validates `profile_id` against the shipped `hardware_profiles/*.json` ids (`known_profile_ids()`, filed as the harness's `KNOWN_PROFILES`) and raises ValueError naming the bogus id and the known set; the CLI exits 2 with that message (proven live with `totally_bogus_profile`). The application share is FIXED here: `benchmarks/profile_panel.py` runs the profile benchmark plus the four Part VII suites per shipped profile with the profile applied and its budgets enforced during the run — the benchmark runs on a `ThoughtForgeCore` built with the profile selected through TF-032's config surface (supplied via `ProfileBenchmark`'s existing `core=` parameter), its resolved `max_response_tokens` / refinement passes (pi_zero 120 / 0 through server_gpu 2000 / 3) and lifecycle caps asserted equal to the profile JSON's filed budgets per profile, TF-069's boot + `check_model_fit` RAM-ceiling cap row re-run per profile (fit × 3; server_gpu exceeds 140.0 > 88 GB; phone_low / pi_zero unprovable), and the depth suite's ON road refused by budget on pi_zero (0 refinement passes — its depth score is its OFF score, filed by name) — 30 filed cells published as literal rows recomputed live by `profile_panel_problems()`, registered in `benchmarks/harness.py` in the open with pinned baseline `profile_panel_synthetic_v1` (measured live twice identical; all earlier baselines preserved exactly, never re-pinned). Filed limits: `benchmark_profiles`' own default ephemeral core still applies no profile when no core is passed — unchanged, stated openly in TF-128's doc; the benchmark cell is an empty-store run, so no score varies by profile except through the refused cell (filed as the finding); live per-profile hardware behaviour is NOT PROVEN (TF-082 / TF-173) |
 | D-BENCH-2 | Metric name drift in `benchmark_profiles`: `token_efficiency` and `citation_accuracy` do not compute what their names/docstrings say; MODEL_CARD's "avg response words ≥ 30" target is checked nowhere (TF-010) | TF-121 | VII | **FIXED by TF-121**: the module docstring and field comments now state what each metric actually computes (`token_efficiency` is the min-words met rate — the fraction of successful turns meeting their query's min_response_words, not a useful/total words ratio; `citation_accuracy`'s denominator is all successful turns and any citation string counts); MODEL_CARD's target is filed as `BenchmarkResult.AVG_WORDS_TARGET = 30.0`, judged by `passes_avg_words_target()` and printed in the summary beside the other two targets (the empty-store baseline files it unmet, honestly). The field name `token_efficiency` is kept (the phase-6 tests and the dataclass API pin it) and is filed in the harness's `METRIC_DEFINITIONS` under its canonical name `min_words_met_rate` with the legacy name named |

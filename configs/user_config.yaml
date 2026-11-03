@@ -11,11 +11,14 @@ ollama_model: ""
 # LM Studio / OpenAI-compatible settings
 lmstudio_url: "http://localhost:1234"
 lmstudio_model: ""
-openai_api_key: ""
+# TF-160 (Kista custody): credentials never live in configs as
+# values — this key is a custody REFERENCE into Kista, not a key.
+openai_api_key_ref: "kista://thoughtforge/openai_api_key"
 openai_base_url: ""
 
 # HuggingFace settings
-hf_token: ""
+# TF-160 (Kista custody): a custody REFERENCE, never a token value.
+hf_token_ref: "kista://thoughtforge/hf_token"
 hf_model: ""
 
 # Local GGUF (TurboQuant/llama-cpp-python)

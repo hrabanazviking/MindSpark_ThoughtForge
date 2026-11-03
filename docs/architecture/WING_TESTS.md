@@ -47,7 +47,7 @@ Counting rules, filed in the rows themselves: `bond_graph` — this row files ex
 
 ## 5. Docket
 
-TF-149 closes D-WING-1 in the open in `docs/audit/TF-016_BUG_AND_GAP_DOCKET.md` as **CLOSED-BY-VERDICT** — the wing-tests share was the last share every prior narrowing named. The verdict: the wing was never repaired into importability and will not be under this roadmap; its every part received an executed disposition (adopted concepts rebuilt as shipping production code carrying 93 shipping-grade tests; retired mechanisms and their shared test file archived-in-place by TF-144; the remaining wing test file fenced with its unadopted subject per TF-148, its persona test's intent superseded by TF-143's shipping tests). TF-016 totals move in the open: 137 entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT. TF-150 / TF-152 own provenance and the Part VIII gate, not this entry.
+TF-149 closes D-WING-1 in the open in `docs/audit/TF-016_BUG_AND_GAP_DOCKET.md` as **CLOSED-BY-VERDICT** — the wing-tests share was the last share every prior narrowing named. The verdict: the wing was never repaired into importability and will not be under this roadmap; its every part received an executed disposition (adopted concepts rebuilt as shipping production code carrying 93 shipping-grade tests; retired mechanisms and their shared test file archived-in-place by TF-144; the remaining wing test file fenced with its unadopted subject per TF-148, its persona test's intent superseded by TF-143's shipping tests). TF-016 totals move in the open: 137 entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT. TF-150 / TF-152 own provenance and the Part VIII gate, not this entry.
 
 ## 6. The probes
 

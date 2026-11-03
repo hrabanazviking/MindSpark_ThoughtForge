@@ -41,7 +41,7 @@ The `turn` op's response fields are the real `FinalResponseRecord`'s: `text`, `r
 
 ## 5. Docket
 
-TF-153 has **no share** of TF-016 and found no new defect in existing code, so this slice does not edit the docket and adds no entry. TF-016 totals stand unchanged (137 entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT), filed in the open here.
+TF-153 has **no share** of TF-016 and found no new defect in existing code, so this slice does not edit the docket and adds no entry. TF-016 totals stand unchanged (137 entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT), filed in the open here.
 
 ## 6. The probes
 

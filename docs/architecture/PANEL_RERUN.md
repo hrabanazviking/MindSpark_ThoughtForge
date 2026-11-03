@@ -54,7 +54,7 @@ None, filed in the open on the TF-138 gate precedent: a re-measurement slice add
 
 ## 5. Docket
 
-None. TF-151 has no share of any TF-016 entry and its re-runs found no defect. TF-016 totals stand unchanged: 137 entries — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT.
+None. TF-151 has no share of any TF-016 entry and its re-runs found no defect. TF-016 totals stand unchanged: 137 entries — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT.
 
 ## 6. The probes
 
@@ -71,5 +71,5 @@ None. TF-151 has no share of any TF-016 entry and its re-runs found no defect. T
 - Fixture/static grade only: every value above is a pinned synthetic-fixture baseline re-measured live on this VM through the harness's own measurers. No live model was read; live persona or world-state behaviour is NOT PROVEN (TF-173 class), never claimed.
 - The zero deltas are the finding, not a failure: the three re-run measurers consume no Part VIII adopted code (checked live against their sources), so the verdicts could not move them. Any future panel that binds the bond layer or the compiled persona must be re-run as its own slice and file its own delta.
 - No harness baseline was added or re-pinned by this slice (the TF-138 gate precedent for a re-measurement slice): the comparison stands against the existing pins, and the baseline book / flake census / public-claims filings do not move.
-- No docket change: TF-151 has no TF-016 share and found no defect; TF-016 totals stand unchanged (137 — 32 OPEN / 1 OPEN-ENVIRONMENT / 100 FIXED / 4 CLOSED-BY-VERDICT). TF-152 owns the Part VIII gate.
+- No docket change: TF-151 has no TF-016 share and found no defect; TF-016 totals stand unchanged (137 — 31 OPEN / 1 OPEN-ENVIRONMENT / 101 FIXED / 4 CLOSED-BY-VERDICT). TF-152 owns the Part VIII gate.
 - No canon or persona content is filed: only the estate's synthetic fixture scores, counts and verdict names.

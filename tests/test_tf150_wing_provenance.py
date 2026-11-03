@@ -37,8 +37,8 @@ Pinned here:
     that shape),
   * no docket touch: D-WING-1 stands
     CLOSED-BY-VERDICT, TF-016 totals unchanged
-    137 — 32 OPEN / 1 OPEN-ENVIRONMENT /
-    100 FIXED / 4 CLOSED-BY-VERDICT,
+    137 — 31 OPEN / 1 OPEN-ENVIRONMENT /
+    101 FIXED / 4 CLOSED-BY-VERDICT,
   * the probes: 7/7 against the pure validators,
   * the provenance doc matches its render
     verbatim.
@@ -311,8 +311,8 @@ class TestDocsAndDocket:
     def test_docket_untouched_totals_unchanged(self) -> None:
         docket = _read("docs/audit/TF-016_BUG_AND_GAP_DOCKET.md")
         normalized = re.sub(r"\s+", " ", docket)
-        assert "137 entries — 32 OPEN, 1 OPEN-ENVIRONMENT, " \
-            "100 FIXED" in normalized
+        assert "137 entries — 31 OPEN, 1 OPEN-ENVIRONMENT, " \
+            "101 FIXED" in normalized
         assert "4 CLOSED-BY-VERDICT (D-CARD-2 by TF-086's " \
             "Part IV gate verdict; D-WING-1 by TF-149)" in \
             normalized
